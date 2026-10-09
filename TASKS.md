@@ -57,7 +57,7 @@ remains (tracked under "Remaining — honest").
 | K1 monthly summary | SPEC-018 | DONE — `e2e/16-k2-k1.spec.ts` (monthlySummary sqft/wage/short, reversed excluded, Hindi share text); `domain/monthly.test.ts` (6). |
 | B1/B2 GPS capture — verify wired + e2e | SPEC-003/010 | DONE — `e2e/17-gps.spec.ts` (loom lat/lng on grant, check-in lat/lng on grant, graceful save on permission denied). |
 | Git commit | — | DONE: first commit 962d754 pushed to github.com/Iampranjaldubey/BunkarOS (main) |
-| Desktop & tablet layout (side menu, tables, two-column forms, centered dialogs) | SPEC-019 | DOING |
+| Desktop & tablet layout (side menu, tables, two-column forms, centered dialogs) | SPEC-019 | DONE — `e2e/20-desktop-shell`, `21-desktop-owner`, `22-desktop-lists`, `23-desktop-forms` (17 desktop tests) + all 55 mobile + 1 offline tests green; audit of every route × 3 roles × 1024/1280/1440/1920 px: 0 findings |
 
 Completion-batch verification (integrator, 2026-10-09, Node v24.21.0):
 `npx tsc -p tsconfig.app.json --noEmit` → exit 0 · `npx vitest run` → **200 passed / 23 files** ·

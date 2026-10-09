@@ -23,6 +23,8 @@ import type { RokerHead, RokerP, PayMode, Rec, BazaarP, PeshgiP } from '../../db
 import { istDay, daysBetween } from '../../domain/ids';
 import { useT } from '../../i18n';
 import { cn } from '../../lib/utils';
+import { PhoneOnly, DesktopOnly } from '../../components/ui/Responsive';
+import { useIsDesktop } from '../../components/ui/useIsDesktop';
 
 const HEADS: RokerHead[] = ['kharcha', 'dyer', 'transport', 'wool_purchase', 'receipt', 'misc'];
 
@@ -68,6 +70,7 @@ function EntryRow({ entry, label }: { entry: RokerEntry; label: string }) {
 }
 
 export default function RokerPage() {
+  const isDesktop = useIsDesktop();
   const { t, lang } = useT();
   const toast = useToast();
   const recs = useRecords();
@@ -201,7 +204,8 @@ export default function RokerPage() {
       </div>
 
       {/* Mobile (below lg): opening, entries list, totals grid, closing — unchanged. */}
-      <div className="lg:hidden">
+      <PhoneOnly>
+      <div>
         {/* Opening cash */}
         <Card className="mb-4 flex items-center justify-between">
           <span className="text-base text-muted">{t('roker.opening')}</span>
@@ -252,14 +256,16 @@ export default function RokerPage() {
           <Money paise={data.closingCash} size="xl" className="text-indigo" />
         </Card>
       </div>
+      </PhoneOnly>
 
       {/* Desktop/tablet (lg+): StatTiles row above a real entries table. */}
-      <div className="hidden lg:block">
+      <DesktopOnly>
+      <div>
         <div className="mb-5 grid grid-cols-4 gap-4">
           <StatTile tone="neutral" label={t('roker.stat.opening')} value={<Money paise={data.openingCash} size="md" />} />
           <StatTile tone="received" label={t('roker.stat.in')} value={<Money paise={data.cashIn + data.upiIn} flow="received" size="md" />} />
           <StatTile tone="given" label={t('roker.stat.out')} value={<Money paise={data.cashOut + data.upiOut} flow="given" size="md" />} />
-          <StatTile tone="info" label={t('roker.stat.closing')} value={<Money paise={data.closingCash} size="md" className="text-indigo" />} />
+          <StatTile tone="info" testid="roker-closing" label={t('roker.stat.closing')} value={<Money paise={data.closingCash} size="md" className="text-indigo" />} />
         </div>
 
         <ResponsiveTable
@@ -308,12 +314,15 @@ export default function RokerPage() {
           ]}
         />
       </div>
+      </DesktopOnly>
 
       {canAdd && (
-        <Button block size="xl" data-testid="roker-add" onClick={() => { reset(); setOpen(true); }}>
-          <Plus aria-hidden="true" />
-          {t('roker.add')}
-        </Button>
+        <div className="lg:mt-5 lg:flex lg:justify-end">
+          <Button block={!isDesktop} size={isDesktop ? 'lg' : 'xl'} data-testid="roker-add" onClick={() => { reset(); setOpen(true); }}>
+            <Plus aria-hidden="true" />
+            {t('roker.add')}
+          </Button>
+        </div>
       )}
 
       {/* Add-entry sheet */}

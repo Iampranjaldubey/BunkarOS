@@ -22,6 +22,7 @@ import { gramsToKgStr, cn } from '../../lib/utils';
 import { istDay } from '../../domain/ids';
 import type { Rec } from '../../db/types';
 import { useT } from '../../i18n';
+import { PhoneOnly, DesktopOnly } from '../../components/ui/Responsive';
 
 function greetingKey(): 'morning' | 'afternoon' | 'evening' {
   const h = new Date().getHours();
@@ -200,7 +201,7 @@ function LoomBoard({ recs }: { recs: Rec[] }) {
 
       {/* Colour tiles numbered by loom code. 8 per row at lg, 12 at xl so the
           board fills the wide board card instead of staying phone-narrow. */}
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-8 xl:grid-cols-12">
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-6 lg:gap-3 xl:grid-cols-8">
         {filtered.map((b) => {
           const Icon = STATUS_ICON[b.status];
           return (
@@ -377,7 +378,7 @@ function OwnerHome({ recs }: { recs: Rec[] }) {
       <div className="lg:col-start-3 lg:row-start-1">
         <Card className="mb-4">
           <CardTitle>{t('home.today')}</CardTitle>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 lg:grid-cols-1 2xl:grid-cols-3">
             <StatTile label={t('home.stat.bazaars')} value={<span className="num">{d.bazaarCount}</span>} tone="info" />
             <StatTile label={t('home.stat.cashPaid')} value={<Money paise={d.cashPaidPaise} flow="given" size="md" />} tone="given" />
             <StatTile label={t('home.stat.woolOutside')} value={<span className="num">{gramsToKgStr(d.woolOutsideG)}</span>} tone="given" />
@@ -534,7 +535,8 @@ function MunshiHome({ recs }: { recs: Rec[] }) {
         ) : (
           <>
             {/* Phone: unchanged tight time-stamped list. */}
-            <ul className="lg:hidden">
+            <PhoneOnly>
+            <ul>
               {todayRecs.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-2 border-b border-line py-3 text-base last:border-0">
                   <span className="text-ink">{t(`home.entry.${r.type}`)}</span>
@@ -544,8 +546,10 @@ function MunshiHome({ recs }: { recs: Rec[] }) {
                 </li>
               ))}
             </ul>
+            </PhoneOnly>
             {/* lg+: a real two-column ledger table (entry · time). */}
-            <div className="hidden lg:block">
+            <DesktopOnly>
+            <div>
               <table data-testid="munshi-today-table" className="w-full border-collapse text-base">
                 <thead>
                   <tr>
@@ -563,6 +567,7 @@ function MunshiHome({ recs }: { recs: Rec[] }) {
                 </tbody>
               </table>
             </div>
+            </DesktopOnly>
           </>
         )}
       </Card>

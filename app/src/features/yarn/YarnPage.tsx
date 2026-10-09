@@ -14,6 +14,7 @@ import { gramsToKgStr } from '../../domain/units';
 import { holderLabel } from '../shared/helpers';
 import { useT } from '../../i18n';
 import { cn } from '../../lib/utils';
+import { PhoneOnly, DesktopOnly } from '../../components/ui/Responsive';
 
 const STALE_DAYS = 60;
 
@@ -93,7 +94,8 @@ export default function YarnPage() {
           <h2 className="mb-2 text-lg">{t('yarn.byHolder')}</h2>
 
           {/* Mobile (below lg): grouped-by-holder cards — unchanged phone layout. */}
-          <ul className="flex flex-col gap-3 lg:hidden">
+          <PhoneOnly>
+          <ul className="flex flex-col gap-3">
             {byHolder.map((g) => {
               const oldest = Math.max(
                 ...g.rows.map((r) => daysSince(r.oldestIssueDay) ?? 0),
@@ -143,9 +145,11 @@ export default function YarnPage() {
               );
             })}
           </ul>
+          </PhoneOnly>
 
           {/* Desktop/tablet (lg+): one flat table of every balance row. */}
-          <div className="hidden lg:block">
+          <DesktopOnly>
+          <div>
             <ResponsiveTable
               rows={rows}
               rowKey={(r) => r.holderKey + '|' + r.shade + '|' + r.lot}
@@ -179,6 +183,7 @@ export default function YarnPage() {
               ]}
             />
           </div>
+          </DesktopOnly>
         </>
       )}
     </section>

@@ -24,3 +24,5 @@ export { FormGrid, type FormGridProps } from './FormGrid';
 export { ResponsiveTable, type ResponsiveTableProps, type ColumnDef } from './ResponsiveTable';
 export { PhotoThumb } from './PhotoThumb';
 export { PwaInstallCard } from './PwaInstallCard';
+export { useIsDesktop, useMediaQuery, DESKTOP_QUERY } from './useIsDesktop';
+export { PhoneOnly, DesktopOnly } from './Responsive';

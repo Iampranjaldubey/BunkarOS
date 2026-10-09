@@ -177,7 +177,12 @@ export default function PublicSlipPage() {
           </button>
         </div>
       </header>
-      <main className="mx-auto max-w-md px-4 py-6">{children}</main>
+      <main
+        data-testid="slip-card"
+        className="mx-auto max-w-md px-4 py-6 lg:my-10 lg:max-w-xl lg:rounded-3xl lg:border lg:border-line lg:bg-surface lg:px-8 lg:py-8 lg:shadow-card"
+      >
+        {children}
+      </main>
     </div>
   );
 

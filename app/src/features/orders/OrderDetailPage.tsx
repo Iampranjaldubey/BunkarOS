@@ -68,7 +68,7 @@ export default function OrderDetailPage() {
         <div className="num text-sm text-muted">{formatFtIn(order.lengthIn)} × {formatFtIn(order.widthIn)} · {order.count} {t('order.pieces')}</div>
         <Link
           to={`/o/${order.entityId}`}
-          className="mt-3 inline-flex items-center gap-2 rounded-xl text-base font-medium text-indigo focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+          className="mt-3 inline-flex items-center gap-2 rounded-xl text-base font-medium text-indigo focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink lg:min-h-11"
         >
           <ExternalLink aria-hidden="true" size={18} />
           {t('order.detail.exporterLink')}

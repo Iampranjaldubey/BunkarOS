@@ -34,7 +34,8 @@ const PRIMARY_BY_ROLE: Record<Role, NavItem[]> = {
   owner: [
     { to: '/', icon: Home, labelKey: 'nav.home' },
     { to: '/orders', icon: ClipboardList, labelKey: 'nav.orders' },
-    { to: '/looms', icon: Grid3x3, labelKey: 'nav.loomsWeavers' },
+    { to: '/looms', icon: Grid3x3, labelKey: 'nav.looms' },
+    { to: '/weavers', icon: Users, labelKey: 'nav.weavers' },
     { to: '/roker', icon: Wallet, labelKey: 'nav.roker' },
   ],
   munshi: [
@@ -107,7 +108,9 @@ export interface SideNavProps {
 export function SideNav({ role, unitName }: SideNavProps) {
   const { t } = useT();
   const primary = PRIMARY_BY_ROLE[role];
-  const more = MORE_ITEMS.filter((it) => !it.action || can(role, it.action));
+  // Never list a destination twice (the primary group already has some of them).
+  const primaryTo = new Set(primary.map((p) => p.to));
+  const more = MORE_ITEMS.filter((it) => !primaryTo.has(it.to) && (!it.action || can(role, it.action)));
 
   return (
     <nav

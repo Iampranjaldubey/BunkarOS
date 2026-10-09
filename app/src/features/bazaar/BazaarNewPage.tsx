@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Plus, Trash2, AlertTriangle, Info, ArrowRight } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -11,6 +11,7 @@ import { KgInput, MoneyInput } from '../../components/ui/NumberInputs';
 import { PhotoCapture } from '../../components/ui/PhotoCapture';
 import { ConfirmSheet } from '../../components/ui/Sheet';
 import { Money } from '../../components/ui/Money';
+import { PageGrid } from '../../components/ui/PageGrid';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/Feedback';
 import { useToast } from '../../components/ui/Toast';
@@ -28,6 +29,7 @@ import { roundToRupee, formatINR } from '../../domain/money';
 import { buildBazaarSlip } from '../../domain/slip';
 import { slipToken } from '../../domain/ids';
 import { useT } from '../../i18n';
+import { useIsDesktop } from '../../components/ui/useIsDesktop';
 import { cn } from '../../lib/utils';
 
 const CAUSES: TauliCause[] = ['moisture', 'less_wool_returned', 'wrong_weighing', 'other'];
@@ -213,6 +215,34 @@ export default function BazaarNewPage() {
   return (
     <section data-testid="bazaar-area">
       <PageHeader title={`${t('bazaar.new')} · ${t('bazaar.step', { n: step + 1 })}`} back={step === 0 ? true : () => setStep((s) => s - 1)} />
+      <PageGrid
+        asideSticky
+        className="gap-0 lg:gap-6"
+        aside={
+          <BazaarSummary
+            piece={piece}
+            weaverName={weaverById(recs, weaverId)?.name}
+            step={step}
+            lengthIn={lengthIn}
+            widthIn={widthIn}
+            area={area}
+            carpetG={carpetG}
+            tauli={tauli}
+            noYarn={noYarn}
+            short={short}
+            pct={pct}
+            gross={gross}
+            dedTotal={dedTotal}
+            effRecover={effRecover}
+            net={net}
+            rounding={rounding}
+            paid={paid}
+            cashPaise={cashPaise}
+            upiPaise={upiPaise}
+          />
+        }
+        main={
+          <>
       <Stepper step={step} total={6} />
       <h2 className="mb-3 text-xl">{STEP_TITLES[step]}</h2>
 
@@ -545,6 +575,9 @@ export default function BazaarNewPage() {
           </Button>
         )}
       </ActionBar>
+          </>
+        }
+      />
 
       <ConfirmSheet
         open={confirm}
@@ -555,5 +588,148 @@ export default function BazaarNewPage() {
         message={t('bazaar.confirmMsg', { weaver: weaverById(recs, weaverId)?.name ?? '', paid: formatINR(paid) })}
       />
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Live-summary rail (lg+ only). Mirrors the wizard's working as the operator
+// fills each step. Hidden below lg so the phone layout/DOM is unchanged.
+// ---------------------------------------------------------------------------
+interface BazaarSummaryProps {
+  piece?: { pieceId: string };
+  weaverName?: string;
+  step: number;
+  lengthIn: number;
+  widthIn: number;
+  area: number;
+  carpetG: number;
+  tauli: TauliResult;
+  noYarn: boolean;
+  short: number;
+  pct: number;
+  gross: number;
+  dedTotal: number;
+  effRecover: number;
+  net: number;
+  rounding: number;
+  paid: number;
+  cashPaise: number;
+  upiPaise: number;
+}
+
+function SumRow({
+  label,
+  children,
+  tone,
+  strong,
+}: {
+  label: string;
+  children: ReactNode;
+  tone?: 'given' | 'received';
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1">
+      <span className={cn('text-sm', strong ? 'font-semibold text-ink' : 'text-muted')}>{label}</span>
+      <span
+        className={cn(
+          'num tabular-nums text-right',
+          strong ? 'text-lg font-bold' : 'text-base',
+          tone === 'given' ? 'text-madder' : tone === 'received' ? 'text-ok' : 'text-ink',
+        )}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function BazaarSummary(p: BazaarSummaryProps) {
+  const { t } = useT();
+  const desktop = useIsDesktop();
+  const awaiting = <span className="text-sm font-normal text-muted">{t('desktop.bazaar.awaiting')}</span>;
+  const measured = p.step >= 1 && p.area > 0;
+  const tauliReady = p.step >= 2 && !p.noYarn;
+  const wageReady = p.step >= 3;
+  const payReady = p.step >= 3;
+
+  if (!desktop) return null;
+  return (
+    <Card data-testid="bazaar-summary">
+      <h2 className="mb-1 text-lg">{t('desktop.bazaar.summary')}</h2>
+      <p className="mb-3 text-sm text-muted">{t('desktop.bazaar.summaryHint')}</p>
+
+      <SumRow label={t('desktop.bazaar.carpet')}>
+        {p.piece ? p.piece.pieceId : awaiting}
+      </SumRow>
+      <SumRow label={t('desktop.bazaar.weaver')}>
+        {p.weaverName ? p.weaverName : awaiting}
+      </SumRow>
+
+      <div className="my-2 border-t border-line" />
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{t('desktop.bazaar.sumMeasure')}</p>
+      <SumRow label={t('desktop.bazaar.size')}>
+        {measured ? `${formatFtIn(p.lengthIn)} × ${formatFtIn(p.widthIn)}` : awaiting}
+      </SumRow>
+      <SumRow label={t('desktop.bazaar.area')}>
+        {measured ? <>{p.area.toFixed(2)} <span className="text-xs text-muted">{t('bazaar.areaUnit')}</span></> : awaiting}
+      </SumRow>
+
+      <div className="my-2 border-t border-line" />
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{t('desktop.bazaar.sumWool')}</p>
+      <SumRow label={t('desktop.bazaar.woolIssued')} tone="given">
+        {p.piece ? <>{gramsToKgStr(p.tauli.issuedG)} {t('common.kg')}</> : awaiting}
+      </SumRow>
+      <SumRow label={t('desktop.bazaar.woolReturned')} tone="received">
+        {p.piece ? <>{gramsToKgStr(p.tauli.returnedG)} {t('common.kg')}</> : awaiting}
+      </SumRow>
+      <SumRow label={t('desktop.bazaar.woolUsed')}>
+        {p.piece ? <>{gramsToKgStr(p.tauli.usedG)} {t('common.kg')}</> : awaiting}
+      </SumRow>
+      <SumRow label={t('desktop.bazaar.woolAllowed')}>
+        {p.piece ? <>{gramsToKgStr(p.tauli.allowedG)} {t('common.kg')}</> : awaiting}
+      </SumRow>
+      <SumRow label={t('desktop.bazaar.woolShort')} tone="given" strong>
+        {tauliReady
+          ? <span data-testid="summary-short">{gramsToKgStr(p.short)} {t('common.kg')}</span>
+          : awaiting}
+      </SumRow>
+
+      <div className="my-2 border-t border-line" />
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{t('desktop.bazaar.sumWage')}</p>
+      <SumRow label={t('desktop.bazaar.gross')}>
+        {wageReady ? <span data-testid="summary-gross">{formatINR(p.gross, { paise: true })}</span> : awaiting}
+      </SumRow>
+      {wageReady && p.dedTotal > 0 && (
+        <SumRow label={t('desktop.bazaar.deductions')} tone="given">
+          −{formatINR(p.dedTotal, { paise: true })}
+        </SumRow>
+      )}
+      {wageReady && p.effRecover > 0 && (
+        <SumRow label={t('desktop.bazaar.peshgi')} tone="given">
+          −{formatINR(p.effRecover, { paise: true })}
+        </SumRow>
+      )}
+      <SumRow label={t('desktop.bazaar.net')} strong>
+        {wageReady ? <span data-testid="summary-net">{formatINR(p.net, { paise: true })}</span> : awaiting}
+      </SumRow>
+      {wageReady && p.rounding !== 0 && (
+        <SumRow label={t('desktop.bazaar.rounding')}>
+          {formatINR(p.rounding, { paise: true })}
+        </SumRow>
+      )}
+
+      <div className="my-2 border-t border-line" />
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{t('desktop.bazaar.sumPayment')}</p>
+      <SumRow label={t('desktop.bazaar.paid')} tone="received" strong>
+        {payReady ? <span data-testid="summary-paid">{formatINR(p.paid)}</span> : awaiting}
+      </SumRow>
+      {payReady && (p.cashPaise > 0 || p.upiPaise > 0) && (
+        <>
+          <SumRow label={t('desktop.bazaar.cash')}>{formatINR(p.cashPaise)}</SumRow>
+          <SumRow label={t('desktop.bazaar.upi')}>{formatINR(p.upiPaise)}</SumRow>
+        </>
+      )}
+    </Card>
   );
 }

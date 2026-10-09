@@ -11,6 +11,7 @@ import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { PhotoCapture } from '../../components/ui/PhotoCapture';
 import { ConfirmSheet } from '../../components/ui/Sheet';
 import { PersonPicker, type Person } from '../../components/ui/PersonPicker';
+import { FormGrid } from '../../components/ui/FormGrid';
 import { useToast } from '../../components/ui/Toast';
 import { useRecords, useSession } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
@@ -133,8 +134,9 @@ export default function JobNewPage() {
     <section>
       <PageHeader title={t('job.new.title')} back />
 
+      <FormGrid>
       {/* Worker ---------------------------------------------------------- */}
-      <Card className="mb-4">
+      <Card className="lg:col-span-2">
         <p className="mb-2 text-base font-medium text-ink">{t('job.worker')}</p>
         <SegmentedControl
           label={t('job.worker')}
@@ -186,7 +188,7 @@ export default function JobNewPage() {
       </Card>
 
       {/* Work type ------------------------------------------------------- */}
-      <Card className="mb-4">
+      <Card className="lg:col-span-2">
         <p className="mb-2 text-base font-medium text-ink">{t('job.work')}</p>
         <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label={t('job.work')}>
           {WORKS.map((w) => {
@@ -215,7 +217,7 @@ export default function JobNewPage() {
       </Card>
 
       {/* Quantity -------------------------------------------------------- */}
-      <Card className="mb-4">
+      <Card>
         {unit === 'kg' && (
           <Field label={t('job.qty.kg')} required error={touched && !(grams > 0) ? t('job.valid.qty') : undefined}>
             {({ describedBy, invalid }) => <KgInput value={grams} onChange={setGrams} describedBy={describedBy} invalid={invalid} aria-label={t('job.qty.kg')} />}
@@ -261,7 +263,7 @@ export default function JobNewPage() {
 
       {/* Rate + amount --------------------------------------------------- */}
       {rate ? (
-        <Card className="mb-4">
+        <Card>
           <div className="mb-3 flex items-center gap-2 rounded-2xl border border-line bg-bg px-4 py-2.5 text-sm text-muted">
             <Lock aria-hidden="true" size={16} />
             {t('job.rate.locked', { rate: `${formatINR(rate.ratePaise)} ${t('rate.unit.' + unit)}` })}
@@ -276,7 +278,7 @@ export default function JobNewPage() {
           )}
         </Card>
       ) : (
-        <Card className="mb-4 border-madder/30 bg-madder/5" data-testid="job-no-rate">
+        <Card className="border-madder/30 bg-madder/5" data-testid="job-no-rate">
           <div className="flex items-start gap-2 text-madder">
             <IndianRupee aria-hidden="true" size={18} className="mt-0.5" />
             <div>
@@ -293,7 +295,7 @@ export default function JobNewPage() {
 
       {/* Payment split --------------------------------------------------- */}
       {rate && amount && (
-        <Card className="mb-4">
+        <Card className="lg:col-span-2">
           <p className="mb-2 text-base font-medium text-ink">{t('job.payment')}</p>
           <Field label={t('job.cash')}>
             {({ describedBy }) => <MoneyInput value={cash} onChange={setCash} describedBy={describedBy} aria-label={t('job.cash')} />}
@@ -311,6 +313,7 @@ export default function JobNewPage() {
           />
         </Card>
       )}
+      </FormGrid>
 
       <ActionBar>
         <Button

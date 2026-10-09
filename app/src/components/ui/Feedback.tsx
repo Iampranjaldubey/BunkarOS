@@ -26,6 +26,8 @@ export interface StatTileProps {
   value: ReactNode;
   tone?: 'neutral' | 'given' | 'received' | 'info';
   className?: string;
+  /** Optional data-testid for tests. */
+  testid?: string;
 }
 
 const toneCls = {
@@ -36,9 +38,9 @@ const toneCls = {
 };
 
 /** Compact labelled statistic for home/digest grids. */
-export function StatTile({ label, value, tone = 'neutral', className }: StatTileProps) {
+export function StatTile({ label, value, tone = 'neutral', className, testid }: StatTileProps) {
   return (
-    <div className={cn('rounded-2xl border p-4 shadow-card', toneCls[tone], className)}>
+    <div data-testid={testid} className={cn('rounded-2xl border p-4 shadow-card', toneCls[tone], className)}>
       <div className="num text-2xl font-bold text-ink">{value}</div>
       <div className="mt-1 text-sm text-muted">{label}</div>
     </div>

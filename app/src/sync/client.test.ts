@@ -385,3 +385,31 @@ describe('photos — every pending photo of the unit is uploaded and retried', (
     expect(photoRows.get('p1')?.sync).toBe('synced');
   });
 });
+
+describe('syncNow called while a sync is already running', () => {
+  test('waits for it and pushes a record saved meanwhile (no silent no-op)', async () => {
+    records.set('a1', mkRec({ id: 'a1', type: 'user', sync: 'pending' }));
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    const pushed: string[][] = [];
+    let first = true;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes('/api/sync')) {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { records: Rec[] };
+        pushed.push(body.records.map((r) => r.id));
+        if (first) { first = false; await gate; }
+        return new Response(JSON.stringify({ accepted: body.records.map((r) => r.id), rejected: [], records: [], cursor: 1 }), { status: 200 });
+      }
+      return new Response('{}', { status: 200 });
+    }));
+    const firstRun = syncNow();                       // starts and blocks inside /api/sync
+    await new Promise((r) => setTimeout(r, 0));
+    records.set('b2', mkRec({ id: 'b2', type: 'user', sync: 'pending' })); // saved during the sync
+    const second = syncNow();                         // must not return before b2 is pushed
+    release();
+    await Promise.all([firstRun, second]);
+    expect(records.get('a1')?.sync).toBe('synced');
+    expect(records.get('b2')?.sync).toBe('synced');
+    expect(pushed.flat()).toContain('b2');
+  });
+});

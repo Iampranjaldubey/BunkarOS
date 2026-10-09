@@ -22,8 +22,9 @@ export function PageGrid({ main, aside, asideSticky, className }: PageGridProps)
   }
   return (
     <div className={cn('flex flex-col gap-5 lg:grid lg:grid-cols-3 lg:gap-6', className)}>
-      <div className="min-w-0 lg:col-span-2">{main}</div>
+      <div data-testid="page-main" className="min-w-0 lg:col-span-2">{main}</div>
       <aside
+        data-testid="page-aside"
         className={cn(
           'min-w-0 lg:col-span-1',
           asideSticky && 'lg:sticky lg:top-20 lg:self-start',

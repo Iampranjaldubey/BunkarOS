@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useIsDesktop } from './useIsDesktop';
 import { cn } from '../../lib/utils';
 
 export interface ColumnDef<T> {
@@ -35,7 +36,7 @@ const alignClass = { left: 'text-left', right: 'text-right', center: 'text-cente
  * Phone-first list that upgrades to a real table on large screens.
  *  - Below lg: renders `renderCard(row)` for each row — exactly today's mobile
  *    cards, so the phone DOM/visuals are unchanged.
- *  - At lg+: a semantic `<table>` with a sticky header, zebra rows, ≥ 44 px row
+ *  - At lg+: a semantic `<table>` with zebra rows, ≥ 44 px row
  *    height, and (when `onRowClick` is set) keyboard-activatable rows.
  */
 export function ResponsiveTable<T>({
@@ -53,25 +54,31 @@ export function ResponsiveTable<T>({
   }
 
   const clickable = Boolean(onRowClick);
+  const desktop = useIsDesktop();
 
-  return (
-    <>
-      {/* Mobile cards — unchanged phone layout. */}
-      <div className={cn('flex flex-col gap-3 lg:hidden', className)}>
+  if (!desktop) {
+    // Phone/small tablet: exactly today's mobile cards (the table is not built at all).
+    return (
+      <div className={cn('flex flex-col gap-3', className)}>
         {rows.map((row) => (
           <div key={rowKey(row)}>{renderCard(row)}</div>
         ))}
       </div>
+    );
+  }
+
+  return (
+    <>
 
       {/* Desktop/tablet table. */}
-      <div className={cn('hidden lg:block', className)}>
+      <div className={className}>
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-card">
           <table
             data-testid={testid}
             className="w-full border-collapse text-base"
           >
             <thead>
-              <tr className="sticky top-16 z-10 bg-surface">
+              <tr className="bg-surface">
                 {columns.map((col) => (
                   <th
                     key={col.key}

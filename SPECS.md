@@ -433,7 +433,7 @@ Contract details for all five specs: `docs/superpowers/specs/architecture.md` §
 - **Scope — In**:
   - ≥ 1024 px (`lg`): fixed **left side menu** (role-based, same destinations as the bottom bar + the "More" destinations), bottom bar hidden, header full width, content up to 1152 px wide.
   - 768–1023 px (`md`): wider single column (≈ 720 px), bottom bar kept.
-  - Owner home in **two columns** (summary, alerts, free-soon, dues, staff | loom board); loom board **8 tiles per row at lg, 12 at xl**.
+  - Owner home in **two columns** (summary, alerts, free-soon, dues, staff | loom board); loom board **6 tiles per row at lg (1024–1279 px), 8 at xl** (every tile ≥ 44 px).
   - Lists become **tables** at lg: orders, order pieces, looms, weavers (grid ≥ 4 per row or table), thekedars, yarn balances, roker entries, audit log, rates.
   - Forms use a **two-column field grid** at lg; the bazaar wizard shows a **live summary panel** (area, tauli, wage, net, paid) beside the steps.
   - Sheets open as **centered dialogs** at lg (bottom sheets on phones).
@@ -442,7 +442,7 @@ Contract details for all five specs: `docs/superpowers/specs/architecture.md` §
 - **Rules**: Tailwind breakpoints only (`md`, `lg`, `xl`); no new npm packages; same tokens/contrast; every existing `data-testid` keeps working on both layouts.
 - **Acceptance criteria**:
   1. Given a 1440×900 window, When the owner logs in, Then a side menu is visible, the bottom bar is hidden and the main content is ≥ 900 px wide.
-  2. Given the demo data at 1440 px, Then the loom board shows ≥ 8 tiles in its first row and the home page has two columns.
+  2. Given the demo data at 1440 px, Then the loom board shows ≥ 8 tiles in its first row (6 at 1024 px) and the home page has two columns.
   3. Given ≥ 1024 px, Then orders, roker entries, audit log and yarn balances render as tables with headers.
   4. Given ≥ 1024 px, Then forms lay fields out in two columns and the bazaar wizard shows the live summary panel with the demo numbers (79.33 sq ft → paid ₹1,955).
   5. Given ≥ 1024 px, Then a sheet (e.g. add user, share preview) opens centered, not as a bottom sheet.

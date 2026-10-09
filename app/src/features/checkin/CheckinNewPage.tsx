@@ -10,6 +10,7 @@ import { PhotoCapture } from '../../components/ui/PhotoCapture';
 import { ConfirmSheet } from '../../components/ui/Sheet';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/Feedback';
+import { FormGrid } from '../../components/ui/FormGrid';
 import { useToast } from '../../components/ui/Toast';
 import { PiecePicker } from '../shared/pickers';
 import { Row, ActionBar } from '../shared/helpers';
@@ -106,13 +107,14 @@ export default function CheckinNewPage() {
         <EmptyState title={t('checkin.noLooms')} hint={t('checkin.noLoomsHint')} />
       ) : (
         <>
-          <Card className="mb-4">
+          <FormGrid>
+          <Card className="lg:col-span-2">
             <PiecePicker recs={recs} value={pieceId} onSelect={setPieceId} loomIds={loomIds} label={t('checkin.pickLoom')} />
           </Card>
 
           {piece && (
             <>
-              <Card className="mb-4">
+              <Card>
                 <Row label={t('checkin.prevWoven')}>
                   {formatFtIn(piece.wovenIn)} · <span className="text-indigo">{piece.pctWoven}%</span>
                 </Row>
@@ -136,7 +138,7 @@ export default function CheckinNewPage() {
                 </div>
               </Card>
 
-              <Card className="mb-4 bg-indigo/5 border-indigo/20">
+              <Card className="bg-indigo/5 border-indigo/20">
                 <div className="flex items-end justify-between">
                   <span className="text-base text-muted">{t('checkin.newPct')}</span>
                   <span className="num text-4xl font-bold text-indigo">{newPct}%</span>
@@ -150,6 +152,7 @@ export default function CheckinNewPage() {
               </Card>
             </>
           )}
+          </FormGrid>
         </>
       )}
 

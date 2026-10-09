@@ -10,6 +10,7 @@ import { Textarea } from '../../components/ui/Input';
 import { Money } from '../../components/ui/Money';
 import { EmptyState } from '../../components/ui/Feedback';
 import { Sheet } from '../../components/ui/Sheet';
+import { PageGrid } from '../../components/ui/PageGrid';
 import { PreviewShareSheet } from '../../components/ui/PreviewShareSheet';
 import { useToast } from '../../components/ui/Toast';
 import { Row, weaverById, today } from '../shared/helpers';
@@ -180,6 +181,11 @@ export default function BazaarDetailPage() {
     <section>
       <PageHeader title={`${t('bazaar.detail.title')} · ${b.pieceId}`} back />
 
+      <PageGrid
+        asideSticky
+        className="gap-0 lg:gap-6"
+        main={
+          <>
       {reversed && (
         <Badge tone="danger" className="mb-4">
           {t('bazaar.detail.reversed')}
@@ -242,7 +248,10 @@ export default function BazaarDetailPage() {
         )}
         {b.tauli.cause && <Row label={t('bazaar.tauli.cause')}>{t(`bazaar.cause.${b.tauli.cause}`)}</Row>}
       </Card>
-
+          </>
+        }
+        aside={
+          <>
       {/* Slip status */}
       <Card className="mb-4">
         <h2 className="mb-2 text-lg">{t('bazaar.detail.slip')}</h2>
@@ -292,6 +301,9 @@ export default function BazaarDetailPage() {
           <p className="text-center text-sm text-muted">{t('bazaar.detail.cannotReverseHint')}</p>
         )}
       </div>
+          </>
+        }
+      />
 
       <PreviewShareSheet
         open={share}

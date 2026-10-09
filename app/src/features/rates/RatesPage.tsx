@@ -11,6 +11,8 @@ import {
   Sheet,
   MoneyInput,
   useToast,
+  ResponsiveTable,
+  type ColumnDef,
 } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useRecords, useSession } from '../../db/hooks';
@@ -22,7 +24,10 @@ import { istDay } from '../../domain/ids';
 import type { Rec, RateP, NormP, RateUnit, WorkKind } from '../../db/types';
 import { uuid } from '../../domain/ids';
 import { useT } from '../../i18n';
+import { formatDay } from '../../domain/dates';
+import { cn } from '../../lib/utils';
 import { Section } from '../looms/shared';
+import { PhoneOnly, DesktopOnly } from '../../components/ui/Responsive';
 
 /** Group all (non-reversed) WEAVING rate records by quality, newest first. */
 function ratesByQuality(recs: Rec[]): Map<string, RateP[]> {
@@ -94,21 +99,29 @@ export default function RatesPage() {
         </div>
       )}
 
-      <Section title={t('rate.section.weaving')}>
-        {grouped.size === 0 ? (
-          <EmptyState
-            icon={<IndianRupee size={48} />}
-            title={t('rate.empty.title')}
-            hint={t('rate.empty.hint')}
-            action={canEdit ? <Button data-testid="add-rate-btn" onClick={() => setRateSheet(true)}><Plus aria-hidden="true" size={20} />{t('rate.add.weaving')}</Button> : undefined}
-          />
-        ) : (
-          <ul className="space-y-3">
-            {[...grouped.entries()].map(([quality, list]) => {
-              const current = list[0];
-              const history = list.slice(1);
-              return (
-                <li key={quality}>
+      {/* Weaving + ancillary (job) rate tables. On phones each renders today's
+          card list (unchanged); at lg they become real tables and at xl the two
+          sit side by side so the wide screen is used, not stretched. */}
+      <div className="xl:grid xl:grid-cols-2 xl:gap-6">
+        <Section title={t('rate.section.weaving')}>
+          {grouped.size === 0 ? (
+            <EmptyState
+              icon={<IndianRupee size={48} />}
+              title={t('rate.empty.title')}
+              hint={t('rate.empty.hint')}
+              action={canEdit ? <Button data-testid="add-rate-btn" onClick={() => setRateSheet(true)}><Plus aria-hidden="true" size={20} />{t('rate.add.weaving')}</Button> : undefined}
+            />
+          ) : (
+            <RateTable
+              groups={grouped}
+              label={(k) => k}
+              testid="weaving-rates-table"
+              rowTestid="rate-row"
+              perSqft
+              renderCard={(quality, list) => {
+                const current = list[0];
+                const history = list.slice(1);
+                return (
                   <Card data-testid="rate-row">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -137,33 +150,35 @@ export default function RatesPage() {
                       </div>
                     )}
                   </Card>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Section>
+                );
+              }}
+            />
+          )}
+        </Section>
 
-      <Section
-        title={t('rate.section.job')}
-        right={
-          canEdit ? (
-            <Button size="md" variant="secondary" data-testid="add-job-rate-btn" onClick={() => setJobSheet(true)} aria-label={t('rate.add.job')}>
-              <Plus aria-hidden="true" size={18} />
-            </Button>
-          ) : undefined
-        }
-      >
-        <p className="mb-2 text-sm text-muted">{t('rate.section.job.hint')}</p>
-        {jobGrouped.size === 0 ? (
-          <p className="text-base text-muted">{t('rate.empty.job')}</p>
-        ) : (
-          <ul className="space-y-3">
-            {[...jobGrouped.entries()].map(([work, list]) => {
-              const current = list[0];
-              const history = list.slice(1);
-              return (
-                <li key={work}>
+        <Section
+          title={t('rate.section.job')}
+          right={
+            canEdit ? (
+              <Button size="md" variant="secondary" data-testid="add-job-rate-btn" onClick={() => setJobSheet(true)} aria-label={t('rate.add.job')}>
+                <Plus aria-hidden="true" size={18} />
+              </Button>
+            ) : undefined
+          }
+        >
+          <p className="mb-2 text-sm text-muted">{t('rate.section.job.hint')}</p>
+          {jobGrouped.size === 0 ? (
+            <p className="text-base text-muted">{t('rate.empty.job')}</p>
+          ) : (
+            <RateTable
+              groups={jobGrouped}
+              label={(k) => t('work.' + k)}
+              testid="job-rates-table"
+              rowTestid="job-rate-row"
+              renderCard={(work, list) => {
+                const current = list[0];
+                const history = list.slice(1);
+                return (
                   <Card data-testid="job-rate-row">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -189,12 +204,12 @@ export default function RatesPage() {
                       </div>
                     )}
                   </Card>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Section>
+                );
+              }}
+            />
+          )}
+        </Section>
+      </div>
 
       <Section
         title={t('norm.title')}
@@ -236,6 +251,115 @@ export default function RatesPage() {
       {canEdit && <AddJobRateSheet open={jobSheet} onClose={() => setJobSheet(false)} onSaved={() => toast.show(t('rate.saved'), 'success')} />}
       {canEdit && <AddNormSheet open={normSheet} onClose={() => setNormSheet(false)} existing={[...grouped.keys()]} onSaved={() => toast.show(t('norm.saved'), 'success')} />}
     </section>
+  );
+}
+
+/** A single flattened row in a desktop rates table: the current rate for a
+ *  quality/work, or one of its (muted) history entries. */
+interface RateRow {
+  id: string;
+  label: string;
+  rate: RateP;
+  isCurrent: boolean;
+}
+
+/**
+ * Desktop/tablet rates table (lg+). Below lg it renders `renderCard` per group
+ * — byte-identical to today's phone cards (same `space-y-3` card list). At lg
+ * each group flattens into one current row plus muted history rows: label ·
+ * rate (right-aligned) · unit · effective-from. The current row carries
+ * `rowTestid` so existing selectors (`rate-row` / `job-rate-row`) keep working
+ * on both layouts.
+ */
+function RateTable({
+  groups,
+  label,
+  testid,
+  rowTestid,
+  perSqft,
+  renderCard,
+}: {
+  groups: Map<string, RateP[]>;
+  label: (key: string) => string;
+  testid: string;
+  rowTestid: string;
+  perSqft?: boolean;
+  renderCard: (key: string, list: RateP[]) => React.ReactNode;
+}) {
+  const { t, lang } = useT();
+  const entries = [...groups.entries()];
+
+  const rows: RateRow[] = [];
+  for (const [key, list] of entries) {
+    rows.push({ id: key, label: label(key), rate: list[0], isCurrent: true });
+    list.slice(1).forEach((h, i) => {
+      rows.push({ id: `${key}:h${i}`, label: label(key), rate: h, isCurrent: false });
+    });
+  }
+
+  const columns: ColumnDef<RateRow>[] = [
+    {
+      key: 'label',
+      header: perSqft ? t('col.rate.quality') : t('col.rate.work'),
+      cell: (r) =>
+        r.isCurrent ? (
+          <span data-testid={rowTestid} className="font-bold text-ink">{r.label}</span>
+        ) : (
+          <span className="pl-2 text-sm text-muted">{t('rate.table.history')}</span>
+        ),
+    },
+    {
+      key: 'rate',
+      header: t('col.rate.rate'),
+      align: 'right',
+      cell: (r) => (
+        <span className={cn('num font-bold', r.isCurrent ? 'text-indigo' : 'text-muted')}>
+          {formatINR(r.rate.ratePaise)}
+          {perSqft && r.rate.unit === 'sqgaj' && (
+            <span className="num ml-1 text-xs font-normal text-muted">
+              (= {t('rate.perSqft', { v: (perSqftPaise(r.rate) / 100).toFixed(2) })})
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: 'unit',
+      header: t('col.rate.unit'),
+      cell: (r) => <span className={cn('text-sm', r.isCurrent ? 'text-ink' : 'text-muted')}>{t('rate.unit.' + r.rate.unit)}</span>,
+    },
+    {
+      key: 'effective',
+      header: t('col.rate.effective'),
+      align: 'right',
+      cell: (r) => <span className={cn('num text-sm', r.isCurrent ? 'text-ink' : 'text-muted')}>{formatDay(r.rate.effectiveFrom, lang, 'medium')}</span>,
+    },
+  ];
+
+  return (
+    <>
+      {/* Phone cards — unchanged phone layout (one card per group). */}
+      <PhoneOnly>
+      <ul className="space-y-3">
+        {entries.map(([key, list]) => (
+          <li key={key}>{renderCard(key, list)}</li>
+        ))}
+      </ul>
+      </PhoneOnly>
+
+      {/* Desktop/tablet table (current rate + muted history rows). */}
+      <DesktopOnly>
+      <div>
+        <ResponsiveTable<RateRow>
+          rows={rows}
+          columns={columns}
+          rowKey={(r) => r.id}
+          testid={testid}
+          renderCard={() => null}
+        />
+      </div>
+      </DesktopOnly>
+    </>
   );
 }
 

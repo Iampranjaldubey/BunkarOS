@@ -76,11 +76,12 @@ export default function SetupPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 py-10">
-      <div className="text-center">
-        <h1 className="text-4xl">{t('app.name')}</h1>
-        <p className="mt-1 text-muted">{t('app.tagline')}</p>
-      </div>
+    <div className="lg:flex lg:min-h-dvh lg:flex-col lg:items-center lg:justify-center lg:bg-bg lg:px-4 lg:py-10">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 py-10 lg:min-h-0 lg:w-full lg:py-0">
+        <div className="text-center">
+          <h1 className="text-4xl">{t('app.name')}</h1>
+          <p className="mt-1 text-muted">{t('app.tagline')}</p>
+        </div>
 
       <SegmentedControl<Mode>
         label={t('route.setup')}
@@ -156,5 +157,6 @@ export default function SetupPage() {
         )}
       </Card>
     </main>
+    </div>
   );
 }

@@ -113,10 +113,17 @@ export default function LoginPage() {
   }));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 py-10">
-      <h1 className="text-center text-3xl">
-        {picked ? t('login.enterPin') : t('login.title')}
-      </h1>
+    <div className="lg:flex lg:min-h-dvh lg:flex-col lg:items-center lg:justify-center lg:bg-bg lg:px-4 lg:py-10">
+      {/* App name/logo above the card — desktop only (phones keep today's layout). */}
+      <div className="hidden text-center lg:mb-6 lg:block">
+        <h1 className="text-3xl font-bold text-indigo">{t('app.name')}</h1>
+        <p className="mt-1 text-muted">{t('app.tagline')}</p>
+      </div>
+
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 py-10 lg:min-h-0 lg:w-full lg:gap-5 lg:rounded-3xl lg:border lg:border-line lg:bg-surface lg:px-8 lg:py-8 lg:shadow-card">
+        <h1 className="text-center text-3xl">
+          {picked ? t('login.enterPin') : t('login.title')}
+        </h1>
 
       {notice && (
         <p
@@ -210,6 +217,7 @@ export default function LoginPage() {
           </Button>
         </Card>
       )}
-    </main>
+      </main>
+    </div>
   );
 }

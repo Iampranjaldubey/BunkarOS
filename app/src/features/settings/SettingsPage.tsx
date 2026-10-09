@@ -261,6 +261,7 @@ export default function SettingsPage() {
     <section>
       <PageHeader title={t('settings.title')} />
 
+      <div className="lg:grid lg:grid-cols-2 lg:gap-x-6 lg:items-start">
       {/* Section links grid */}
       <Card className="mb-4">
         <CardTitle>{t('settings.sections')}</CardTitle>
@@ -337,7 +338,7 @@ export default function SettingsPage() {
                 </span>
                 {u.active ? <Badge tone="received">{t('settings.user.active')}</Badge> : <Badge tone="neutral">{t('settings.user.inactive')}</Badge>}
                 {u.active && u.entityId !== user?.id && (
-                  <button type="button" onClick={() => setDeactivate(u)} className="text-sm font-medium text-madder">
+                  <button type="button" onClick={() => setDeactivate(u)} className="text-sm font-medium text-madder lg:inline-flex lg:min-h-11 lg:items-center lg:rounded-xl lg:px-3 lg:hover:bg-madder/5">
                     {t('settings.user.deactivate')}
                   </button>
                 )}
@@ -486,6 +487,7 @@ export default function SettingsPage() {
           <Database aria-hidden="true" size={20} />{t('settings.loadDemo')}
         </Button>
       </Card>
+      </div>
 
       {/* Logout */}
       <Button variant="danger" block size="xl" onClick={() => setLogoutConfirm(true)}>

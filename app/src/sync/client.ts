@@ -452,9 +452,32 @@ async function drainPull(
 let timer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
 let backoff = BACKOFF_BASE_MS;
+let rerunRequested = false;
+let current: Promise<void> | null = null;
 
-/** Run one full sync cycle. Never throws. */
+/**
+ * Run a full sync cycle. Never throws. If a cycle is already running, the caller
+ * waits for it and then one more cycle runs, so an entry saved during a sync (and a
+ * "Sync now" tap) is always pushed before this promise resolves — instead of the call
+ * silently returning while that entry stays pending.
+ */
 export async function syncNow(): Promise<void> {
+  if (running) {
+    rerunRequested = true;
+    while (running && current) await current;
+    return;
+  }
+  current = (async () => {
+    do {
+      rerunRequested = false;
+      await syncCycle();
+    } while (rerunRequested);
+  })();
+  try { await current; } finally { current = null; }
+}
+
+/** One full sync cycle. Never throws. */
+async function syncCycle(): Promise<void> {
   if (running) return;
   running = true;
   setState({ syncing: true });

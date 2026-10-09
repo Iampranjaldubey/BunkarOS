@@ -100,7 +100,7 @@ export function PiecePicker({ recs, value, onSelect, loomIds, status = 'on_loom'
                   {/* Large loom number */}
                   <span className="num flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-indigo/10 text-indigo">
                     <span className="text-xl font-bold leading-none">{code ?? '—'}</span>
-                    <span className="text-[10px] text-muted">{t('nav.looms')}</span>
+                    <span className="text-[10px] text-muted">{t('order.piece.loom')}</span>
                   </span>
                   {/* Weaver photo so same-named weavers are distinguishable */}
                   <PhotoThumb id={weaver?.photoId} alt={weaver?.name ?? ''} size={44} initials={weaver?.name} className="rounded-full" />

@@ -11,6 +11,7 @@ import { PhotoCapture } from '../../components/ui/PhotoCapture';
 import { ConfirmSheet } from '../../components/ui/Sheet';
 import { PreviewShareSheet } from '../../components/ui/PreviewShareSheet';
 import { Money } from '../../components/ui/Money';
+import { FormGrid } from '../../components/ui/FormGrid';
 import { useToast } from '../../components/ui/Toast';
 import { WeaverPicker } from '../shared/pickers';
 import { photoThresholdPaise, weaverById, thekedarById, Row, ActionBar } from '../shared/helpers';
@@ -97,7 +98,8 @@ export default function PeshgiNewPage() {
       <PageHeader title={t('peshgi.new')} back />
       <p className="mb-4 text-muted">{t('peshgi.lead')}</p>
 
-      <Card className="mb-4">
+      <FormGrid>
+      <Card className="lg:col-span-2">
         <p className="mb-2 text-base font-medium text-ink">{t('peshgi.who')}</p>
         <SegmentedControl
           label={t('peshgi.who')}
@@ -143,7 +145,7 @@ export default function PeshgiNewPage() {
 
       {personId && (
         <>
-          <Card className="mb-4">
+          <Card>
             <Field label={t('peshgi.amount')} required error={amountErr}>
               {({ describedBy, invalid }) => (
                 <MoneyInput value={amount} onChange={setAmount} describedBy={describedBy} invalid={invalid} aria-label={t('peshgi.amount')} />
@@ -175,7 +177,7 @@ export default function PeshgiNewPage() {
             />
           </Card>
 
-          <Card className="mb-4 bg-madder/5 border-madder/20">
+          <Card className="bg-madder/5 border-madder/20">
             <Row label={t('peshgi.balanceBefore')}>{formatINR(balanceBefore)}</Row>
             <div className="my-1 border-t border-line" />
             <Row label={t('peshgi.balanceAfter')} strong>
@@ -184,6 +186,7 @@ export default function PeshgiNewPage() {
           </Card>
         </>
       )}
+      </FormGrid>
 
       {!personId && <p className="px-6 py-8 text-center text-muted">{t('peshgi.pickWho')}</p>}
 

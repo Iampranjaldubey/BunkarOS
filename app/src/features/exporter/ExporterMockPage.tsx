@@ -10,6 +10,7 @@ import { formatFtIn } from '../../domain/units';
 import { PhotoThumb } from '../../components/ui/PhotoThumb';
 import type { CheckinP, Rec } from '../../db/types';
 import type { PieceStatus } from '../../domain/projections';
+import { PhoneOnly, DesktopOnly } from '../../components/ui/Responsive';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -135,7 +136,8 @@ export default function ExporterMockPage() {
               <h2 className="mb-2 text-base font-medium text-ink">{t('exporter.pieceStatus')}</h2>
 
               {/* Phone list — byte-identical to today. */}
-              <ul className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card lg:hidden">
+              <PhoneOnly>
+              <ul className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
                 {view.pieces.map((p) => (
                   <li key={p.pieceId} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0">
                     <span className="num flex-1 text-base font-medium text-ink">{p.pieceId}</span>
@@ -146,9 +148,11 @@ export default function ExporterMockPage() {
                   </li>
                 ))}
               </ul>
+              </PhoneOnly>
 
               {/* Desktop/tablet table. */}
-              <div className="hidden overflow-x-auto rounded-2xl border border-line bg-surface shadow-card lg:block">
+              <DesktopOnly>
+              <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-card">
                 <table data-testid="data-table" className="w-full border-collapse text-base">
                   <thead>
                     <tr>
@@ -185,6 +189,7 @@ export default function ExporterMockPage() {
                   </tbody>
                 </table>
               </div>
+              </DesktopOnly>
             </section>
 
             {/* Latest check-in photos (real, via PhotoThumb) */}

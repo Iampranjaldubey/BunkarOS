@@ -1,0 +1,14 @@
+{
+  "name": "bunkar-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bunkar OS sync + slip API (zero dependencies, Node 24).",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "/home/pranjal/.nvm/versions/node/v24.21.0/bin/npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {
+        "PATH": "/home/pranjal/.nvm/versions/node/v24.21.0/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    },
+    "chrome-devtools": {
+      "command": "/home/pranjal/.nvm/versions/node/v24.21.0/bin/npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"],
+      "env": {
+        "PATH": "/home/pranjal/.nvm/versions/node/v24.21.0/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    },
+    "context7": {
+      "command": "/home/pranjal/.nvm/versions/node/v24.21.0/bin/npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "env": {
+        "PATH": "/home/pranjal/.nvm/versions/node/v24.21.0/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "code-review",
+  "description": "Correctness-only review of the current git diff. Read-only.",
+  "prompt": "Review the current changes for correctness bugs only. Examine `git diff` (both staged and unstaged) and the diff against the main branch (`git diff main...` or `git diff main`). Report only genuine correctness defects \u2014 not style, naming, or taste. For each finding give: file:line, the defect, and a concrete failure scenario that triggers it. Rank findings by severity (critical / high / medium / low). Verify each finding by reading the surrounding code before reporting it; discard anything you cannot confirm. Apply extra rigor to money math (wages, peshgi, roker), offline sync logic, and the audit log. Do not modify files.",
+  "tools": [
+    "read",
+    "shell",
+    "glob",
+    "grep",
+    "code"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/**/*.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "allowedTools": [
+    "code",
+    "glob",
+    "grep",
+    "read",
+    "shell",
+    "@playwright",
+    "@chrome-devtools",
+    "@context7"
+  ]
+}

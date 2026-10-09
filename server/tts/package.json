@@ -1,0 +1,11 @@
+{
+  "name": "bunkar-tts",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Isolated optional espeak-ng WASM TTS engine for Bunkar OS slip audio (SPEC-015). GPL-3.0 — kept out of the zero-dependency server and run as a separate process.",
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "espeak-ng": "1.0.2"
+  }
+}

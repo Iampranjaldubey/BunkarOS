@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Superpowers session context",
+      "trigger": "SessionStart",
+      "description": "Loads the using-superpowers skill and the last WATCHINGLOGS entries at session start (migrated from the superpowers agent's object-form agentSpawn hook).",
+      "action": {
+        "type": "command",
+        "command": "cat .kiro/skills/using-superpowers/SKILL.md; echo; echo '--- last log ---'; tail -n 30 WATCHINGLOGS.md 2>/dev/null"
+      }
+    }
+  ]
+}

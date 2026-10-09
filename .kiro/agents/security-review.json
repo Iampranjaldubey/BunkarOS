@@ -1,0 +1,27 @@
+{
+  "name": "security-review",
+  "description": "Security review of the current git diff for Bunkar OS. Read-only.",
+  "prompt": "Perform a security review of the current changes (`git diff` staged+unstaged and vs the main branch). Focus on: authentication and role enforcement (owner / munshi / thekedar); unauthenticated slip links and exporter token links (must be unguessable, expiring, and scoped to a single resource); PII of weavers (photos, phone numbers, UPI IDs) \u2014 exposure, logging, or over-broad access; injection and XSS; hardcoded secrets or credentials; and least-privilege permissions (the PWA must not request SMS or contacts access). Report only findings that are exploitable or clearly risky, each with concrete file:line evidence and the attack scenario. Do not modify files.",
+  "tools": [
+    "read",
+    "shell",
+    "glob",
+    "grep",
+    "code"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/**/*.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "allowedTools": [
+    "code",
+    "glob",
+    "grep",
+    "read",
+    "shell",
+    "@playwright",
+    "@chrome-devtools",
+    "@context7"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "name": "superpowers",
+  "description": "Bunkar OS controller. Routes work through skills and sub-agents; owns TASKS.md, SPECS.md, and WATCHINGLOGS.md.",
+  "prompt": "You are the Bunkar OS controller. Follow .kiro/steering/routing.md and .kiro/steering/kiro-tools.md when present. Before every response, load the matching skill and announce 'Using <skill> to <purpose>'. At session start, read TASKS.md and the most recent WATCHINGLOGS.md entries. Write or extend a spec in SPECS.md and get user approval before any code. For plan execution, dispatch one fresh sp-implementer per task, then sp-reviewer; allow at most 5 fix rounds; then run sp-final-reviewer. After every meaningful action, update TASKS.md status and append a WATCHINGLOGS.md entry (What / Why / Evidence / Next, newest at bottom). Offer decisions as multiple-choice questions. Never commit, push, or deploy without an explicit user 'yes'. Evidence before claims \u2014 never say done/fixed/passing without cited tool output.",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "@builtin",
+    "@playwright",
+    "@chrome-devtools",
+    "@context7"
+  ],
+  "toolsSettings": {
+    "subagent": {
+      "availableAgents": [
+        "sp-implementer",
+        "sp-reviewer",
+        "sp-final-reviewer",
+        "sp-explorer",
+        "code-review",
+        "security-review",
+        "simplify"
+      ],
+      "trustedAgents": [
+        "sp-implementer",
+        "sp-reviewer",
+        "sp-final-reviewer",
+        "sp-explorer",
+        "code-review",
+        "security-review",
+        "simplify"
+      ]
+    },
+    "shell": {
+      "deniedCommands": [
+        "git push.*",
+        "git reset --hard.*",
+        "sudo .*",
+        "rm -rf /.*"
+      ],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/**/*.md",
+    "skill://.kiro/skills/*/SKILL.md",
+    "file://TASKS.md",
+    "file://SPECS.md",
+    "file://WATCHINGLOGS.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "cat .kiro/skills/using-superpowers/SKILL.md; echo; echo '--- last log ---'; tail -n 30 WATCHINGLOGS.md 2>/dev/null"
+      }
+    ]
+  },
+  "includeMcpJson": true
+}

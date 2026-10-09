@@ -1,0 +1,27 @@
+{
+  "name": "sp-reviewer",
+  "description": "Reviews a completed task against its spec following the task-reviewer prompt. Read-only.",
+  "prompt": "file:///home/pranjal/Desktop/Startup/.kiro/skills/subagent-driven-development/task-reviewer-prompt.md",
+  "tools": [
+    "read",
+    "shell",
+    "glob",
+    "grep",
+    "code"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/**/*.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "allowedTools": [
+    "code",
+    "glob",
+    "grep",
+    "read",
+    "shell",
+    "@playwright",
+    "@chrome-devtools",
+    "@context7"
+  ]
+}

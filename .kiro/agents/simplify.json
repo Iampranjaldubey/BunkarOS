@@ -1,0 +1,27 @@
+{
+  "name": "simplify",
+  "description": "Simplifies recently changed code without altering behavior, then runs tests.",
+  "prompt": "Simplify the code that was changed in the current diff without changing any observable behavior. Reuse existing helpers instead of duplicating logic, remove dead or unneeded code, and reduce incidental complexity. Make no functional changes. After simplifying, run the project's test suite and report the result with cited output. If tests fail or no test command exists, say so clearly and do not claim success.",
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "glob",
+    "grep"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/**/*.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "allowedTools": [
+    "glob",
+    "grep",
+    "read",
+    "shell",
+    "write",
+    "@playwright",
+    "@chrome-devtools",
+    "@context7"
+  ]
+}

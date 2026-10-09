@@ -1,0 +1,29 @@
+{
+  "name": "sp-implementer",
+  "description": "Implements a single task following the subagent-driven-development implementer prompt.",
+  "prompt": "file:///home/pranjal/Desktop/Startup/.kiro/skills/subagent-driven-development/implementer-prompt.md",
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "glob",
+    "grep",
+    "code"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/**/*.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "allowedTools": [
+    "code",
+    "glob",
+    "grep",
+    "read",
+    "shell",
+    "write",
+    "@playwright",
+    "@chrome-devtools",
+    "@context7"
+  ]
+}

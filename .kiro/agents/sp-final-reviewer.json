@@ -1,0 +1,27 @@
+{
+  "name": "sp-final-reviewer",
+  "description": "Final holistic code review following the requesting-code-review code-reviewer prompt. Read-only.",
+  "prompt": "file:///home/pranjal/Desktop/Startup/.kiro/skills/requesting-code-review/code-reviewer.md",
+  "tools": [
+    "read",
+    "shell",
+    "glob",
+    "grep",
+    "code"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/**/*.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "allowedTools": [
+    "code",
+    "glob",
+    "grep",
+    "read",
+    "shell",
+    "@playwright",
+    "@chrome-devtools",
+    "@context7"
+  ]
+}

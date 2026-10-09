@@ -80,3 +80,15 @@ Cross-agent seams (fixed names — code to them even before they exist):
 - **n2**: client device id = existing localStorage `bunkar.device` (`src/lib/session-store.ts`).
 - New domain helpers are imported from their own module files; the controller adds barrel exports to `projections.ts` afterwards (only c2 edits `projections.ts`).
 - Board: `LoomStatus = 'on_track'|'slow'|'idle'|'no_wool'|'free'` (k), demo board = 17 / 3 / 3 / 1 no wool (PRD grid).
+
+## Responsive layout contract (SPEC-019) — binding for the desktop batch
+- Breakpoints: Tailwind defaults `md` 768, `lg` 1024, `xl` 1280. **Below `md` nothing may change** (phone layout + all mobile e2e unchanged).
+- Shell (`src/app/AppLayout.tsx`): `lg+` → fixed left `SideNav` (w-64, `data-testid="side-nav"`), `BottomNav` hidden (`lg:hidden`, keep `data-testid="bottom-nav"`), header full width, `<main>` = `max-w-md md:max-w-3xl lg:max-w-6xl` with `lg:pl-64` offset.
+- Shared primitives (shell agent creates, page agents use; import from `src/components/ui`):
+  - `SideNav({ role })` — role destinations (same as BottomNav) + the "More" destinations (orders, looms, weavers, thekedars, yarn, rates, digest, audit, settings) filtered by `can()`; active item highlighted; ≥ 44 px rows.
+  - `PageGrid({ main, aside, asideSticky? })` — one column below `lg`; at `lg` main 2/3 + aside 1/3 (aside sticky under the header when `asideSticky`).
+  - `ResponsiveTable<T>({ rows, columns:[{key, header, cell(row), align?, className?}], rowKey, onRowClick?, renderCard(row), empty?, testid? })` — renders `renderCard` list below `lg` (exactly today's mobile cards) and a real `<table>` (`data-testid={testid ?? 'data-table'}`, sticky header, zebra rows, 44 px rows, row click/Enter opens) at `lg+`.
+  - `FormGrid({ children })` — `grid gap-x-6 lg:grid-cols-2`; children may use `lg:col-span-2` for full-width fields.
+  - `Sheet` — bottom sheet below `lg`, centered dialog (`max-w-lg`, rounded-2xl) at `lg+`. Same props/API.
+- New i18n keys: each agent adds its own file `src/i18n/desktop-<agent>.{hi,en}.ts`.
+- File ownership for the batch: **shell** = `src/app/AppLayout.tsx`, `src/components/ui/*`, `src/index.css`, `playwright.config.ts`, `e2e/20-desktop-shell.spec.ts`; **owner** = `features/{home,digest,exporter,slip}/*`, `app/{LoginPage,SetupPage}.tsx`; **lists** = `features/looms/{LoomsPage,LoomDetailPage,shared}.tsx`, `features/weavers/{WeaversPage,WeaverDetailPage}.tsx`, `features/orders/{OrdersPage,OrderDetailPage}.tsx`, `features/thekedars/ThekedarsPage.tsx`, `features/yarn/YarnPage.tsx`, `features/{roker,audit,rates}/*`; **forms** = `features/{bazaar,peshgi,jobs,checkin,settings,shared}/*`, `features/yarn/{YarnIssuePage,YarnReturnPage}.tsx`, `features/*/*NewPage.tsx`; e2e: each page agent owns `e2e/2x-desktop-<agent>.spec.ts`.

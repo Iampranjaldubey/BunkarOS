@@ -43,9 +43,16 @@ export function Sheet({ open, onClose, title, children, footer, className }: She
         if (e.target === ref.current) onClose();
       }}
       className={cn(
+        // Below lg: bottom sheet pinned to the bottom edge, full-width rail
+        // centered horizontally — identical to the phone layout.
         'w-full max-w-md m-0 mt-auto mb-0 rounded-t-3xl bg-surface p-0',
         'backdrop:bg-ink/40 shadow-sheet',
         'left-1/2 -translate-x-1/2',
+        // lg+: a centered modal dialog (fully rounded) instead of a bottom
+        // sheet. `my-auto` + the <dialog> default margin:auto re-centres it
+        // vertically; the shared `left-1/2 -translate-x-1/2` keeps it centred
+        // horizontally at the lg max width.
+        'lg:max-w-lg lg:my-auto lg:rounded-2xl',
         className,
       )}
     >

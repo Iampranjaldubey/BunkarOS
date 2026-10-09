@@ -78,7 +78,7 @@ export function PiecePicker({ recs, value, onSelect, loomIds, status = 'on_loom'
       {pieces.length === 0 ? (
         <p className="py-6 text-center text-muted">{t('common.empty')}</p>
       ) : (
-        <ul className="flex flex-col gap-2" role="listbox" aria-label={label ?? t('tx.pick.piece')}>
+        <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2" role="listbox" aria-label={label ?? t('tx.pick.piece')}>
           {pieces.map((p) => {
             const selected = p.pieceId === value;
             const weaver = weaverOf(p.weaverId);
@@ -158,7 +158,7 @@ export function LoomPicker({ recs, value, onSelect, loomIds, label }: LoomPicker
   return (
     <div>
       {label && <p className="mb-2 text-base font-medium text-ink">{label}</p>}
-      <ul className="grid grid-cols-2 gap-2" role="listbox" aria-label={label ?? t('tx.pick.loom')}>
+      <ul className="grid grid-cols-2 gap-2 lg:grid-cols-6" role="listbox" aria-label={label ?? t('tx.pick.loom')}>
         {looms.map((l) => {
           const selected = l.entityId === value;
           return (
@@ -256,7 +256,7 @@ export function HolderPicker({ recs, value, onSelect, label }: HolderPickerProps
       ) : thekedars.length === 0 ? (
         <p className="py-6 text-center text-muted">{t('tx.pick.none')}</p>
       ) : (
-        <ul className="flex flex-col gap-2" role="listbox" aria-label={t('tx.pick.holderThekedar')}>
+        <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2" role="listbox" aria-label={t('tx.pick.holderThekedar')}>
           {thekedars.map((th) => {
             const selected = value?.kind === 'thekedar' && value.thekedarId === th.entityId;
             return (

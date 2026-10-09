@@ -11,6 +11,7 @@ import {
   PersonPicker,
   type Person,
   useToast,
+  ResponsiveTable,
 } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useRecords, useSession } from '../../db/hooks';
@@ -51,6 +52,7 @@ export default function OrderDetailPage() {
 
   const canCreate = role ? can(role, 'order.create') : false;
   const loomCode = (loomId?: string) => (loomId ? looms.find((l) => l.entityId === loomId)?.code : undefined);
+  const weaverName = (weaverId?: string) => (weaverId ? weavers.find((w) => w.entityId === weaverId)?.name : undefined);
 
   const setStatus = async (pieceId: string, status: PieceStatusP['status']) => {
     await addRecord<PieceStatusP>('piece_status', { pieceId, status });
@@ -74,37 +76,72 @@ export default function OrderDetailPage() {
       </Card>
 
       <Section title={t('order.detail.pieces')}>
-        <ul className="space-y-2">
-          {pieces.map((p) => (
-            <li key={p.pieceId}>
-              <Card data-testid="piece-row" className="p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="num text-lg font-bold text-ink">{p.pieceId}</span>
-                  <div className="flex items-center gap-2">
-                    <StatusPill status={p.status} label={t('status.' + p.status)} />
-                    {canCreate && (
-                      <button
-                        type="button"
-                        aria-label={t('order.piece')}
-                        onClick={() => setActionPiece(p)}
-                        className="tap-48 -mr-1 inline-flex items-center justify-center rounded-full text-muted hover:text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
-                      >
-                        <MoreVertical aria-hidden="true" size={20} />
-                      </button>
-                    )}
-                  </div>
+        <ResponsiveTable
+          rows={pieces}
+          rowKey={(p) => p.pieceId}
+          testid="pieces-table"
+          renderCard={(p) => (
+            <Card data-testid="piece-row" className="p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="num text-lg font-bold text-ink">{p.pieceId}</span>
+                <div className="flex items-center gap-2">
+                  <StatusPill status={p.status} label={t('status.' + p.status)} />
+                  {canCreate && (
+                    <button
+                      type="button"
+                      aria-label={t('order.piece')}
+                      onClick={() => setActionPiece(p)}
+                      className="tap-48 -mr-1 inline-flex items-center justify-center rounded-full text-muted hover:text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+                    >
+                      <MoreVertical aria-hidden="true" size={20} />
+                    </button>
+                  )}
                 </div>
-                <div className="mt-2 flex items-center gap-3">
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <ProgressBar pct={p.pctWoven} />
+                <span className="num w-12 text-right text-base font-bold text-indigo">{p.pctWoven}%</span>
+              </div>
+              <div className="mt-1 text-sm text-muted">
+                {loomCode(p.loomId) ? `${t('order.piece.loom')}: ${loomCode(p.loomId)}` : t('order.piece.noLoom')}
+              </div>
+            </Card>
+          )}
+          columns={[
+            { key: 'id', header: t('col.piece.id'), cell: (p) => <span className="num font-bold text-ink">{p.pieceId}</span> },
+            { key: 'status', header: t('col.piece.status'), cell: (p) => <StatusPill status={p.status} label={t('status.' + p.status)} /> },
+            { key: 'loom', header: t('col.piece.loom'), cell: (p) => <span className="num text-muted">{loomCode(p.loomId) ?? '—'}</span> },
+            { key: 'weaver', header: t('col.piece.weaver'), cell: (p) => <span className="text-muted">{weaverName(p.weaverId) ?? '—'}</span> },
+            {
+              key: 'woven',
+              header: t('col.piece.woven'),
+              className: 'w-48',
+              cell: (p) => (
+                <div className="flex items-center gap-3">
                   <ProgressBar pct={p.pctWoven} />
-                  <span className="num w-12 text-right text-base font-bold text-indigo">{p.pctWoven}%</span>
+                  <span className="num w-11 text-right font-bold text-indigo">{p.pctWoven}%</span>
                 </div>
-                <div className="mt-1 text-sm text-muted">
-                  {loomCode(p.loomId) ? `${t('order.piece.loom')}: ${loomCode(p.loomId)}` : t('order.piece.noLoom')}
-                </div>
-              </Card>
-            </li>
-          ))}
-        </ul>
+              ),
+            },
+            {
+              key: 'actions',
+              header: t('col.piece.actions'),
+              align: 'right',
+              cell: (p) =>
+                canCreate ? (
+                  <button
+                    type="button"
+                    aria-label={`${t('order.piece')} ${p.pieceId}`}
+                    data-testid="piece-action"
+                    onClick={() => setActionPiece(p)}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-indigo/5 hover:text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+                  >
+                    <MoreVertical aria-hidden="true" size={20} />
+                  </button>
+                ) : null,
+            },
+          ]}
+        />
       </Section>
 
       {/* Per-piece action sheet */}

@@ -8,6 +8,7 @@ import {
   Pill,
   PhotoThumb,
   Skeleton,
+  ResponsiveTable,
 } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useRecords, useSession } from '../../db/hooks';
@@ -63,7 +64,7 @@ export default function LoomsPage() {
       />
 
       {looms.length > 0 && (
-        <div className="relative mb-4">
+        <div className="relative mb-4 lg:max-w-sm">
           <Search
             aria-hidden="true"
             size={20}
@@ -103,43 +104,84 @@ export default function LoomsPage() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={<Search size={40} />} title={t('common.empty')} />
       ) : (
-        <ul className="space-y-3">
-          {filtered.map((l) => {
+        <ResponsiveTable
+          rows={filtered}
+          rowKey={(l) => l.entityId}
+          testid="looms-table"
+          onRowClick={(l) => navigate(`/looms/${l.entityId}`)}
+          renderCard={(l) => {
             const cp = currentPiece(l.entityId);
             const th = thekedarName(l.thekedarId);
             return (
-              <li key={l.entityId}>
-                <ListRow
-                  testId="loom-row"
-                  onClick={() => navigate(`/looms/${l.entityId}`)}
-                  leading={
-                    <PhotoThumb id={l.photoId} alt={l.code} size={56} initials={l.code} />
-                  }
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="num text-lg font-bold text-ink">{l.code}</span>
-                    <span className="text-muted">·</span>
-                    <span className="truncate text-base text-muted">{l.village}</span>
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    {cp ? (
-                      <>
-                        <StatusPill status={cp.status} label={t('status.' + cp.status)} />
-                        <span className="num text-sm text-muted">
-                          {cp.pieceId} · {cp.pctWoven}%
-                        </span>
-                      </>
-                    ) : (
-                      <Pill tone="neutral">{t('board.free')}</Pill>
-                    )}
-                    <span className="text-sm text-muted">{formatFtIn(l.widthIn)}</span>
-                  </div>
-                  {th && <div className="mt-0.5 text-sm text-muted">{t('role.thekedar')}: {th}</div>}
-                </ListRow>
-              </li>
+              <ListRow
+                testId="loom-row"
+                onClick={() => navigate(`/looms/${l.entityId}`)}
+                leading={<PhotoThumb id={l.photoId} alt={l.code} size={56} initials={l.code} />}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="num text-lg font-bold text-ink">{l.code}</span>
+                  <span className="text-muted">·</span>
+                  <span className="truncate text-base text-muted">{l.village}</span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {cp ? (
+                    <>
+                      <StatusPill status={cp.status} label={t('status.' + cp.status)} />
+                      <span className="num text-sm text-muted">{cp.pieceId} · {cp.pctWoven}%</span>
+                    </>
+                  ) : (
+                    <Pill tone="neutral">{t('board.free')}</Pill>
+                  )}
+                  <span className="text-sm text-muted">{formatFtIn(l.widthIn)}</span>
+                </div>
+                {th && <div className="mt-0.5 text-sm text-muted">{t('role.thekedar')}: {th}</div>}
+              </ListRow>
             );
-          })}
-        </ul>
+          }}
+          columns={[
+            {
+              key: 'code',
+              header: t('col.loom.code'),
+              cell: (l) => (
+                <div className="flex items-center gap-3">
+                  <PhotoThumb id={l.photoId} alt={l.code} size={36} initials={l.code} />
+                  <span className="num font-bold text-ink">{l.code}</span>
+                </div>
+              ),
+            },
+            { key: 'village', header: t('col.loom.village'), cell: (l) => <span className="text-muted">{l.village} · {formatFtIn(l.widthIn)}</span> },
+            { key: 'thekedar', header: t('col.loom.thekedar'), cell: (l) => <span className="text-muted">{thekedarName(l.thekedarId) ?? '—'}</span> },
+            {
+              key: 'piece',
+              header: t('col.loom.piece'),
+              cell: (l) => {
+                const cp = currentPiece(l.entityId);
+                return cp ? <span className="num">{cp.pieceId}</span> : <span className="text-muted">—</span>;
+              },
+            },
+            {
+              key: 'woven',
+              header: t('col.loom.woven'),
+              align: 'right',
+              cell: (l) => {
+                const cp = currentPiece(l.entityId);
+                return cp ? <span className="num font-bold text-indigo">{cp.pctWoven}%</span> : <span className="text-muted">—</span>;
+              },
+            },
+            {
+              key: 'status',
+              header: t('col.loom.status'),
+              cell: (l) => {
+                const cp = currentPiece(l.entityId);
+                return cp ? (
+                  <StatusPill status={cp.status} label={t('status.' + cp.status)} />
+                ) : (
+                  <Pill tone="neutral">{t('board.free')}</Pill>
+                );
+              },
+            },
+          ]}
+        />
       )}
     </section>
   );

@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/Input';
 import { Field } from '../../components/ui/Field';
 import { KgInput } from '../../components/ui/NumberInputs';
 import { PhotoCapture } from '../../components/ui/PhotoCapture';
+import { FormGrid } from '../../components/ui/FormGrid';
 import { ConfirmSheet } from '../../components/ui/Sheet';
 import { useToast } from '../../components/ui/Toast';
 import { HolderPicker, PiecePicker } from '../shared/pickers';
@@ -109,7 +110,7 @@ export default function YarnIssuePage() {
       )}
 
       <Card className="mb-4">
-        <div className="grid grid-cols-2 gap-3">
+        <FormGrid>
           <Field label={t('yarn.issue.shade')} required error={shadeErr}>
             {({ id, describedBy, invalid }) => (
               <Input id={id} value={shade} onChange={(e) => setShade(e.target.value)} placeholder={t('yarn.issue.shadePh')} aria-describedby={describedBy} aria-invalid={invalid || undefined} />
@@ -120,13 +121,15 @@ export default function YarnIssuePage() {
               <Input id={id} value={lot} onChange={(e) => setLot(e.target.value)} placeholder={t('yarn.issue.lotPh')} aria-describedby={describedBy} aria-invalid={invalid || undefined} className="num" />
             )}
           </Field>
-        </div>
-        <Field label={t('yarn.issue.weight')} required error={gramsErr}>
-          {({ describedBy, invalid }) => (
-            <KgInput value={grams} onChange={setGrams} describedBy={describedBy} invalid={invalid} aria-label={t('yarn.issue.weight')} />
-          )}
-        </Field>
-        <PhotoCapture value={photoId} onChange={setPhotoId} label={`${t('yarn.issue.scalePhoto')} (${t('common.optional')})`} />
+          <Field label={t('yarn.issue.weight')} required error={gramsErr} className="lg:col-span-2">
+            {({ describedBy, invalid }) => (
+              <KgInput value={grams} onChange={setGrams} describedBy={describedBy} invalid={invalid} aria-label={t('yarn.issue.weight')} />
+            )}
+          </Field>
+          <div className="lg:col-span-2">
+            <PhotoCapture value={photoId} onChange={setPhotoId} label={`${t('yarn.issue.scalePhoto')} (${t('common.optional')})`} />
+          </div>
+        </FormGrid>
       </Card>
 
       <ActionBar>

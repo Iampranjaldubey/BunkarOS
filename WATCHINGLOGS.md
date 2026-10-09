@@ -463,3 +463,15 @@ explicit user "yes"); never committed.
 - Evidence: tsc exit 0; vitest 201/201 (23 files); server 72/72; build precache 107 / 1374.10 KiB; playwright 56 passed (21 specs; payment specs ×3 repeat = 33/33); reviews batch-features-uat 10/10, batch-security-code 10/10, batch-ui-ux-3 all 10 (BLOCKERS 0).
 - Hosted: http://localhost:4180 (built PWA, SW active, 0 page errors) proxying to API 127.0.0.1:8790; `diff -rq` hosted dist == final build; health OK.
 - Next: user sets git identity and says "yes" to commit.
+
+## 2026-10-09 18:52 IST — First commit pushed to GitHub (public repo)
+- What: repo-local git identity (Pranjal Dubey <pranjaldubey428@gmail.com>), origin = https://github.com/Iampranjaldubey/BunkarOS.git, first commit 962d754 (351 files) pushed to main; added .kiro/skills/THIRD_PARTY_LICENSES.md (MIT/Apache texts for vendored skills) before publishing.
+- Why: user asked to set up git and push (explicit "yes"; repo confirmed public).
+- Evidence: pre-commit scan found 0 secrets/tokens/demo keys in committed files; `git ls-remote origin refs/heads/main` → 962d754… = local HEAD; `git status -sb` → main...origin/main. Tokens were used only via a temporary askpass helper and are not stored in git config or any credentials file.
+- Next: user revokes both pasted tokens; desktop/tablet layout (SPEC-019).
+
+## 2026-10-09 19:52 IST — WIP commit: desktop layout (SPEC-019) shell + partial pages
+- What: SPEC-019 + responsive layout contract; shell (SideNav, PageGrid, ResponsiveTable, FormGrid, centered Sheet at lg, AppLayout side menu, desktop Playwright project + e2e 20); page agents were stopped mid-way by the user, leaving partial desktop changes in home, digest, exporter, lists (orders, looms, weavers, thekedars, yarn, roker, audit) and forms (new-entity pages, yarn issue/return, shared pickers). All local servers stopped at the user's request.
+- Why: user asked to commit everything done so far.
+- Evidence: `tsc -p tsconfig.app.json --noEmit` → exit 0; vitest 23 files / 205 passed; `vite build` OK (precache 106 entries / 1401.76 KiB); secret scan of changed files → 0 hits. NOT yet run: mobile + desktop Playwright suites on this state.
+- Next: "resume desktop" → finish remaining pages (settings, bazaar wizard/receipt, peshgi, jobs, check-in, slip, login/setup, rates), run mobile + desktop e2e, independent review.

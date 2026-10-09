@@ -8,6 +8,7 @@ import {
   Select,
   FtInInput,
   PhotoCapture,
+  FormGrid,
   type Person,
   useToast,
 } from '../../components/ui';
@@ -85,79 +86,83 @@ export default function LoomNewPage() {
     <section>
       <PageHeader title={t('route.loomNew')} back />
 
-      <Field label={t('loom.field.code')} hint={t('loom.field.code.hint')} required error={errCode}>
-        {({ id, describedBy, invalid }) => (
-          <Input
-            id={id}
-            aria-describedby={describedBy}
-            aria-invalid={invalid || undefined}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="L-01"
+      <FormGrid>
+        <Field label={t('loom.field.code')} hint={t('loom.field.code.hint')} required error={errCode}>
+          {({ id, describedBy, invalid }) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              aria-invalid={invalid || undefined}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="L-01"
+            />
+          )}
+        </Field>
+
+        <Field label={t('loom.field.village')} required error={errVillage}>
+          {({ id, describedBy, invalid }) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              aria-invalid={invalid || undefined}
+              value={village}
+              onChange={(e) => setVillage(e.target.value)}
+            />
+          )}
+        </Field>
+
+        <Field label={t('loom.field.width')} required error={errWidth}>
+          {({ describedBy, invalid }) => (
+            <FtInInput value={widthIn} onChange={setWidthIn} describedBy={describedBy} invalid={invalid} />
+          )}
+        </Field>
+
+        <Field label={t('loom.field.thekedar')} hint={t('common.optional')}>
+          {({ id, describedBy }) => (
+            <Select
+              id={id}
+              aria-describedby={describedBy}
+              value={thekedarId}
+              onChange={(e) => setThekedarId(e.target.value)}
+            >
+              <option value="">{t('loom.field.thekedar.none')}</option>
+              {thekedars.map((th) => (
+                <option key={th.entityId} value={th.entityId}>
+                  {th.name} — {th.village}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+
+        <div className="mb-4 lg:col-span-2">
+          <p className="mb-2 text-base font-medium text-ink">{t('loom.field.weavers')}</p>
+          {people.length === 0 ? (
+            <p className="text-sm text-muted">{t('masters.pickWeaver')}</p>
+          ) : (
+            <PersonPickerMulti people={people} selected={weaverIds} onToggle={toggleWeaver} />
+          )}
+        </div>
+
+        <div className="lg:col-span-2">
+          <GpsCapture
+            value={gps}
+            onChange={setGps}
+            labelCapture={t('loom.gps.capture')}
+            labelCaptured={t('loom.gps.captured')}
+            msgDenied={t('loom.gps.denied')}
+            msgUnavailable={t('loom.gps.unavailable')}
           />
-        )}
-      </Field>
 
-      <Field label={t('loom.field.village')} required error={errVillage}>
-        {({ id, describedBy, invalid }) => (
-          <Input
-            id={id}
-            aria-describedby={describedBy}
-            aria-invalid={invalid || undefined}
-            value={village}
-            onChange={(e) => setVillage(e.target.value)}
-          />
-        )}
-      </Field>
+          <PhotoCapture value={photoId} onChange={setPhotoId} label={t('loom.photo')} />
 
-      <Field label={t('loom.field.width')} required error={errWidth}>
-        {({ describedBy, invalid }) => (
-          <FtInInput value={widthIn} onChange={setWidthIn} describedBy={describedBy} invalid={invalid} />
-        )}
-      </Field>
-
-      <Field label={t('loom.field.thekedar')} hint={t('common.optional')}>
-        {({ id, describedBy }) => (
-          <Select
-            id={id}
-            aria-describedby={describedBy}
-            value={thekedarId}
-            onChange={(e) => setThekedarId(e.target.value)}
-          >
-            <option value="">{t('loom.field.thekedar.none')}</option>
-            {thekedars.map((th) => (
-              <option key={th.entityId} value={th.entityId}>
-                {th.name} — {th.village}
-              </option>
-            ))}
-          </Select>
-        )}
-      </Field>
-
-      <div className="mb-4">
-        <p className="mb-2 text-base font-medium text-ink">{t('loom.field.weavers')}</p>
-        {people.length === 0 ? (
-          <p className="text-sm text-muted">{t('masters.pickWeaver')}</p>
-        ) : (
-          <PersonPickerMulti people={people} selected={weaverIds} onToggle={toggleWeaver} />
-        )}
-      </div>
-
-      <GpsCapture
-        value={gps}
-        onChange={setGps}
-        labelCapture={t('loom.gps.capture')}
-        labelCaptured={t('loom.gps.captured')}
-        msgDenied={t('loom.gps.denied')}
-        msgUnavailable={t('loom.gps.unavailable')}
-      />
-
-      <PhotoCapture value={photoId} onChange={setPhotoId} label={t('loom.photo')} />
-
-      <Button size="xl" onClick={save} disabled={saving || (touched && !valid)}>
-        <Check aria-hidden="true" size={22} />
-        {t('loom.save')}
-      </Button>
+          <Button size="xl" onClick={save} disabled={saving || (touched && !valid)} className="lg:w-auto">
+            <Check aria-hidden="true" size={22} />
+            {t('loom.save')}
+          </Button>
+        </div>
+      </FormGrid>
     </section>
   );
 }
@@ -197,7 +202,7 @@ function PersonPickerMulti({
         aria-label={t('person.search')}
         className="mb-3"
       />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 lg:grid-cols-6">
         {filtered.map((p) => {
           const on = selected.includes(p.id);
           return (

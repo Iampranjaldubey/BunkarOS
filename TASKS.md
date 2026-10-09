@@ -56,7 +56,8 @@ remains (tracked under "Remaining — honest").
 | K2 full owner home (no-wool status, order filter, free in 30 days, dues, staff entries) | SPEC-017 | DONE — `e2e/16-k2-k1.spec.ts` (board 17/3/3/1-no_wool, order filter, loomsFreeSoon, peshgiOutstanding dues, todayEntriesByUser); `domain/owner.test.ts` (6), `board.test.ts` (11). |
 | K1 monthly summary | SPEC-018 | DONE — `e2e/16-k2-k1.spec.ts` (monthlySummary sqft/wage/short, reversed excluded, Hindi share text); `domain/monthly.test.ts` (6). |
 | B1/B2 GPS capture — verify wired + e2e | SPEC-003/010 | DONE — `e2e/17-gps.spec.ts` (loom lat/lng on grant, check-in lat/lng on grant, graceful save on permission denied). |
-| Git commit | — | BLOCKED: needs git user.name/email + explicit "yes" |
+| Git commit | — | DONE: first commit 962d754 pushed to github.com/Iampranjaldubey/BunkarOS (main) |
+| Desktop & tablet layout (side menu, tables, two-column forms, centered dialogs) | SPEC-019 | DOING |
 
 Completion-batch verification (integrator, 2026-10-09, Node v24.21.0):
 `npx tsc -p tsconfig.app.json --noEmit` → exit 0 · `npx vitest run` → **200 passed / 23 files** ·

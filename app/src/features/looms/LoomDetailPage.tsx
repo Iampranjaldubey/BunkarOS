@@ -10,6 +10,7 @@ import {
   BigNumber,
   ConfirmSheet,
   useToast,
+  PageGrid,
 } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useRecords, useSession } from '../../db/hooks';
@@ -91,109 +92,119 @@ export default function LoomDetailPage() {
         }
       />
 
-      <Card className="mb-6 flex items-center gap-4">
-        <PhotoThumb id={loom.photoId} alt={loom.code} size={72} initials={loom.code} />
-        <div className="min-w-0 flex-1">
-          <div className="num text-2xl font-bold text-ink">{loom.code}</div>
-          <div className="text-base text-muted">{loom.village} · {formatFtIn(loom.widthIn)}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            {!loom.active && <Pill tone="danger">{t('loom.inactive')}</Pill>}
-            {th && <Pill tone="info">{t('role.thekedar')}: {th.name}</Pill>}
-            {loom.lat !== undefined && (
-              <span className="num inline-flex items-center gap-1 text-sm text-muted">
-                <MapPin aria-hidden="true" size={14} /> {loom.lat.toFixed(4)}, {loom.lng?.toFixed(4)}
-              </span>
+      <PageGrid
+        asideSticky
+        aside={
+          <div className="flex flex-col gap-5">
+            <Card className="flex items-center gap-4">
+              <PhotoThumb id={loom.photoId} alt={loom.code} size={72} initials={loom.code} />
+              <div className="min-w-0 flex-1">
+                <div className="num text-2xl font-bold text-ink">{loom.code}</div>
+                <div className="text-base text-muted">{loom.village} · {formatFtIn(loom.widthIn)}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {!loom.active && <Pill tone="danger">{t('loom.inactive')}</Pill>}
+                  {th && <Pill tone="info">{t('role.thekedar')}: {th.name}</Pill>}
+                  {loom.lat !== undefined && (
+                    <span className="num inline-flex items-center gap-1 text-sm text-muted">
+                      <MapPin aria-hidden="true" size={14} /> {loom.lat.toFixed(4)}, {loom.lng?.toFixed(4)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Card>
+
+            <Section title={t('loom.detail.wool')}>
+              {woolRows.length === 0 ? (
+                <p className="text-base text-muted">{t('loom.detail.noWool')}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {woolRows.map((b) => (
+                    <li key={`${b.shade}|${b.lot}`}>
+                      <Card className="flex items-center justify-between gap-3 p-3">
+                        <div className="flex items-center gap-2">
+                          <PackageOpen aria-hidden="true" size={20} className="text-muted" />
+                          <div>
+                            <div className="text-base text-ink">{b.shade}</div>
+                            <div className="text-sm text-muted">{t('nav.yarn')} · {b.lot}</div>
+                          </div>
+                        </div>
+                        <BigNumber value={gramsToKgStr(b.grams)} unit={t('common.kg')} />
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
+
+            {canManage && loom.active && (
+              <Button variant="danger" size="xl" onClick={() => setConfirmOff(true)}>
+                <Power aria-hidden="true" size={20} />
+                {t('loom.detail.deactivate')}
+              </Button>
             )}
           </div>
-        </div>
-      </Card>
-
-      <Section title={t('loom.detail.currentPiece')}>
-        {currentPiece ? (
-          <Card>
-            <div className="flex items-center justify-between gap-2">
-              <span className="num text-lg font-bold text-ink">{currentPiece.pieceId}</span>
-              <StatusPill status={currentPiece.status} label={t('status.' + currentPiece.status)} />
-            </div>
-            <div className="mt-2 flex items-center gap-3">
-              <ProgressBar pct={currentPiece.pctWoven} />
-              <span className="num text-lg font-bold text-indigo">{currentPiece.pctWoven}%</span>
-            </div>
-            <div className="mt-1 text-sm text-muted">
-              {currentPiece.design} · {currentPiece.colour} · {t('loom.detail.woven')} {formatFtIn(currentPiece.wovenIn)}
-            </div>
-          </Card>
-        ) : (
-          <p className="text-base text-muted">{t('loom.detail.noPiece')}</p>
-        )}
-      </Section>
-
-      <Section title={t('loom.detail.weavers')}>
-        {loomWeavers.length === 0 ? (
-          <p className="text-base text-muted">{t('common.empty')}</p>
-        ) : (
-          <ul className="space-y-2">
-            {loomWeavers.map((w) => (
-              <li key={w.entityId}>
-                <ListRow onClick={() => navigate(`/weavers/${w.entityId}`)} leading={<PhotoThumb id={w.photoId} alt={w.name} size={48} initials={w.name} className="rounded-full" />}>
-                  <span className="text-base font-medium text-ink">{w.name}</span>
-                  <span className="block text-sm text-muted">{t('person.father')}: {w.fatherName} · {w.village}</span>
-                </ListRow>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      <Section title={t('loom.detail.wool')}>
-        {woolRows.length === 0 ? (
-          <p className="text-base text-muted">{t('loom.detail.noWool')}</p>
-        ) : (
-          <ul className="space-y-2">
-            {woolRows.map((b) => (
-              <li key={`${b.shade}|${b.lot}`}>
-                <Card className="flex items-center justify-between gap-3 p-3">
-                  <div className="flex items-center gap-2">
-                    <PackageOpen aria-hidden="true" size={20} className="text-muted" />
-                    <div>
-                      <div className="text-base text-ink">{b.shade}</div>
-                      <div className="text-sm text-muted">{t('nav.yarn')} · {b.lot}</div>
-                    </div>
+        }
+        main={
+          <div className="flex flex-col gap-6">
+            <Section title={t('loom.detail.currentPiece')}>
+              {currentPiece ? (
+                <Card>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="num text-lg font-bold text-ink">{currentPiece.pieceId}</span>
+                    <StatusPill status={currentPiece.status} label={t('status.' + currentPiece.status)} />
                   </div>
-                  <BigNumber value={gramsToKgStr(b.grams)} unit={t('common.kg')} />
-                </Card>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      <Section title={t('loom.detail.checkins')}>
-        {checkins.length === 0 ? (
-          <p className="text-base text-muted">{t('loom.detail.noCheckins')}</p>
-        ) : (
-          <ul className="space-y-2">
-            {checkins.map((c) => (
-              <li key={c.id}>
-                <Card className="flex items-center justify-between gap-3 p-3">
-                  <div>
-                    <div className="num text-base font-medium text-ink">{formatFtIn(c.payload.wovenIn)}</div>
-                    <div className="num text-sm text-muted">{c.day}</div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <ProgressBar pct={currentPiece.pctWoven} />
+                    <span className="num text-lg font-bold text-indigo">{currentPiece.pctWoven}%</span>
                   </div>
-                  <span className="num text-sm text-muted">{c.payload.pieceId}</span>
+                  <div className="mt-1 text-sm text-muted">
+                    {currentPiece.design} · {currentPiece.colour} · {t('loom.detail.woven')} {formatFtIn(currentPiece.wovenIn)}
+                  </div>
                 </Card>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+              ) : (
+                <p className="text-base text-muted">{t('loom.detail.noPiece')}</p>
+              )}
+            </Section>
 
-      {canManage && loom.active && (
-        <Button variant="danger" size="xl" onClick={() => setConfirmOff(true)}>
-          <Power aria-hidden="true" size={20} />
-          {t('loom.detail.deactivate')}
-        </Button>
-      )}
+            <Section title={t('loom.detail.weavers')}>
+              {loomWeavers.length === 0 ? (
+                <p className="text-base text-muted">{t('common.empty')}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {loomWeavers.map((w) => (
+                    <li key={w.entityId}>
+                      <ListRow onClick={() => navigate(`/weavers/${w.entityId}`)} leading={<PhotoThumb id={w.photoId} alt={w.name} size={48} initials={w.name} className="rounded-full" />}>
+                        <span className="text-base font-medium text-ink">{w.name}</span>
+                        <span className="block text-sm text-muted">{t('person.father')}: {w.fatherName} · {w.village}</span>
+                      </ListRow>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
+
+            <Section title={t('loom.detail.checkins')}>
+              {checkins.length === 0 ? (
+                <p className="text-base text-muted">{t('loom.detail.noCheckins')}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {checkins.map((c) => (
+                    <li key={c.id}>
+                      <Card className="flex items-center justify-between gap-3 p-3">
+                        <div>
+                          <div className="num text-base font-medium text-ink">{formatFtIn(c.payload.wovenIn)}</div>
+                          <div className="num text-sm text-muted">{c.day}</div>
+                        </div>
+                        <span className="num text-sm text-muted">{c.payload.pieceId}</span>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
+          </div>
+        }
+      />
 
       <ConfirmSheet
         open={confirmOff}

@@ -8,6 +8,7 @@ import { Field } from '../../components/ui/Field';
 import { Select } from '../../components/ui/Input';
 import { KgInput } from '../../components/ui/NumberInputs';
 import { ConfirmSheet } from '../../components/ui/Sheet';
+import { FormGrid } from '../../components/ui/FormGrid';
 import { useToast } from '../../components/ui/Toast';
 import { HolderPicker } from '../shared/pickers';
 import { holderLabel, ActionBar } from '../shared/helpers';
@@ -110,32 +111,34 @@ export default function YarnReturnPage() {
             </p>
           ) : (
             <>
-              <Field label={t('yarn.shadeLot')} required>
-                {({ id, describedBy }) => (
-                  <Select id={id} value={shadeLot} onChange={(e) => setShadeLot(e.target.value)} aria-describedby={describedBy}>
-                    <option value="" disabled>
-                      {t('yarn.return.pickFirst')}
-                    </option>
-                    {held.map((r) => (
-                      <option key={`${r.shade}|${r.lot}`} value={`${r.shade}|${r.lot}`}>
-                        {r.shade} · {r.lot} — {gramsToKgStr(r.grams)} {t('common.kg')}
+              <FormGrid>
+                <Field label={t('yarn.shadeLot')} required>
+                  {({ id, describedBy }) => (
+                    <Select id={id} value={shadeLot} onChange={(e) => setShadeLot(e.target.value)} aria-describedby={describedBy}>
+                      <option value="" disabled>
+                        {t('yarn.return.pickFirst')}
                       </option>
-                    ))}
-                  </Select>
-                )}
-              </Field>
+                      {held.map((r) => (
+                        <option key={`${r.shade}|${r.lot}`} value={`${r.shade}|${r.lot}`}>
+                          {r.shade} · {r.lot} — {gramsToKgStr(r.grams)} {t('common.kg')}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
 
-              {selected && (
-                <div className="mb-4 rounded-2xl border border-ok/20 bg-ok/5 p-3 text-base text-ok">
-                  {t('yarn.return.held', { kg: gramsToKgStr(heldG) })}
-                </div>
-              )}
-
-              <Field label={t('yarn.issue.weight')} required error={gramsErr}>
-                {({ describedBy, invalid }) => (
-                  <KgInput value={grams} onChange={setGrams} describedBy={describedBy} invalid={invalid} aria-label={t('yarn.issue.weight')} />
+                {selected && (
+                  <div className="rounded-2xl border border-ok/20 bg-ok/5 p-3 text-base text-ok lg:order-last lg:col-span-2">
+                    {t('yarn.return.held', { kg: gramsToKgStr(heldG) })}
+                  </div>
                 )}
-              </Field>
+
+                <Field label={t('yarn.issue.weight')} required error={gramsErr}>
+                  {({ describedBy, invalid }) => (
+                    <KgInput value={grams} onChange={setGrams} describedBy={describedBy} invalid={invalid} aria-label={t('yarn.issue.weight')} />
+                  )}
+                </Field>
+              </FormGrid>
             </>
           )}
         </Card>

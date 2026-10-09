@@ -9,7 +9,7 @@ import {
   ThumbsUp,
   ThumbsDown,
 } from 'lucide-react';
-import { Button, Card, EmptyState, Pill, PhotoThumb, Money } from '../../components/ui';
+import { Button, Card, EmptyState, Pill, PhotoThumb, Money, PageGrid } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useRecords, useSession } from '../../db/hooks';
 import {
@@ -79,75 +79,83 @@ export default function WeaverDetailPage() {
         }
       />
 
-      <Card className="mb-5 flex items-center gap-4">
-        <PhotoThumb id={weaver.photoId} alt={weaver.name} size={80} initials={weaver.name} className="rounded-full" />
-        <div className="min-w-0 flex-1">
-          <div className="text-xl font-bold text-ink">{weaver.name}</div>
-          <div className="text-base text-muted">{t('person.father')}: {weaver.fatherName}</div>
-          <div className="text-sm text-muted">{weaver.village}{loomCode ? ` · ${loomCode}` : ` · ${t('weaver.loom.unassigned')}`}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Pill tone="neutral">
-              <PhoneIcon aria-hidden="true" size={14} />
-              {weaver.phone || t('weaver.phoneType.' + weaver.phoneType)}
-            </Pill>
-            {weaver.upi && <Pill tone="info">UPI</Pill>}
+      <PageGrid
+        asideSticky
+        aside={
+          <div className="flex flex-col gap-5">
+            <Card className="flex items-center gap-4">
+              <PhotoThumb id={weaver.photoId} alt={weaver.name} size={80} initials={weaver.name} className="rounded-full" />
+              <div className="min-w-0 flex-1">
+                <div className="text-xl font-bold text-ink">{weaver.name}</div>
+                <div className="text-base text-muted">{t('person.father')}: {weaver.fatherName}</div>
+                <div className="text-sm text-muted">{weaver.village}{loomCode ? ` · ${loomCode}` : ` · ${t('weaver.loom.unassigned')}`}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <Pill tone="neutral">
+                    <PhoneIcon aria-hidden="true" size={14} />
+                    {weaver.phone || t('weaver.phoneType.' + weaver.phoneType)}
+                  </Pill>
+                  {weaver.upi && <Pill tone="info">UPI</Pill>}
+                </div>
+              </div>
+            </Card>
+
+            {/* Peshgi balance — the hero number */}
+            <Card className={'text-center ' + (balance > 0 ? 'bg-madder/5 border-madder/20' : 'bg-ok/5 border-ok/20')}>
+              <div className="text-sm text-muted">{t('weaver.detail.peshgi')}</div>
+              {balance > 0 ? (
+                <Money paise={balance} flow="given" size="xl" className="mt-1" />
+              ) : (
+                <div className="mt-1 text-2xl font-bold text-ok">{t('weaver.detail.noPeshgi')}</div>
+              )}
+            </Card>
+
+            {canGive && (
+              <Button size="xl" onClick={() => navigate(`/peshgi/new?weaver=${weaver.entityId}`)}>
+                <HandCoins aria-hidden="true" size={20} />
+                {t('weaver.detail.givePeshgi')}
+              </Button>
+            )}
           </div>
-        </div>
-      </Card>
-
-      {/* Peshgi balance — the hero number */}
-      <Card className={'mb-6 text-center ' + (balance > 0 ? 'bg-madder/5 border-madder/20' : 'bg-ok/5 border-ok/20')}>
-        <div className="text-sm text-muted">{t('weaver.detail.peshgi')}</div>
-        {balance > 0 ? (
-          <Money paise={balance} flow="given" size="xl" className="mt-1" />
-        ) : (
-          <div className="mt-1 text-2xl font-bold text-ok">{t('weaver.detail.noPeshgi')}</div>
-        )}
-      </Card>
-
-      <Section title={t('weaver.detail.passbook')}>
-        {passbook.length === 0 ? (
-          <p className="text-base text-muted">{t('weaver.detail.noPassbook')}</p>
-        ) : (
-          <ul className="space-y-2">
-            {[...passbook].reverse().map((e) => {
-              const given = e.kind === 'peshgi_given';
-              const response = responsesBySource.get(e.recId);
-              return (
-                <li key={e.recId + e.kind}>
-                  <Card className="flex items-center justify-between gap-3 p-3">
-                    <div className="min-w-0">
-                      <div className="text-base text-ink">
-                        {e.kind === 'job' && e.work ? `${t('weaver.pass.job')} · ${t('work.' + e.work)}` : t('weaver.pass.' + e.kind)}
-                      </div>
-                      <div className="text-sm text-muted">{formatDay(e.day, lang, 'medium')}</div>
-                      {response && (
-                        <span className={'mt-1 inline-flex items-center gap-1 text-sm font-medium ' + (response === 'agree' ? 'text-ok' : 'text-madder')}>
-                          {response === 'agree' ? <ThumbsUp size={14} aria-hidden="true" /> : <ThumbsDown size={14} aria-hidden="true" />}
-                          {t(response === 'agree' ? 'weaver.detail.response.agree' : 'weaver.detail.response.dispute')}
-                        </span>
-                      )}
-                    </div>
-                    <Money
-                      paise={e.amountPaise}
-                      flow={given ? 'given' : 'received'}
-                      withPaise
-                      size="md"
-                    />
-                  </Card>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Section>
-
-      {canGive && (
-        <Button size="xl" onClick={() => navigate(`/peshgi/new?weaver=${weaver.entityId}`)}>
-          <HandCoins aria-hidden="true" size={20} />
-          {t('weaver.detail.givePeshgi')}
-        </Button>
-      )}
+        }
+        main={
+          <Section title={t('weaver.detail.passbook')}>
+            {passbook.length === 0 ? (
+              <p className="text-base text-muted">{t('weaver.detail.noPassbook')}</p>
+            ) : (
+              <ul className="space-y-2">
+                {[...passbook].reverse().map((e) => {
+                  const given = e.kind === 'peshgi_given';
+                  const response = responsesBySource.get(e.recId);
+                  return (
+                    <li key={e.recId + e.kind}>
+                      <Card className="flex items-center justify-between gap-3 p-3">
+                        <div className="min-w-0">
+                          <div className="text-base text-ink">
+                            {e.kind === 'job' && e.work ? `${t('weaver.pass.job')} · ${t('work.' + e.work)}` : t('weaver.pass.' + e.kind)}
+                          </div>
+                          <div className="text-sm text-muted">{formatDay(e.day, lang, 'medium')}</div>
+                          {response && (
+                            <span className={'mt-1 inline-flex items-center gap-1 text-sm font-medium ' + (response === 'agree' ? 'text-ok' : 'text-madder')}>
+                              {response === 'agree' ? <ThumbsUp size={14} aria-hidden="true" /> : <ThumbsDown size={14} aria-hidden="true" />}
+                              {t(response === 'agree' ? 'weaver.detail.response.agree' : 'weaver.detail.response.dispute')}
+                            </span>
+                          )}
+                        </div>
+                        <Money
+                          paise={e.amountPaise}
+                          flow={given ? 'given' : 'received'}
+                          withPaise
+                          size="md"
+                        />
+                      </Card>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Section>
+        }
+      />
     </section>
   );
 }

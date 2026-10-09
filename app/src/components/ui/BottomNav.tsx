@@ -48,7 +48,8 @@ export function BottomNav({ role }: { role: Role }) {
   return (
     <nav
       aria-label={t('nav.home')}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur pb-[env(safe-area-inset-bottom)]"
+      data-testid="bottom-nav"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       <ul className="mx-auto flex max-w-md items-stretch justify-around">
         {items.map((item) => {

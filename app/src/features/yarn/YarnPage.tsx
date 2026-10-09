@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState, Skeleton } from '../../components/ui/Feedback';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 import { useRecords, useSession } from '../../db/hooks';
 import { yarnBalances, type YarnBalanceRow } from '../../domain/projections';
 import { can } from '../../domain/permissions';
@@ -90,7 +91,9 @@ export default function YarnPage() {
           </Card>
 
           <h2 className="mb-2 text-lg">{t('yarn.byHolder')}</h2>
-          <ul className="flex flex-col gap-3">
+
+          {/* Mobile (below lg): grouped-by-holder cards — unchanged phone layout. */}
+          <ul className="flex flex-col gap-3 lg:hidden">
             {byHolder.map((g) => {
               const oldest = Math.max(
                 ...g.rows.map((r) => daysSince(r.oldestIssueDay) ?? 0),
@@ -140,6 +143,42 @@ export default function YarnPage() {
               );
             })}
           </ul>
+
+          {/* Desktop/tablet (lg+): one flat table of every balance row. */}
+          <div className="hidden lg:block">
+            <ResponsiveTable
+              rows={rows}
+              rowKey={(r) => r.holderKey + '|' + r.shade + '|' + r.lot}
+              testid="yarn-table"
+              renderCard={() => null}
+              columns={[
+                { key: 'holder', header: t('col.yarn.holder'), cell: (r) => <span className="text-ink">{holderLabel(recs, r.holder)}</span> },
+                { key: 'shade', header: t('col.yarn.shade'), cell: (r) => r.shade },
+                { key: 'lot', header: t('col.yarn.lot'), cell: (r) => <span className="num text-muted">{r.lot}</span> },
+                {
+                  key: 'kg',
+                  header: t('col.yarn.kg'),
+                  align: 'right',
+                  cell: (r) => <span className="num font-semibold text-madder">{gramsToKgStr(r.grams)}</span>,
+                },
+                {
+                  key: 'oldest',
+                  header: t('col.yarn.oldest'),
+                  align: 'right',
+                  cell: (r) => {
+                    const d = daysSince(r.oldestIssueDay);
+                    if (d === undefined) return <span className="text-muted">—</span>;
+                    const stale = d > STALE_DAYS;
+                    return (
+                      <span className={cn('num', stale ? 'font-semibold text-saffron-ink' : 'text-muted')}>
+                        {t('yarn.oldestDays', { days: d })}
+                      </span>
+                    );
+                  },
+                },
+              ]}
+            />
+          </div>
         </>
       )}
     </section>

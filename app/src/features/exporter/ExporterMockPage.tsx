@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useT } from '../../i18n';
 import { cn } from '../../lib/utils';
 import { useRecords } from '../../db/hooks';
-import { listOrders, listPieces, loomBoard, formatDay } from '../../domain/projections';
+import { listOrders, listPieces, listLooms, loomBoard, formatDay } from '../../domain/projections';
 import { formatFtIn } from '../../domain/units';
 import { PhotoThumb } from '../../components/ui/PhotoThumb';
 import type { CheckinP, Rec } from '../../db/types';
@@ -47,7 +47,7 @@ export default function ExporterMockPage() {
         <span className="text-base text-muted">{t('exporter.title')}</span>
       </header>
 
-      <main className="mx-auto max-w-md px-4 py-6">
+      <main className="mx-auto max-w-md px-4 py-6 lg:max-w-5xl lg:px-6 lg:py-8">
         {!view ? (
           <div className="flex flex-col items-center gap-4 py-20 text-center">
             <Package aria-hidden="true" size={48} className="text-muted" />
@@ -55,8 +55,11 @@ export default function ExporterMockPage() {
           </div>
         ) : (
           <>
+            {/* Summary — stacks on phone; a tidy two-column card grid at lg so
+                the wide exporter page uses its width instead of one tall column. */}
+            <div className="lg:mb-6 lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
             {/* Order summary */}
-            <section className="mb-5 rounded-2xl border border-line bg-surface p-4 shadow-card">
+            <section className="mb-5 rounded-2xl border border-line bg-surface p-4 shadow-card lg:mb-0">
               <h1 className="num mb-3 text-3xl font-bold text-ink">{view.orderNo}</h1>
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-base">
                 <dt className="text-muted">{t('exporter.exporter')}</dt>
@@ -71,7 +74,7 @@ export default function ExporterMockPage() {
             </section>
 
             {/* Stats */}
-            <section className="mb-5 grid grid-cols-3 gap-3">
+            <section className="mb-5 grid grid-cols-3 gap-3 lg:mb-0">
               <div className="rounded-2xl border border-line bg-surface p-3 text-center shadow-card">
                 <div className="num text-2xl font-bold text-ink">{view.pieceCount}</div>
                 <div className="text-sm text-muted">{t('exporter.pieces')}</div>
@@ -87,7 +90,7 @@ export default function ExporterMockPage() {
             </section>
 
             {/* Avg % woven bar */}
-            <section className="mb-5 rounded-2xl border border-line bg-surface p-4 shadow-card">
+            <section className="mb-5 rounded-2xl border border-line bg-surface p-4 shadow-card lg:mb-0">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-base text-ink">{t('exporter.avgWoven')}</span>
                 <span className="num text-2xl font-bold text-indigo">{view.avgWoven}%</span>
@@ -98,7 +101,7 @@ export default function ExporterMockPage() {
             </section>
 
             {/* Board legend (live board source of truth) */}
-            <section className="mb-5 rounded-2xl border border-line bg-surface p-4 shadow-card" data-testid="board-legend">
+            <section className="mb-5 rounded-2xl border border-line bg-surface p-4 shadow-card lg:mb-0" data-testid="board-legend">
               <h2 className="mb-3 text-base font-medium text-ink">{t('home.board.title')}</h2>
               <div className="grid grid-cols-5 gap-2">
                 {view.legend.map((l) => {
@@ -116,19 +119,23 @@ export default function ExporterMockPage() {
               </div>
             </section>
 
-            {/* Est. dispatch (projected from weaving pace) */}
-            <section className="mb-5 flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 shadow-card">
+            {/* Est. dispatch (projected from weaving pace) — full width at lg */}
+            <section className="mb-5 flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 shadow-card lg:col-span-2 lg:mb-0">
               <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-full bg-saffron/20 text-saffron-ink">
                 <Truck size={22} />
               </span>
               <span className="flex-1 text-base text-ink">{t('exporter.estDispatch')}</span>
               <span className="text-xl font-bold text-ink" data-testid="est-dispatch">{formatDay(view.estDispatch, lang, 'medium')}</span>
             </section>
+            </div>
 
-            {/* Piece status list */}
+            {/* Piece status — phone: unchanged bordered list. lg+: a real table
+                with piece · status · loom · % woven bar · last check-in. */}
             <section className="mb-5">
               <h2 className="mb-2 text-base font-medium text-ink">{t('exporter.pieceStatus')}</h2>
-              <ul className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+
+              {/* Phone list — byte-identical to today. */}
+              <ul className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card lg:hidden">
                 {view.pieces.map((p) => (
                   <li key={p.pieceId} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0">
                     <span className="num flex-1 text-base font-medium text-ink">{p.pieceId}</span>
@@ -139,12 +146,51 @@ export default function ExporterMockPage() {
                   </li>
                 ))}
               </ul>
+
+              {/* Desktop/tablet table. */}
+              <div className="hidden overflow-x-auto rounded-2xl border border-line bg-surface shadow-card lg:block">
+                <table data-testid="data-table" className="w-full border-collapse text-base">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="border-b border-line px-4 py-3 text-left text-sm font-medium text-muted">{t('desktop.col.piece')}</th>
+                      <th scope="col" className="border-b border-line px-4 py-3 text-left text-sm font-medium text-muted">{t('desktop.col.status')}</th>
+                      <th scope="col" className="border-b border-line px-4 py-3 text-center text-sm font-medium text-muted">{t('desktop.col.loom')}</th>
+                      <th scope="col" className="border-b border-line px-4 py-3 text-left text-sm font-medium text-muted">{t('desktop.col.woven')}</th>
+                      <th scope="col" className="border-b border-line px-4 py-3 text-right text-sm font-medium text-muted">{t('desktop.col.lastCheckin')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {view.pieces.map((p) => (
+                      <tr key={p.pieceId} className="even:bg-bg/60">
+                        <td className="num h-11 border-b border-line px-4 py-2 align-middle font-medium text-ink">{p.pieceId}</td>
+                        <td className="h-11 border-b border-line px-4 py-2 align-middle">
+                          <span className={cn('inline-block rounded-full px-3 py-1 text-sm font-medium', statusTone[p.status])}>
+                            {t(`status.${p.status}`)}
+                          </span>
+                        </td>
+                        <td className="num h-11 border-b border-line px-4 py-2 text-center align-middle text-muted">{p.loomCode}</td>
+                        <td className="h-11 border-b border-line px-4 py-2 align-middle">
+                          <span className="flex items-center gap-2">
+                            <span className="h-2 w-24 overflow-hidden rounded-full bg-bg" aria-hidden="true">
+                              <span className="block h-full rounded-full bg-indigo" style={{ width: `${p.pctWoven}%` }} />
+                            </span>
+                            <span className="num w-10 text-right text-sm text-ink">{p.pctWoven}%</span>
+                          </span>
+                        </td>
+                        <td className="num h-11 border-b border-line px-4 py-2 text-right align-middle text-muted whitespace-nowrap">
+                          {p.lastCheckinAt ? formatDay(p.lastCheckinAt.slice(0, 10), lang, 'medium') : t('desktop.exporter.noCheckin')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             {/* Latest check-in photos (real, via PhotoThumb) */}
             <section className="mb-5">
               <h2 className="mb-2 text-base font-medium text-ink">{t('exporter.loomPhotos')}</h2>
-              <div className="grid grid-cols-3 gap-3" data-testid="checkin-photos">
+              <div className="grid grid-cols-3 gap-3 lg:max-w-2xl" data-testid="checkin-photos">
                 {view.photos.length > 0 ? (
                   view.photos.map((ph) => (
                     <PhotoThumb
@@ -190,7 +236,7 @@ interface ExporterView {
   avgWoven: number;
   estDispatch: string;
   legend: { key: string; count: number; cls: string; icon: LucideIcon }[];
-  pieces: { pieceId: string; status: PieceStatus; pctWoven: number }[];
+  pieces: { pieceId: string; status: PieceStatus; pctWoven: number; loomCode: string; lastCheckinAt?: string }[];
   photos: { key: string; pieceId: string; photoId: string }[];
 }
 
@@ -203,6 +249,10 @@ function buildView(recs: Rec[], orderId: string): ExporterView | null {
 
   const pieces = listPieces(recs).filter((p) => p.orderId === order.entityId);
   if (pieces.length === 0) return null;
+
+  // loomId → loom code, for the exporter pieces table "Loom" column.
+  const loomCode = new Map<string, string>();
+  for (const l of listLooms(recs)) loomCode.set(l.entityId, l.code);
 
   const finished = pieces.filter((p) => p.status === 'off_loom' || p.status === 'delivered').length;
   const onLoom = pieces.filter((p) => p.status === 'on_loom').length;
@@ -255,7 +305,13 @@ function buildView(recs: Rec[], orderId: string): ExporterView | null {
     legend,
     pieces: pieces
       .sort((a, b) => a.seq - b.seq)
-      .map((p) => ({ pieceId: p.pieceId, status: p.status, pctWoven: p.pctWoven })),
+      .map((p) => ({
+        pieceId: p.pieceId,
+        status: p.status,
+        pctWoven: p.pctWoven,
+        loomCode: p.loomId ? (loomCode.get(p.loomId) ?? '—') : '—',
+        lastCheckinAt: p.lastCheckinAt,
+      })),
     photos,
   };
 }

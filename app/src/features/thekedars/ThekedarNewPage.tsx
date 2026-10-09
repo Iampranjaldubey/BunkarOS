@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
-import { Button, Field, Input, PhotoCapture, useToast } from '../../components/ui';
+import { Button, Field, Input, PhotoCapture, FormGrid, useToast } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { addRecord } from '../../db/repo';
 import type { ThekedarP } from '../../db/types';
@@ -50,39 +50,45 @@ export default function ThekedarNewPage() {
     <section>
       <PageHeader title={t('route.thekedarNew')} back />
 
-      <PhotoCapture value={photoId} onChange={setPhotoId} label={t('thekedar.photo')} />
+      <FormGrid>
+        <div className="lg:col-span-2">
+          <PhotoCapture value={photoId} onChange={setPhotoId} label={t('thekedar.photo')} />
+        </div>
 
-      <Field label={t('thekedar.field.name')} required error={errName}>
-        {({ id, describedBy, invalid }) => (
-          <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={name} onChange={(e) => setName(e.target.value)} />
-        )}
-      </Field>
+        <Field label={t('thekedar.field.name')} required error={errName}>
+          {({ id, describedBy, invalid }) => (
+            <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={name} onChange={(e) => setName(e.target.value)} />
+          )}
+        </Field>
 
-      <Field label={t('thekedar.field.phone')} hint={t('common.optional')} error={errPhone}>
-        {({ id, describedBy, invalid }) => (
-          <Input
-            id={id}
-            type="tel"
-            inputMode="numeric"
-            aria-describedby={describedBy}
-            aria-invalid={invalid || undefined}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="98XXXXXXXX"
-          />
-        )}
-      </Field>
+        <Field label={t('thekedar.field.phone')} hint={t('common.optional')} error={errPhone}>
+          {({ id, describedBy, invalid }) => (
+            <Input
+              id={id}
+              type="tel"
+              inputMode="numeric"
+              aria-describedby={describedBy}
+              aria-invalid={invalid || undefined}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="98XXXXXXXX"
+            />
+          )}
+        </Field>
 
-      <Field label={t('thekedar.field.village')} required error={errVillage}>
-        {({ id, describedBy, invalid }) => (
-          <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={village} onChange={(e) => setVillage(e.target.value)} />
-        )}
-      </Field>
+        <Field label={t('thekedar.field.village')} required error={errVillage} className="lg:col-span-2">
+          {({ id, describedBy, invalid }) => (
+            <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={village} onChange={(e) => setVillage(e.target.value)} />
+          )}
+        </Field>
 
-      <Button size="xl" onClick={save} disabled={saving || (touched && !valid)}>
-        <Check aria-hidden="true" size={22} />
-        {t('thekedar.save')}
-      </Button>
+        <div className="lg:col-span-2">
+          <Button size="xl" onClick={save} disabled={saving || (touched && !valid)} className="lg:w-auto">
+            <Check aria-hidden="true" size={22} />
+            {t('thekedar.save')}
+          </Button>
+        </div>
+      </FormGrid>
     </section>
   );
 }

@@ -198,8 +198,9 @@ function LoomBoard({ recs }: { recs: Rec[] }) {
         })}
       </div>
 
-      {/* Colour tiles numbered by loom code */}
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+      {/* Colour tiles numbered by loom code. 8 per row at lg, 12 at xl so the
+          board fills the wide board card instead of staying phone-narrow. */}
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-8 xl:grid-cols-12">
         {filtered.map((b) => {
           const Icon = STATUS_ICON[b.status];
           return (
@@ -358,99 +359,123 @@ function OwnerHome({ recs }: { recs: Rec[] }) {
   const nowISO = new Date().toISOString();
   const d = useMemo(() => digest(recs, day, nowISO), [recs, day, nowISO]);
 
+  // Single DOM, two layouts. Below lg the sections flow in exactly today's
+  // order (plain block flow — no grid, phone untouched). At lg the sections are
+  // placed into a 3-column grid: the loom board fills the left 2/3 (main) and
+  // the summary/alerts/dues/digest rail stacks in the right 1/3 (aside), each
+  // section pinned to its own grid row so source order never shuffles the
+  // phone layout. `items-start` lets the aside rail sit at the top while the
+  // board grows; `auto-rows-min` keeps rows tight.
   return (
-    <>
-      {/* Today's key numbers */}
-      <Card className="mb-4">
-        <CardTitle>{t('home.today')}</CardTitle>
-        <div className="grid grid-cols-3 gap-3">
-          <StatTile label={t('home.stat.bazaars')} value={<span className="num">{d.bazaarCount}</span>} tone="info" />
-          <StatTile label={t('home.stat.cashPaid')} value={<Money paise={d.cashPaidPaise} flow="given" size="md" />} tone="given" />
-          <StatTile label={t('home.stat.woolOutside')} value={<span className="num">{gramsToKgStr(d.woolOutsideG)}</span>} tone="given" />
-        </div>
-      </Card>
+    <div className="lg:grid lg:grid-cols-3 lg:gap-x-6 lg:items-start lg:[grid-auto-rows:min-content]">
+      {/* Loom board — left 2/3 at lg (spans every aside row). */}
+      <div className="lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-7">
+        <LoomBoard recs={recs} />
+      </div>
 
-      <PwaInstallCard />
-
-      {/* Orders at risk (K1) — tap an order to open it */}
-      {d.ordersAtRisk.length > 0 && (
-        <Card className="mb-4 border-madder/30 bg-madder/5">
-          <CardTitle>
-            <span className="inline-flex items-center gap-2 text-madder">
-              <AlertTriangle aria-hidden="true" size={20} />
-              {t('home.risk.title')} ({d.ordersAtRisk.length})
-            </span>
-          </CardTitle>
-          <ul className="flex flex-col gap-2">
-            {d.ordersAtRisk.map((o) => (
-              <li key={o.orderId}>
-                <button
-                  type="button"
-                  data-testid="risk-order"
-                  onClick={() => navigate(`/orders/${o.orderId}`)}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-3 text-left shadow-card focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
-                >
-                  <span className="num text-lg font-bold text-ink">{o.orderNo}</span>
-                  <span className={cn(
-                    'rounded-full px-2.5 py-0.5 text-xs font-medium',
-                    o.reason === 'overdue' ? 'bg-madder/15 text-madder'
-                      : o.reason === 'due_soon' ? 'bg-saffron/20 text-saffron-ink'
-                        : 'bg-indigo/10 text-indigo',
-                  )}>
-                    {t(`risk.reason.${o.reason}`)}
-                  </span>
-                  <span className="flex-1 text-right text-sm text-muted">{t('risk.openPieces', { n: o.openPieces })}</span>
-                  <ChevronRight aria-hidden="true" className="text-muted" size={18} />
-                </button>
-              </li>
-            ))}
-          </ul>
+      {/* Today's key numbers — aside row 1 */}
+      <div className="lg:col-start-3 lg:row-start-1">
+        <Card className="mb-4">
+          <CardTitle>{t('home.today')}</CardTitle>
+          <div className="grid grid-cols-3 gap-3">
+            <StatTile label={t('home.stat.bazaars')} value={<span className="num">{d.bazaarCount}</span>} tone="info" />
+            <StatTile label={t('home.stat.cashPaid')} value={<Money paise={d.cashPaidPaise} flow="given" size="md" />} tone="given" />
+            <StatTile label={t('home.stat.woolOutside')} value={<span className="num">{gramsToKgStr(d.woolOutsideG)}</span>} tone="given" />
+          </div>
         </Card>
-      )}
+      </div>
 
-      {/* Warnings */}
-      {d.pendingSync > 0 && (
-        <div className="mb-3 flex items-center gap-2 rounded-2xl border border-saffron/40 bg-saffron/15 p-3 text-saffron-ink">
-          <RefreshCw aria-hidden="true" size={20} />
-          <span className="flex-1 text-base">{t('home.warn.pending', { n: d.pendingSync })}</span>
-        </div>
-      )}
-      {d.disputes > 0 && (
-        <button
-          type="button"
-          onClick={() => navigate('/audit')}
-          className="mb-3 flex w-full items-center gap-2 rounded-2xl border border-madder/30 bg-madder/10 p-3 text-left text-madder"
+      {/* PWA install hint — aside row 2 */}
+      <div className="lg:col-start-3 lg:row-start-2">
+        <PwaInstallCard />
+      </div>
+
+      {/* Orders at risk (K1) — aside row 3 */}
+      <div className="lg:col-start-3 lg:row-start-3">
+        {d.ordersAtRisk.length > 0 && (
+          <Card className="mb-4 border-madder/30 bg-madder/5">
+            <CardTitle>
+              <span className="inline-flex items-center gap-2 text-madder">
+                <AlertTriangle aria-hidden="true" size={20} />
+                {t('home.risk.title')} ({d.ordersAtRisk.length})
+              </span>
+            </CardTitle>
+            <ul className="flex flex-col gap-2">
+              {d.ordersAtRisk.map((o) => (
+                <li key={o.orderId}>
+                  <button
+                    type="button"
+                    data-testid="risk-order"
+                    onClick={() => navigate(`/orders/${o.orderId}`)}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-3 text-left shadow-card focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+                  >
+                    <span className="num text-lg font-bold text-ink">{o.orderNo}</span>
+                    <span className={cn(
+                      'rounded-full px-2.5 py-0.5 text-xs font-medium',
+                      o.reason === 'overdue' ? 'bg-madder/15 text-madder'
+                        : o.reason === 'due_soon' ? 'bg-saffron/20 text-saffron-ink'
+                          : 'bg-indigo/10 text-indigo',
+                    )}>
+                      {t(`risk.reason.${o.reason}`)}
+                    </span>
+                    <span className="flex-1 text-right text-sm text-muted">{t('risk.openPieces', { n: o.openPieces })}</span>
+                    <ChevronRight aria-hidden="true" className="text-muted" size={18} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </div>
+
+      {/* Warnings (pending sync / disputes) — aside row 4 */}
+      <div className="lg:col-start-3 lg:row-start-4">
+        {d.pendingSync > 0 && (
+          <div className="mb-3 flex items-center gap-2 rounded-2xl border border-saffron/40 bg-saffron/15 p-3 text-saffron-ink">
+            <RefreshCw aria-hidden="true" size={20} />
+            <span className="flex-1 text-base">{t('home.warn.pending', { n: d.pendingSync })}</span>
+          </div>
+        )}
+        {d.disputes > 0 && (
+          <button
+            type="button"
+            onClick={() => navigate('/audit')}
+            className="mb-3 flex w-full items-center gap-2 rounded-2xl border border-madder/30 bg-madder/10 p-3 text-left text-madder"
+          >
+            <MessageSquareWarning aria-hidden="true" size={20} />
+            <span className="flex-1 text-base">{t('home.warn.disputes', { n: d.disputes })}</span>
+            <ChevronRight aria-hidden="true" size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* SPEC-017: looms freeing up in the next 30 days (estimate) — aside row 5 */}
+      <div className="lg:col-start-3 lg:row-start-5">
+        <FreeSoonCard recs={recs} />
+      </div>
+
+      {/* SPEC-017: dues, material outside, today's staff entries — aside row 6 */}
+      <div className="lg:col-start-3 lg:row-start-6">
+        <DuesMaterialStaff recs={recs} />
+      </div>
+
+      {/* Digest card — aside row 7 */}
+      <div className="lg:col-start-3 lg:row-start-7">
+        <Link
+          to="/digest"
+          className="mb-4 flex items-center gap-3 rounded-2xl border border-indigo/20 bg-indigo/5 p-4 shadow-card focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
         >
-          <MessageSquareWarning aria-hidden="true" size={20} />
-          <span className="flex-1 text-base">{t('home.warn.disputes', { n: d.disputes })}</span>
-          <ChevronRight aria-hidden="true" size={18} />
-        </button>
-      )}
-
-      {/* Loom board */}
-      <LoomBoard recs={recs} />
-
-      {/* SPEC-017: looms freeing up in the next 30 days (estimate) */}
-      <FreeSoonCard recs={recs} />
-
-      {/* SPEC-017: dues (peshgi outstanding), material outside, today's staff entries */}
-      <DuesMaterialStaff recs={recs} />
-
-      {/* Digest card */}
-      <Link
-        to="/digest"
-        className="mb-4 flex items-center gap-3 rounded-2xl border border-indigo/20 bg-indigo/5 p-4 shadow-card focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
-      >
-        <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo/10 text-indigo">
-          <FileText size={24} />
-        </span>
-        <span className="flex-1">
-          <span className="block text-lg font-medium text-ink">{t('home.digest.title')}</span>
-          <span className="block text-sm text-muted">{t('home.digest.hint')}</span>
-        </span>
-        <ChevronRight aria-hidden="true" className="text-muted" />
-      </Link>
-    </>
+          <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo/10 text-indigo">
+            <FileText size={24} />
+          </span>
+          <span className="flex-1">
+            <span className="block text-lg font-medium text-ink">{t('home.digest.title')}</span>
+            <span className="block text-sm text-muted">{t('home.digest.hint')}</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="text-muted" />
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -483,7 +508,7 @@ function MunshiHome({ recs }: { recs: Rec[] }) {
       <PwaInstallCard />
       <Card className="mb-4">
         <CardTitle>{t('home.munshi.actions')}</CardTitle>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {MUNSHI_ACTIONS.map((a) => {
             const Icon = a.icon;
             return (
@@ -507,16 +532,38 @@ function MunshiHome({ recs }: { recs: Rec[] }) {
         {todayRecs.length === 0 ? (
           <EmptyState icon={<AlertTriangle size={36} />} title={t('home.munshi.noEntries')} hint={t('home.munshi.noEntriesHint')} />
         ) : (
-          <ul>
-            {todayRecs.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-2 border-b border-line py-3 text-base last:border-0">
-                <span className="text-ink">{t(`home.entry.${r.type}`)}</span>
-                <span className="num text-sm text-muted">
-                  {formatTime(r.at, lang)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* Phone: unchanged tight time-stamped list. */}
+            <ul className="lg:hidden">
+              {todayRecs.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-2 border-b border-line py-3 text-base last:border-0">
+                  <span className="text-ink">{t(`home.entry.${r.type}`)}</span>
+                  <span className="num text-sm text-muted">
+                    {formatTime(r.at, lang)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {/* lg+: a real two-column ledger table (entry · time). */}
+            <div className="hidden lg:block">
+              <table data-testid="munshi-today-table" className="w-full border-collapse text-base">
+                <thead>
+                  <tr>
+                    <th scope="col" className="border-b border-line px-3 py-2 text-left text-sm font-medium text-muted">{t('desktop.col.entry')}</th>
+                    <th scope="col" className="border-b border-line px-3 py-2 text-right text-sm font-medium text-muted">{t('desktop.col.time')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {todayRecs.map((r) => (
+                    <tr key={r.id} className="even:bg-bg/60">
+                      <td className="h-11 border-b border-line px-3 py-2 align-middle text-ink">{t(`home.entry.${r.type}`)}</td>
+                      <td className="num h-11 border-b border-line px-3 py-2 text-right align-middle text-muted whitespace-nowrap">{formatTime(r.at, lang)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
     </>
@@ -544,7 +591,7 @@ function ThekedarHome({ recs, userId }: { recs: Rec[]; userId: string }) {
 
   return (
     <>
-      <Button block size="xl" className="mb-4" onClick={() => navigate('/checkin/new')}>
+      <Button block size="xl" className="mb-4 lg:w-auto lg:min-w-64" onClick={() => navigate('/checkin/new')}>
         <MapPin aria-hidden="true" />{t('home.thekedar.checkin')}
       </Button>
 
@@ -553,12 +600,12 @@ function ThekedarHome({ recs, userId }: { recs: Rec[]; userId: string }) {
         {myLooms.length === 0 ? (
           <EmptyState icon={<Boxes size={40} />} title={t('home.thekedar.noLooms')} />
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-3 lg:gap-3">
             {myLooms.map(({ loom, pct, hasWork }) => (
               <li key={loom.entityId}>
                 <Link
                   to={`/looms/${loom.entityId}`}
-                  className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-card focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+                  className="flex h-full items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-card focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
                 >
                   <span className="num flex h-12 w-12 items-center justify-center rounded-xl bg-indigo/10 text-lg font-bold text-indigo">
                     {loom.code}

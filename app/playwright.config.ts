@@ -39,8 +39,25 @@ export default defineConfig({
   projects: [
     {
       name: 'mobile',
-      testIgnore: /05b-offline-shell\.spec\.ts/,
+      // Mobile runs everything EXCEPT the offline/service-worker spec and the
+      // desktop specs (2x-desktop-*.spec.ts) so the phone layout stays the
+      // sole thing exercised at 390x844.
+      testIgnore: [/05b-offline-shell\.spec\.ts/, /2\d-desktop.*\.spec\.ts/],
       use: { ...mobile, baseURL: 'http://localhost:5173' },
+    },
+    {
+      name: 'desktop',
+      // Desktop/tablet layout specs (SPEC-019). Real desktop viewport, DPR 1,
+      // no touch — against the same dev stack (:5173 + API :8787).
+      testMatch: /2\d-desktop.*\.spec\.ts/,
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 1440, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        baseURL: 'http://localhost:5173',
+      },
     },
     {
       name: 'offline',

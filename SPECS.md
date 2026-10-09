@@ -422,3 +422,30 @@ Contract details for all five specs: `docs/superpowers/specs/architecture.md` §
   1. Given the demo month after the live bazaar, Then sq ft includes 79.33, wage bill includes ₹3,014.54, wool short includes 0.613 kg and loss % = short ÷ used.
   2. Given a reversed bazaar, Then it is excluded from the month.
   3. Given the share button, Then the preview text lists every number on its own line in Hindi.
+
+---
+
+### SPEC-019 — Desktop & tablet layout (responsive)
+- **PRD feature IDs**: M1 (UI), K2/K1 (owner screens), A2 (exporter page) — layout only, no new data
+- **Status**: Approved (user chose option 1A on 2026-10-09: "complete the guide and then start on layout")
+- **Problem**: On a laptop the whole app is a 448 px phone column with a bottom bar, wasting the screen; owners in an office and exporters opening their status link use laptops.
+- **Users**: owner and munshi on a laptop/tablet; exporter (status page); weaver slip page stays phone-first.
+- **Scope — In**:
+  - ≥ 1024 px (`lg`): fixed **left side menu** (role-based, same destinations as the bottom bar + the "More" destinations), bottom bar hidden, header full width, content up to 1152 px wide.
+  - 768–1023 px (`md`): wider single column (≈ 720 px), bottom bar kept.
+  - Owner home in **two columns** (summary, alerts, free-soon, dues, staff | loom board); loom board **8 tiles per row at lg, 12 at xl**.
+  - Lists become **tables** at lg: orders, order pieces, looms, weavers (grid ≥ 4 per row or table), thekedars, yarn balances, roker entries, audit log, rates.
+  - Forms use a **two-column field grid** at lg; the bazaar wizard shows a **live summary panel** (area, tauli, wage, net, paid) beside the steps.
+  - Sheets open as **centered dialogs** at lg (bottom sheets on phones).
+  - Public pages: weaver slip centered (≤ 640 px); exporter page wider with a pieces table.
+- **Scope — Out**: new features or data; changes below 768 px.
+- **Rules**: Tailwind breakpoints only (`md`, `lg`, `xl`); no new npm packages; same tokens/contrast; every existing `data-testid` keeps working on both layouts.
+- **Acceptance criteria**:
+  1. Given a 1440×900 window, When the owner logs in, Then a side menu is visible, the bottom bar is hidden and the main content is ≥ 900 px wide.
+  2. Given the demo data at 1440 px, Then the loom board shows ≥ 8 tiles in its first row and the home page has two columns.
+  3. Given ≥ 1024 px, Then orders, roker entries, audit log and yarn balances render as tables with headers.
+  4. Given ≥ 1024 px, Then forms lay fields out in two columns and the bazaar wizard shows the live summary panel with the demo numbers (79.33 sq ft → paid ₹1,955).
+  5. Given ≥ 1024 px, Then a sheet (e.g. add user, share preview) opens centered, not as a bottom sheet.
+  6. Given 1024 / 1280 / 1440 / 1920 px widths, Then no page scrolls horizontally and click targets stay ≥ 44 px.
+  7. Given 390 px (phone), Then the layout is unchanged and all existing mobile e2e tests pass.
+  8. JS growth ≤ 10 KB gzip; perf budgets still met (cold LCP ≤ 2.5 s, CLS ≤ 0.1).

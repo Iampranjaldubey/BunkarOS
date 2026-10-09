@@ -1,15 +1,25 @@
 // Screenshot helper for agents: creates a fresh unit + owner, logs in, opens a route, saves PNG.
-// Usage: node scripts/shot.mjs <baseUrl> <path> <out.png> [--demo] [--lang=en]
+// Usage: node scripts/shot.mjs <baseUrl> <path> <out.png> [--demo] [--lang=en] [--viewport=WxH]
 //   e.g. node scripts/shot.mjs http://localhost:5174 /looms /tmp/looms.png --demo
+//        node scripts/shot.mjs http://localhost:5301 / /tmp/home.png --demo --viewport=1440x900
 // --demo clicks the "load demo data" control on /settings if present (data-testid="load-demo").
+// --viewport=WxH sets the browser viewport (default 390x844, phone, DPR 2).
+//   For widths > 800 we drop to deviceScaleFactor 1 and make each tile exactly
+//   the viewport height so every emitted PNG stays well under the 2000 px image
+//   limit (e.g. 1440x900 → 900 px tall tiles at DPR 1 = 900 device px).
 import { chromium } from '@playwright/test';
 
 const [base, path = '/', out = '/tmp/shot.png', ...flags] = process.argv.slice(2);
 const demo = flags.includes('--demo');
 const lang = (flags.find((f) => f.startsWith('--lang=')) ?? '--lang=hi').split('=')[1];
+const vpFlag = (flags.find((f) => f.startsWith('--viewport=')) ?? '--viewport=390x844').split('=')[1];
+const [vw, vh] = vpFlag.split('x').map((n) => parseInt(n, 10));
+const viewport = { width: vw || 390, height: vh || 844 };
+// Phones render at DPR 2; wide (desktop/tablet) shots use DPR 1 so tiles stay small.
+const deviceScaleFactor = viewport.width > 800 ? 1 : 2;
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+const page = await browser.newPage({ viewport, deviceScaleFactor });
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
@@ -47,15 +57,16 @@ if (demo) {
 }
 await page.goto(base + path);
 await page.waitForTimeout(700);
-// Image-safety: output is split into viewport tiles, each ≤ 1688 device px tall (< 2000 px limit
-// for multi-image review). Tiles are written as <out>-1.png, <out>-2.png … (max 4) and <out> = tile 1.
+// Image-safety: output is split into viewport tiles, each ≤ viewport.height device px
+// tall (DPR 1 for wide shots keeps this < 2000 px for multi-image review). Tiles are
+// written as <out>-1.png, <out>-2.png … (max 4) and <out> = tile 1.
 const outs = [];
 {
   const total = await page.evaluate(() => document.documentElement.scrollHeight);
-  const vh = 844;
-  const tiles = Math.min(4, Math.max(1, Math.ceil(total / vh)));
+  const tileH = viewport.height;
+  const tiles = Math.min(4, Math.max(1, Math.ceil(total / tileH)));
   for (let i = 0; i < tiles; i++) {
-    await page.evaluate((y) => window.scrollTo(0, y), i * vh);
+    await page.evaluate((y) => window.scrollTo(0, y), i * tileH);
     await page.waitForTimeout(150);
     const file = i === 0 ? out : out.replace(/\.png$/, `-${i + 1}.png`);
     await page.screenshot({ path: file });

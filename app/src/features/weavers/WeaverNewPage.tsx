@@ -8,6 +8,7 @@ import {
   Select,
   SegmentedControl,
   PhotoCapture,
+  FormGrid,
   useToast,
 } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -72,78 +73,84 @@ export default function WeaverNewPage() {
     <section>
       <PageHeader title={t('route.weaverNew')} back />
 
-      <PhotoCapture value={photoId} onChange={setPhotoId} label={t('weaver.photo')} required error={errPhoto} />
+      <FormGrid className="gap-y-0 lg:gap-y-4">
+        <div className="lg:col-span-2">
+          <PhotoCapture value={photoId} onChange={setPhotoId} label={t('weaver.photo')} required error={errPhoto} />
+        </div>
 
-      <Field label={t('weaver.field.name')} required error={errName}>
-        {({ id, describedBy, invalid }) => (
-          <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={name} onChange={(e) => setName(e.target.value)} />
-        )}
-      </Field>
+        <Field label={t('weaver.field.name')} required error={errName}>
+          {({ id, describedBy, invalid }) => (
+            <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={name} onChange={(e) => setName(e.target.value)} />
+          )}
+        </Field>
 
-      <Field label={t('weaver.field.father')} required error={errFather}>
-        {({ id, describedBy, invalid }) => (
-          <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={fatherName} onChange={(e) => setFatherName(e.target.value)} />
-        )}
-      </Field>
+        <Field label={t('weaver.field.father')} required error={errFather}>
+          {({ id, describedBy, invalid }) => (
+            <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={fatherName} onChange={(e) => setFatherName(e.target.value)} />
+          )}
+        </Field>
 
-      <Field label={t('weaver.field.village')} required error={errVillage}>
-        {({ id, describedBy, invalid }) => (
-          <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={village} onChange={(e) => setVillage(e.target.value)} />
-        )}
-      </Field>
+        <Field label={t('weaver.field.village')} required error={errVillage}>
+          {({ id, describedBy, invalid }) => (
+            <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={village} onChange={(e) => setVillage(e.target.value)} />
+          )}
+        </Field>
 
-      <Field label={t('weaver.field.phone')} hint={t('common.optional')} error={errPhone}>
-        {({ id, describedBy, invalid }) => (
-          <Input
-            id={id}
-            type="tel"
-            inputMode="numeric"
-            aria-describedby={describedBy}
-            aria-invalid={invalid || undefined}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="98XXXXXXXX"
+        <Field label={t('weaver.field.phone')} hint={t('common.optional')} error={errPhone}>
+          {({ id, describedBy, invalid }) => (
+            <Input
+              id={id}
+              type="tel"
+              inputMode="numeric"
+              aria-describedby={describedBy}
+              aria-invalid={invalid || undefined}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="98XXXXXXXX"
+            />
+          )}
+        </Field>
+
+        <div className="mb-4 lg:col-span-2">
+          <p className="mb-1.5 text-base font-medium text-ink">{t('weaver.field.phoneType')}</p>
+          <SegmentedControl<PhoneType>
+            label={t('weaver.field.phoneType')}
+            value={phoneType}
+            onChange={setPhoneType}
+            options={[
+              { value: 'smartphone', label: t('weaver.phoneType.smartphone') },
+              { value: 'keypad', label: t('weaver.phoneType.keypad') },
+              { value: 'shared', label: t('weaver.phoneType.shared') },
+            ]}
           />
-        )}
-      </Field>
+        </div>
 
-      <div className="mb-4">
-        <p className="mb-1.5 text-base font-medium text-ink">{t('weaver.field.phoneType')}</p>
-        <SegmentedControl<PhoneType>
-          label={t('weaver.field.phoneType')}
-          value={phoneType}
-          onChange={setPhoneType}
-          options={[
-            { value: 'smartphone', label: t('weaver.phoneType.smartphone') },
-            { value: 'keypad', label: t('weaver.phoneType.keypad') },
-            { value: 'shared', label: t('weaver.phoneType.shared') },
-          ]}
-        />
-      </div>
+        <Field label={t('weaver.field.upi')}>
+          {({ id, describedBy }) => (
+            <Input id={id} aria-describedby={describedBy} value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="name@bank" />
+          )}
+        </Field>
 
-      <Field label={t('weaver.field.upi')}>
-        {({ id, describedBy }) => (
-          <Input id={id} aria-describedby={describedBy} value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="name@bank" />
-        )}
-      </Field>
+        <Field label={t('weaver.field.loom')}>
+          {({ id, describedBy }) => (
+            <Select id={id} aria-describedby={describedBy} value={loomId} onChange={(e) => setLoomId(e.target.value)}>
+              <option value="">{t('weaver.field.loom.none')}</option>
+              {looms.map((l) => (
+                <option key={l.entityId} value={l.entityId}>
+                  {l.code} — {l.village}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
 
-      <Field label={t('weaver.field.loom')}>
-        {({ id, describedBy }) => (
-          <Select id={id} aria-describedby={describedBy} value={loomId} onChange={(e) => setLoomId(e.target.value)}>
-            <option value="">{t('weaver.field.loom.none')}</option>
-            {looms.map((l) => (
-              <option key={l.entityId} value={l.entityId}>
-                {l.code} — {l.village}
-              </option>
-            ))}
-          </Select>
-        )}
-      </Field>
-
-      <Button size="xl" onClick={save} disabled={saving || (touched && !valid)}>
-        <Check aria-hidden="true" size={22} />
-        {t('weaver.save')}
-      </Button>
+        <div className="lg:col-span-2">
+          <Button size="xl" onClick={save} disabled={saving || (touched && !valid)} className="lg:w-auto">
+            <Check aria-hidden="true" size={22} />
+            {t('weaver.save')}
+          </Button>
+        </div>
+      </FormGrid>
     </section>
   );
 }

@@ -130,7 +130,13 @@ export default function DigestPage() {
 
       <p className="mb-4 text-base text-muted">{t('digest.for', { day: formatDay(day, lang) })}</p>
 
-      {/* Work */}
+      {/* Single DOM, two layouts. Below lg the cards flow in today's order. At lg
+          the day summary (work · money · alerts · reminder · share) fills the
+          left column while the monthly summary sits in the right column, each
+          card pinned to its own grid row so the phone order never shuffles. */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-x-6 lg:items-start lg:[grid-auto-rows:min-content]">
+      {/* Work — col 1 row 1 */}
+      <div className="lg:col-start-1 lg:row-start-1">
       <Card className="mb-4">
         <CardTitle>{t('digest.section.work')}</CardTitle>
         <ul>
@@ -140,8 +146,10 @@ export default function DigestPage() {
           <DigestRow icon={PackageOpen} label={t('digest.woolOutside')} value={`${gramsToKgStr(d.woolOutsideG)} ${t('common.kg')}`} tone="given" />
         </ul>
       </Card>
+      </div>
 
-      {/* Money */}
+      {/* Money — col 1 row 2 */}
+      <div className="lg:col-start-1 lg:row-start-2">
       <Card className="mb-4">
         <CardTitle>{t('digest.section.money')}</CardTitle>
         <ul>
@@ -150,8 +158,10 @@ export default function DigestPage() {
           <DigestRow icon={HandCoins} label={t('digest.peshgiGiven')} value={formatINR(d.peshgiGivenPaise)} tone="given" />
         </ul>
       </Card>
+      </div>
 
-      {/* Monthly summary (SPEC-018) — इस महीने */}
+      {/* Monthly summary (SPEC-018) — col 2, spans the day column's rows */}
+      <div className="lg:col-start-2 lg:row-start-1 lg:row-span-5">
       <Card className="mb-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <CardTitle className="mb-0 flex items-center gap-2">
@@ -224,8 +234,10 @@ export default function DigestPage() {
           {monthShareText}
         </p>
       </Card>
+      </div>
 
-      {/* Alerts */}
+      {/* Alerts — col 1 row 3 */}
+      <div className="lg:col-start-1 lg:row-start-3">
       {hasAlerts && (
         <Card className="mb-4">
           <CardTitle>{t('digest.section.alerts')}</CardTitle>
@@ -289,8 +301,10 @@ export default function DigestPage() {
           )}
         </Card>
       )}
+      </div>
 
-      {/* 8 PM reminder */}
+      {/* 8 PM reminder — col 1 row 4 */}
+      <div className="lg:col-start-1 lg:row-start-4">
       <Card className="mb-4 flex items-center gap-3">
         <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-full bg-saffron/20 text-saffron-ink">
           <Bell size={20} />
@@ -318,8 +332,10 @@ export default function DigestPage() {
           </span>
         </button>
       </Card>
+      </div>
 
-      {/* Share */}
+      {/* Share (today's digest) — col 1 row 5 */}
+      <div className="lg:col-start-1 lg:row-start-5">
       {ownerPhone ? (
         <Button block size="xl" data-testid="digest-share" onClick={() => setShareOpen(true)}>
           <Send aria-hidden="true" />
@@ -334,6 +350,8 @@ export default function DigestPage() {
       <p className="mt-4 whitespace-pre-wrap rounded-2xl border border-line bg-surface p-3 text-sm text-muted">
         {shareText}
       </p>
+      </div>
+      </div>
 
       <PreviewShareSheet
         open={shareOpen}

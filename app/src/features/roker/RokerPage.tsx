@@ -12,6 +12,8 @@ import { Select, Textarea } from '../../components/ui/Input';
 import { MoneyInput } from '../../components/ui/NumberInputs';
 import { PhotoCapture } from '../../components/ui/PhotoCapture';
 import { EmptyState } from '../../components/ui/Feedback';
+import { StatTile } from '../../components/ui/Feedback';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 import { useToast } from '../../components/ui/Toast';
 import { useRecords, useSession } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
@@ -198,55 +200,114 @@ export default function RokerPage() {
         </Button>
       </div>
 
-      {/* Opening cash */}
-      <Card className="mb-4 flex items-center justify-between">
-        <span className="text-base text-muted">{t('roker.opening')}</span>
-        <Money paise={data.openingCash} size="lg" />
-      </Card>
+      {/* Mobile (below lg): opening, entries list, totals grid, closing — unchanged. */}
+      <div className="lg:hidden">
+        {/* Opening cash */}
+        <Card className="mb-4 flex items-center justify-between">
+          <span className="text-base text-muted">{t('roker.opening')}</span>
+          <Money paise={data.openingCash} size="lg" />
+        </Card>
 
-      {/* Entries */}
-      <Card className="mb-4">
-        <h2 className="mb-1 text-lg">{t('roker.entries')}</h2>
-        {data.entries.length === 0 ? (
-          <EmptyState
-            icon={<Wallet size={40} />}
-            title={t('roker.empty')}
-            hint={canAdd ? t('roker.emptyHint') : undefined}
-          />
-        ) : (
-          <ul>
-            {data.entries.map((e, i) => (
-              <EntryRow key={e.recId + i} entry={e} label={entryLabel(e)} />
-            ))}
-          </ul>
-        )}
-      </Card>
+        {/* Entries */}
+        <Card className="mb-4">
+          <h2 className="mb-1 text-lg">{t('roker.entries')}</h2>
+          {data.entries.length === 0 ? (
+            <EmptyState
+              icon={<Wallet size={40} />}
+              title={t('roker.empty')}
+              hint={canAdd ? t('roker.emptyHint') : undefined}
+            />
+          ) : (
+            <ul>
+              {data.entries.map((e, i) => (
+                <EntryRow key={e.recId + i} entry={e} label={entryLabel(e)} />
+              ))}
+            </ul>
+          )}
+        </Card>
 
-      {/* Totals */}
-      <div className="mb-4 grid grid-cols-2 gap-3">
-        <Card className="bg-ok/5">
-          <div className="text-sm text-muted">{t('roker.cashIn')}</div>
-          <Money paise={data.cashIn} flow="received" size="md" />
-        </Card>
-        <Card className="bg-madder/5">
-          <div className="text-sm text-muted">{t('roker.cashOut')}</div>
-          <Money paise={data.cashOut} flow="given" size="md" />
-        </Card>
-        <Card className="bg-ok/5">
-          <div className="text-sm text-muted">{t('roker.upiIn')}</div>
-          <Money paise={data.upiIn} flow="received" size="md" />
-        </Card>
-        <Card className="bg-madder/5">
-          <div className="text-sm text-muted">{t('roker.upiOut')}</div>
-          <Money paise={data.upiOut} flow="given" size="md" />
+        {/* Totals */}
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <Card className="bg-ok/5">
+            <div className="text-sm text-muted">{t('roker.cashIn')}</div>
+            <Money paise={data.cashIn} flow="received" size="md" />
+          </Card>
+          <Card className="bg-madder/5">
+            <div className="text-sm text-muted">{t('roker.cashOut')}</div>
+            <Money paise={data.cashOut} flow="given" size="md" />
+          </Card>
+          <Card className="bg-ok/5">
+            <div className="text-sm text-muted">{t('roker.upiIn')}</div>
+            <Money paise={data.upiIn} flow="received" size="md" />
+          </Card>
+          <Card className="bg-madder/5">
+            <div className="text-sm text-muted">{t('roker.upiOut')}</div>
+            <Money paise={data.upiOut} flow="given" size="md" />
+          </Card>
+        </div>
+
+        {/* Closing cash — big */}
+        <Card className="mb-6 border-indigo/30 bg-indigo/5 text-center" data-testid="roker-closing">
+          <div className="mb-1 text-base text-muted">{t('roker.closing')}</div>
+          <Money paise={data.closingCash} size="xl" className="text-indigo" />
         </Card>
       </div>
 
-      {/* Closing cash — big */}
-      <Card className="mb-6 border-indigo/30 bg-indigo/5 text-center" data-testid="roker-closing">
-        <div className="mb-1 text-base text-muted">{t('roker.closing')}</div>
-        <Money paise={data.closingCash} size="xl" className="text-indigo" />
-      </Card>
+      {/* Desktop/tablet (lg+): StatTiles row above a real entries table. */}
+      <div className="hidden lg:block">
+        <div className="mb-5 grid grid-cols-4 gap-4">
+          <StatTile tone="neutral" label={t('roker.stat.opening')} value={<Money paise={data.openingCash} size="md" />} />
+          <StatTile tone="received" label={t('roker.stat.in')} value={<Money paise={data.cashIn + data.upiIn} flow="received" size="md" />} />
+          <StatTile tone="given" label={t('roker.stat.out')} value={<Money paise={data.cashOut + data.upiOut} flow="given" size="md" />} />
+          <StatTile tone="info" label={t('roker.stat.closing')} value={<Money paise={data.closingCash} size="md" className="text-indigo" />} />
+        </div>
+
+        <ResponsiveTable
+          rows={data.entries}
+          rowKey={(e) => e.recId + ':' + e.dir + ':' + e.mode + ':' + (e.kind ?? '')}
+          testid="roker-table"
+          empty={<EmptyState icon={<Wallet size={40} />} title={t('roker.empty')} hint={canAdd ? t('roker.emptyHint') : undefined} />}
+          renderCard={() => null}
+          columns={[
+            {
+              key: 'label',
+              header: t('col.roker.label'),
+              cell: (e) => (
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-ink">{entryLabel(e)}</span>
+                  {e.auto && <Pill tone="info">{t('roker.auto')}</Pill>}
+                  {e.kind === 'adjusted' && <Pill tone="neutral">{t('roker.adjusted')}</Pill>}
+                </span>
+              ),
+            },
+            { key: 'mode', header: t('col.roker.mode'), cell: (e) => <span className="text-muted">{t(`roker.mode.${e.mode}`)}</span> },
+            {
+              key: 'in',
+              header: t('col.roker.in'),
+              align: 'right',
+              cell: (e) =>
+                e.kind !== 'adjusted' && e.dir === 'in' ? (
+                  <Money paise={e.amountPaise} flow="received" size="md" />
+                ) : e.kind === 'adjusted' ? (
+                  <Money paise={e.amountPaise} flow="neutral" size="md" />
+                ) : (
+                  <span className="text-muted">—</span>
+                ),
+            },
+            {
+              key: 'out',
+              header: t('col.roker.out'),
+              align: 'right',
+              cell: (e) =>
+                e.kind !== 'adjusted' && e.dir === 'out' ? (
+                  <Money paise={e.amountPaise} flow="given" size="md" />
+                ) : (
+                  <span className="text-muted">—</span>
+                ),
+            },
+          ]}
+        />
+      </div>
 
       {canAdd && (
         <Button block size="xl" data-testid="roker-add" onClick={() => { reset(); setOpen(true); }}>

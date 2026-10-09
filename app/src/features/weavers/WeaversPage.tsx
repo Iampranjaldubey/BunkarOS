@@ -50,7 +50,7 @@ export default function WeaversPage() {
       />
 
       {weavers.length > 0 && (
-        <div className="relative mb-4">
+        <div className="relative mb-4 lg:max-w-sm">
           <Search aria-hidden="true" size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
           <Input
             type="search"
@@ -64,7 +64,7 @@ export default function WeaversPage() {
       )}
 
       {!ready ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-5">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-44 w-full" />
           ))}
@@ -86,7 +86,7 @@ export default function WeaversPage() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={<Search size={40} />} title={t('common.empty')} />
       ) : (
-        <ul className="grid grid-cols-2 gap-3">
+        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-5">
           {filtered.map((w) => {
             const bal = peshgiBalance(recs, 'weaver', w.entityId);
             const code = loomCode(w.loomId);

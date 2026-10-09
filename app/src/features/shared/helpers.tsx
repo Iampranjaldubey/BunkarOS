@@ -86,11 +86,17 @@ export function Stepper({ step, total }: { step: number; total: number }) {
  * Sticky primary-action bar that sits ABOVE the global bottom nav (which is
  * fixed at bottom-0, ~64px tall). Using `sticky` keeps it in the page flow so
  * it never overlaps the nav, and it stays reachable while scrolling.
+ *
+ * At lg+ the bottom nav is hidden and the page is a real desktop layout, so the
+ * bar stops being a floating phone-style strip: it stays in flow with no
+ * sticky offset, no negative inset, and the inner content is left-aligned to
+ * the form width (not centred at the phone `max-w-md`). Below lg nothing
+ * changes.
  */
 export function ActionBar({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-20 z-20 mt-6 -mx-4 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur">
-      <div className="mx-auto max-w-md">{children}</div>
+    <div className="sticky bottom-20 z-20 mt-6 -mx-4 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur lg:static lg:bottom-auto lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
+      <div className="mx-auto max-w-md lg:mx-0 lg:max-w-sm">{children}</div>
     </div>
   );
 }

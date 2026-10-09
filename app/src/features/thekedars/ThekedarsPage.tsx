@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HardHat, Plus, Search, Grid3x3, PackageOpen } from 'lucide-react';
-import { Button, Card, EmptyState, Input, Pill, PhotoThumb, Skeleton, BigNumber } from '../../components/ui';
+import { Button, Card, EmptyState, Input, Pill, PhotoThumb, Skeleton, BigNumber, ResponsiveTable } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useRecords, useSession } from '../../db/hooks';
 import { listThekedars, listLooms, yarnBalances } from '../../domain/projections';
@@ -44,7 +44,7 @@ export default function ThekedarsPage() {
       />
 
       {thekedars.length > 0 && (
-        <div className="relative mb-4">
+        <div className="relative mb-4 lg:max-w-sm">
           <Search aria-hidden="true" size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
           <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('thekedar.search')} aria-label={t('thekedar.search')} className="pl-11" />
         </div>
@@ -65,60 +65,107 @@ export default function ThekedarsPage() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={<Search size={40} />} title={t('common.empty')} />
       ) : (
-        <ul className="space-y-4">
-          {filtered.map((th) => {
+        <ResponsiveTable
+          rows={filtered}
+          rowKey={(th) => th.entityId}
+          testid="thekedars-table"
+          renderCard={(th) => {
             const thLooms = looms.filter((l) => l.thekedarId === th.entityId);
             const wool = balances.filter((b) => b.holder.kind === 'thekedar' && b.holder.thekedarId === th.entityId && b.grams !== 0);
             return (
-              <li key={th.entityId}>
-                <Card data-testid="thekedar-row">
-                  <div className="flex items-center gap-3">
-                    <PhotoThumb id={th.photoId} alt={th.name} size={56} initials={th.name} className="rounded-full" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-lg font-bold text-ink">{th.name}</div>
-                      <div className="text-sm text-muted">{th.village}{th.phone ? ` · ${th.phone}` : ''}</div>
-                    </div>
+              <Card data-testid="thekedar-row">
+                <div className="flex items-center gap-3">
+                  <PhotoThumb id={th.photoId} alt={th.name} size={56} initials={th.name} className="rounded-full" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-lg font-bold text-ink">{th.name}</div>
+                    <div className="text-sm text-muted">{th.village}{th.phone ? ` · ${th.phone}` : ''}</div>
                   </div>
+                </div>
 
-                  <div className="mt-3 border-t border-line pt-3">
-                    <div className="mb-1 flex items-center gap-2 text-sm text-muted">
-                      <Grid3x3 aria-hidden="true" size={16} />
-                      {t('thekedar.looms')}
-                    </div>
-                    {thLooms.length === 0 ? (
-                      <p className="text-sm text-muted">{t('thekedar.noLooms')}</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {thLooms.map((l) => (
-                          <Pill key={l.entityId} tone="info">{l.code}</Pill>
-                        ))}
-                      </div>
-                    )}
+                <div className="mt-3 border-t border-line pt-3">
+                  <div className="mb-1 flex items-center gap-2 text-sm text-muted">
+                    <Grid3x3 aria-hidden="true" size={16} />
+                    {t('thekedar.looms')}
                   </div>
+                  {thLooms.length === 0 ? (
+                    <p className="text-sm text-muted">{t('thekedar.noLooms')}</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {thLooms.map((l) => (
+                        <Pill key={l.entityId} tone="info">{l.code}</Pill>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                  <div className="mt-3 border-t border-line pt-3">
-                    <div className="mb-1 flex items-center gap-2 text-sm text-muted">
-                      <PackageOpen aria-hidden="true" size={16} />
-                      {t('thekedar.wool')}
-                    </div>
-                    {wool.length === 0 ? (
-                      <p className="text-sm text-muted">{t('thekedar.noWool')}</p>
-                    ) : (
-                      <ul className="space-y-1.5">
-                        {wool.map((b) => (
-                          <li key={`${b.shade}|${b.lot}`} className="flex items-center justify-between">
-                            <span className="text-sm text-ink">{b.shade} · {b.lot}</span>
-                            <BigNumber value={gramsToKgStr(b.grams)} unit={t('common.kg')} className="[&_*]:text-xl" />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                <div className="mt-3 border-t border-line pt-3">
+                  <div className="mb-1 flex items-center gap-2 text-sm text-muted">
+                    <PackageOpen aria-hidden="true" size={16} />
+                    {t('thekedar.wool')}
                   </div>
-                </Card>
-              </li>
+                  {wool.length === 0 ? (
+                    <p className="text-sm text-muted">{t('thekedar.noWool')}</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {wool.map((b) => (
+                        <li key={`${b.shade}|${b.lot}`} className="flex items-center justify-between">
+                          <span className="text-sm text-ink">{b.shade} · {b.lot}</span>
+                          <BigNumber value={gramsToKgStr(b.grams)} unit={t('common.kg')} className="[&_*]:text-xl" />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </Card>
             );
-          })}
-        </ul>
+          }}
+          columns={[
+            {
+              key: 'name',
+              header: t('col.thekedar.name'),
+              cell: (th) => (
+                <div className="flex items-center gap-3">
+                  <PhotoThumb id={th.photoId} alt={th.name} size={36} initials={th.name} className="rounded-full" />
+                  <div className="min-w-0">
+                    <div className="font-bold text-ink">{th.name}</div>
+                    {th.phone && <div className="num text-sm text-muted">{th.phone}</div>}
+                  </div>
+                </div>
+              ),
+            },
+            { key: 'village', header: t('col.thekedar.village'), cell: (th) => <span className="text-muted">{th.village}</span> },
+            {
+              key: 'looms',
+              header: t('col.thekedar.looms'),
+              cell: (th) => {
+                const thLooms = looms.filter((l) => l.thekedarId === th.entityId);
+                return thLooms.length === 0 ? (
+                  <span className="text-muted">—</span>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {thLooms.map((l) => (
+                      <Pill key={l.entityId} tone="info">{l.code}</Pill>
+                    ))}
+                  </div>
+                );
+              },
+            },
+            {
+              key: 'wool',
+              header: t('col.thekedar.wool'),
+              align: 'right',
+              cell: (th) => {
+                const wool = balances.filter((b) => b.holder.kind === 'thekedar' && b.holder.thekedarId === th.entityId && b.grams !== 0);
+                const totalG = wool.reduce((s, b) => s + b.grams, 0);
+                return totalG === 0 ? (
+                  <span className="text-muted">—</span>
+                ) : (
+                  <span className="num font-semibold text-madder">{gramsToKgStr(totalG)} {t('common.kg')}</span>
+                );
+              },
+            },
+          ]}
+        />
       )}
     </section>
   );

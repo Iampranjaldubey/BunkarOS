@@ -6,6 +6,7 @@ import { Field } from '../../components/ui/Field';
 import { Select } from '../../components/ui/Input';
 import { Sheet } from '../../components/ui/Sheet';
 import { EmptyState } from '../../components/ui/Feedback';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 import { useRecords } from '../../db/hooks';
 import { auditLog, listUsers, formatDay, formatTime } from '../../domain/projections';
 import type { AuditEntry } from '../../domain/projections';
@@ -91,7 +92,7 @@ export default function AuditPage() {
       <p className="mb-4 text-base text-muted">{t('audit.hint')}</p>
 
       {/* Filters */}
-      <div className="mb-4 grid grid-cols-2 gap-3">
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:max-w-xl">
         <Field label={t('audit.filterType')} className="mb-0">
           {({ id }) => (
             <Select id={id} value={typeF} onChange={(e) => setTypeF(e.target.value)}>
@@ -117,31 +118,56 @@ export default function AuditPage() {
       {filtered.length === 0 ? (
         <EmptyState icon={<History size={40} />} title={t('audit.empty')} />
       ) : (
-        <ul className="flex flex-col gap-2">
-          {filtered.map((e) => (
-            <li key={e.recId}>
-              <button
-                type="button"
-                data-testid="audit-row"
-                onClick={() => setSelected(e)}
-                className="w-full rounded-2xl border border-line bg-surface p-3 text-left shadow-card focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="flex-1 truncate text-base font-medium text-ink">{typeLabel(e.type)}</span>
+        <ResponsiveTable
+          rows={filtered}
+          rowKey={(e) => e.recId}
+          testid="audit-table"
+          onRowClick={(e) => setSelected(e)}
+          renderCard={(e) => (
+            <button
+              type="button"
+              data-testid="audit-row"
+              onClick={() => setSelected(e)}
+              className="w-full rounded-2xl border border-line bg-surface p-3 text-left shadow-card focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex-1 truncate text-base font-medium text-ink">{typeLabel(e.type)}</span>
+                {e.reversed && <Pill tone="warn">{t('audit.reversed')}</Pill>}
+                {e.rejected && <Pill tone="danger">{t('audit.rejected')}</Pill>}
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+                <span className="inline-flex items-center gap-1">
+                  <UserIcon aria-hidden="true" size={14} />
+                  {byName(e.by)} · {t(`role.${e.role}`) !== `role.${e.role}` ? t(`role.${e.role}`) : e.role}
+                </span>
+                <span className="num">{fmtStamp(e.at, lang)}</span>
+              </div>
+            </button>
+          )}
+          columns={[
+            { key: 'when', header: t('col.audit.when'), cell: (e) => <span className="num whitespace-nowrap text-muted">{fmtStamp(e.at, lang)}</span> },
+            { key: 'who', header: t('col.audit.who'), cell: (e) => <span className="text-ink">{byName(e.by)}</span> },
+            { key: 'role', header: t('col.audit.role'), cell: (e) => <span className="text-muted">{t(`role.${e.role}`) !== `role.${e.role}` ? t(`role.${e.role}`) : e.role}</span> },
+            { key: 'device', header: t('col.audit.device'), cell: (e) => <span className="num text-muted">{e.device.slice(0, 8)}</span> },
+            { key: 'type', header: t('col.audit.type'), cell: (e) => <span className="font-medium text-ink">{typeLabel(e.type)}</span> },
+            {
+              key: 'summary',
+              header: t('col.audit.summary'),
+              cell: (e) => <span className="text-muted">{e.reversalReason ?? e.rejectReason ?? '—'}</span>,
+            },
+            {
+              key: 'flags',
+              header: t('col.audit.flags'),
+              align: 'right',
+              cell: (e) => (
+                <span className="inline-flex gap-1">
                   {e.reversed && <Pill tone="warn">{t('audit.reversed')}</Pill>}
                   {e.rejected && <Pill tone="danger">{t('audit.rejected')}</Pill>}
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-                  <span className="inline-flex items-center gap-1">
-                    <UserIcon aria-hidden="true" size={14} />
-                    {byName(e.by)} · {t(`role.${e.role}`) !== `role.${e.role}` ? t(`role.${e.role}`) : e.role}
-                  </span>
-                  <span className="num">{fmtStamp(e.at, lang)}</span>
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
+                </span>
+              ),
+            },
+          ]}
+        />
       )}
 
       {/* Detail sheet */}

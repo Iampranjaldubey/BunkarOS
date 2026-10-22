@@ -41,7 +41,7 @@ export default function AdminUnitsPage() {
       {state === 'error' && <p role="alert" className="mb-3 text-given">Could not load units.</p>}
       {rows.length === 0 && state === 'ok' ? <EmptyState icon={<Building2 size={40} />} title="No units yet" hint="Units appear here as soon as an owner creates one in the app." /> : (
         <Card className="overflow-x-auto p-0">
-          <table className="w-full text-sm" data-testid="admin-units">
+          <table className="admin-table w-full text-sm" data-testid="admin-units">
             <thead><tr className="text-left text-muted"><th className="px-4 py-2 font-medium">Unit</th><th className="px-2 py-2 font-medium">Owner</th><th className="px-2 py-2 font-medium">Shop code</th><th className="px-2 py-2 text-right font-medium">Logins</th><th className="px-2 py-2 text-right font-medium">Workers</th><th className="px-2 py-2 text-right font-medium">Entries / days (month)</th><th className="px-2 py-2 font-medium">Last activity</th><th className="px-2 py-2 font-medium">Created</th></tr></thead>
             <tbody>
               {rows.map((u) => (

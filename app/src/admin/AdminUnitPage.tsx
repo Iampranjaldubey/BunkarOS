@@ -60,7 +60,7 @@ export default function AdminUnitPage() {
     <AdminShell title={data.unit.name}>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div><h1 className="text-2xl">{data.unit.name}</h1><p className="num text-sm text-muted">Shop code {data.unit.shortCode ?? '—'} · unit id {data.unit.unitId} · {recs.length} records</p></div>
-        <MonthPicker month={month} onChange={setMonth} />
+        <MonthPicker month={month} onChange={setMonth} lang="en" />
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6" data-testid="admin-overview">
@@ -75,12 +75,12 @@ export default function AdminUnitPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardTitle>Logins</CardTitle>
-          <table className="w-full text-sm"><tbody>{users.map((u) => <tr key={u.entityId} className="border-t border-line"><td className="py-1.5 font-medium">{u.name}</td><td className="py-1.5"><Badge tone={u.role === 'owner' ? 'info' : 'neutral'}>{u.role}</Badge></td><td className="num py-1.5 text-muted">{u.phone}</td><td className="py-1.5 text-right">{u.active ? <Badge tone="received">active</Badge> : <Badge tone="neutral">inactive</Badge>}</td></tr>)}</tbody></table>
+          <table className="admin-table w-full text-sm"><tbody>{users.map((u) => <tr key={u.entityId} className="border-t border-line"><td className="py-1.5 font-medium">{u.name}</td><td className="py-1.5"><Badge tone={u.role === 'owner' ? 'info' : 'neutral'}>{u.role}</Badge></td><td className="num py-1.5 text-muted">{u.phone}</td><td className="py-1.5 text-right">{u.active ? <Badge tone="received">active</Badge> : <Badge tone="neutral">inactive</Badge>}</td></tr>)}</tbody></table>
         </Card>
         <Card data-testid="admin-usage">
           <CardTitle>Usage · {formatMonth(month, 'en')}</CardTitle>
           <p className="mb-2 text-sm text-muted">{r.usage.workingDaysSoFar} working days so far · owner opened the app {r.usage.ownerOpens}×</p>
-          <table className="w-full text-sm"><thead><tr className="text-left text-muted"><th className="py-1 font-medium">User</th><th className="py-1 text-right font-medium">Entries</th><th className="py-1 text-right font-medium">Days</th><th className="py-1 text-right font-medium">Per working day</th></tr></thead>
+          <table className="admin-table w-full text-sm"><thead><tr className="text-left text-muted"><th className="py-1 font-medium">User</th><th className="py-1 text-right font-medium">Entries</th><th className="py-1 text-right font-medium">Days</th><th className="py-1 text-right font-medium">Per working day</th></tr></thead>
             <tbody>{r.usage.byUser.map((u) => <tr key={u.name} className="border-t border-line"><td className="py-1.5">{u.name}</td><td className="num py-1.5 text-right">{u.entries}</td><td className="num py-1.5 text-right">{u.days}</td><td className="num py-1.5 text-right">{r.usage.workingDaysSoFar ? (u.entries / r.usage.workingDaysSoFar).toFixed(1) : '0'}</td></tr>)}</tbody></table>
         </Card>
       </div>
@@ -88,7 +88,7 @@ export default function AdminUnitPage() {
       <Card className="mt-6 overflow-x-auto">
         <CardTitle>Workers</CardTitle>
         {workers.length === 0 ? <p className="text-muted">No workers.</p> : (
-          <table className="w-full text-sm" data-testid="admin-workers-table">
+          <table className="admin-table w-full text-sm" data-testid="admin-workers-table">
             <thead><tr className="text-left text-muted"><th className="py-1 font-medium">Name</th><th className="py-1 font-medium">Job</th><th className="py-1 font-medium">Pay</th><th className="py-1 text-right font-medium">Rate</th><th className="py-1 text-right font-medium">OT/h</th><th className="py-1 font-medium">Joined</th><th className="py-1 font-medium">Phone</th><th className="py-1 font-medium">Worker code</th><th className="py-1 text-right font-medium">Advance due</th><th className="py-1 text-right font-medium">P/H/A ({month})</th></tr></thead>
             <tbody>{workers.map((w) => { const a = r.attendance.find((x) => x.worker.entityId === w.entityId); return (
               <tr key={w.entityId} className="border-t border-line odd:bg-surface-2/40">
@@ -105,7 +105,7 @@ export default function AdminUnitPage() {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card className="overflow-x-auto">
           <CardTitle>Wage sheet · {formatMonth(month, 'en')}</CardTitle>
-          <table className="w-full text-sm" data-testid="admin-wages">
+          <table className="admin-table w-full text-sm" data-testid="admin-wages">
             <thead><tr className="text-left text-muted"><th className="py-1 font-medium">Worker</th><th className="py-1 text-right font-medium">Gross</th><th className="py-1 text-right font-medium">Advance</th><th className="py-1 text-right font-medium">Net</th><th className="py-1 font-medium"></th></tr></thead>
             <tbody>{r.wages.map((row) => { const p = row.payment?.payload; return <tr key={row.worker.entityId} className="border-t border-line"><td className="py-1.5">{row.worker.name}</td><td className="num py-1.5 text-right">{formatINR((p?.grossPaise ?? row.settlement.grossPaise) + (p?.otPaise ?? row.settlement.otPaise))}</td><td className="num py-1.5 text-right text-given">{formatINR(p?.advanceRecoveredPaise ?? row.settlement.advanceRecoveredPaise)}</td><td className="num py-1.5 text-right font-bold">{formatINR(p?.paidPaise ?? row.settlement.paidPaise)}</td><td className="py-1.5">{p ? <Badge tone="received">paid</Badge> : <Badge tone="warn">pending</Badge>}</td></tr>; })}
               <tr className="border-t-2 border-line font-bold"><td className="py-1.5">Total</td><td className="num py-1.5 text-right">{formatINR(wt.gross + wt.ot)}</td><td className="num py-1.5 text-right text-given">{formatINR(wt.advances)}</td><td className="num py-1.5 text-right">{formatINR(wt.paid + wt.pending)}</td><td /></tr>
@@ -115,7 +115,7 @@ export default function AdminUnitPage() {
         <Card className="overflow-x-auto">
           <CardTitle>Stock</CardTitle>
           {stock.length === 0 ? <p className="text-muted">No items.</p> : (
-            <table className="w-full text-sm"><thead><tr className="text-left text-muted"><th className="py-1 font-medium">Item</th><th className="py-1 font-medium">Kind</th><th className="py-1 text-right font-medium">Balance</th></tr></thead>
+            <table className="admin-table w-full text-sm"><thead><tr className="text-left text-muted"><th className="py-1 font-medium">Item</th><th className="py-1 font-medium">Kind</th><th className="py-1 text-right font-medium">Balance</th></tr></thead>
               <tbody>{stock.map((s) => <tr key={s.item.entityId} className="border-t border-line"><td className="py-1.5">{s.item.name}</td><td className="py-1.5 text-muted">{s.item.kind}</td><td className={`num py-1.5 text-right ${s.low ? 'font-bold text-given' : ''}`}>{formatQty(s.balance, s.item.unit)} {s.item.unit}{s.low && <Badge tone="danger" className="ml-2">low</Badge>}</td></tr>)}</tbody></table>
           )}
         </Card>
@@ -124,7 +124,7 @@ export default function AdminUnitPage() {
       <Card className="mt-6 overflow-x-auto">
         <CardTitle>Orders</CardTitle>
         {orders.length === 0 ? <p className="text-muted">No orders.</p> : (
-          <table className="w-full text-sm"><thead><tr className="text-left text-muted"><th className="py-1 font-medium">No.</th><th className="py-1 font-medium">Buyer</th><th className="py-1 font-medium">Design</th><th className="py-1 text-right font-medium">Qty</th><th className="py-1 text-right font-medium">Delivered</th><th className="py-1 font-medium">Due</th><th className="py-1 font-medium">Status</th></tr></thead>
+          <table className="admin-table w-full text-sm"><thead><tr className="text-left text-muted"><th className="py-1 font-medium">No.</th><th className="py-1 font-medium">Buyer</th><th className="py-1 font-medium">Design</th><th className="py-1 text-right font-medium">Qty</th><th className="py-1 text-right font-medium">Delivered</th><th className="py-1 font-medium">Due</th><th className="py-1 font-medium">Status</th></tr></thead>
             <tbody>{orders.map((v) => <tr key={v.order.entityId} className="border-t border-line"><td className="num py-1.5">{v.order.orderNo}</td><td className="py-1.5">{v.buyer?.name ?? ''}</td><td className="py-1.5">{v.order.design} {v.order.size}</td><td className="num py-1.5 text-right">{v.order.qty}</td><td className="num py-1.5 text-right">{v.deliveredQty}</td><td className={`py-1.5 ${v.overdue ? 'font-medium text-given' : 'text-muted'}`}>{formatDay(v.order.dueDate, 'en', 'short')}{v.overdue ? ' · overdue' : ''}</td><td className="py-1.5"><Badge tone={v.status === 'delivered' ? 'received' : v.status === 'new' ? 'neutral' : 'info'}>{v.status.replace('_', ' ')}</Badge></td></tr>)}</tbody></table>
         )}
       </Card>

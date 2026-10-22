@@ -121,6 +121,7 @@
     overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
   }
   .tap-48 { min-height: 48px; min-width: 48px; }
+  .admin-table th, .admin-table td { padding-left: 0.5rem; padding-right: 0.5rem; }
   .card-hover { transition: box-shadow 150ms ease, transform 150ms ease; }
   .card-hover:hover { box-shadow: 0 2px 4px rgba(27,36,48,.06), 0 10px 28px rgba(27,36,48,.10); transform: translateY(-1px); }
 }

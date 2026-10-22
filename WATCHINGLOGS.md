@@ -11,3 +11,8 @@
 - Why: SPEC-M00 approved; copied only PIN/session/sync/UI-kit foundation from BunkarOS (D1).
 - Evidence: `npx tsc -p tsconfig.app.json --noEmit` → exit 0 · `npx vite build` → precache 53 entries / 1052 KiB · `cd server && node --test` → 12 pass / 0 fail · `npx playwright test` → 3 passed (mobile foundation ×2, desktop shell ×1). Fixed during verification: pg search_path race (now `options=-c search_path`), e2e schema reset moved into server boot (`PG_RESET=1`).
 - Next: M01 workers + attendance.
+
+## 2026-10-23 — M01 workers + attendance
+- What: `domain/attendance.ts` (latest mark per worker/day, month summary with unmarked working days, Sundays/holidays excluded, pieces), `domain/advances.ts`; screens `/workers` (search, inactive toggle, table at lg), `/workers/new|:id/edit` (pay type monthly/daily/piece, OT default = salary ÷ W ÷ 8, staff cannot change pay fields), `/workers/:id` (month grid P/H/A/OT, advances, balance), `/attendance` (one screen, P/H/A toggles + OT stepper, all-present, piece entry sheet, re-mark = reverse + new with "edited" badge, locked-month guard). Dictionaries workers.{hi,hin,en}.
+- Evidence: `npx vitest run src/domain` → 9 passed (attendance 4 + wage 5) · `npx playwright test e2e/02-workers-attendance.spec.ts` → 2 passed · tsc exit 0.
+- Next: M02 wages screens (advance, wage sheet, pay + slip, lock).

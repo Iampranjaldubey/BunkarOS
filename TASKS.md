@@ -9,7 +9,7 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | # | Spec | Deliverable | Status | Evidence |
 |---|---|---|---|---|
 | 1 | M00 | Scaffold app + server + docker compose; copy foundation files; types; sync; login/setup; shell; i18n; photos | DONE | tsc 0 · build OK · server 12/12 · e2e 3/3 (2026-10-23) |
-| 2 | M01 | Workers + attendance screens, domain, tests | TODO | |
+| 2 | M01 | Workers + attendance screens, domain, tests | DONE | vitest attendance 4/4 · e2e 02-workers-attendance 2/2 (2026-10-23) |
 | 3 | M02 | Advances, wage engine, settlement, slip, lock | TODO | |
 | 4 | M03 | Items, stock in/out/adjust, finished stock | TODO | |
 | 5 | M04 | Buyers, orders, status, deliveries | TODO | |

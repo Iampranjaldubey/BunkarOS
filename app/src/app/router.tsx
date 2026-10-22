@@ -25,12 +25,19 @@ const OrderFormPage = lazy(() => import('../features/orders/OrderFormPage'));
 const OrderDetailPage = lazy(() => import('../features/orders/OrderDetailPage'));
 const BuyersPage = lazy(() => import('../features/orders/BuyersPage'));
 const MonthPage = lazy(() => import('../features/month/MonthPage'));
+const WorkerLinkPage = lazy(() => import('../worker/WorkerLinkPage'));
+const WorkerHomePage = lazy(() => import('../worker/WorkerHomePage'));
+const WorkerJoinPage = lazy(() => import('../worker/WorkerJoinPage'));
 
 const guard = (action: Parameters<typeof RequireCan>[0]['action'], el: React.ReactNode) => <RequireCan action={action}>{el}</RequireCan>;
 
 export const router = createBrowserRouter([
   { path: '/setup', element: <SetupPage /> },
   { path: '/login', element: <LoginPage /> },
+  // Public worker pages (SPEC-M07): no session.
+  { path: '/w', element: <WorkerHomePage /> },
+  { path: '/w/join', element: <WorkerJoinPage /> },
+  { path: '/w/:token', element: <WorkerLinkPage /> },
   {
     path: '/',
     element: (<RequireSession><AppLayout /></RequireSession>),

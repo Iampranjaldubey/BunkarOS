@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FormActions } from '../../components/ui/FormActions';
+
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
@@ -57,10 +59,10 @@ export default function ItemFormPage() {
             <Field label={t('stock.unit')}>{({ id }) => <Select id={id} value={unit} onChange={(e) => setUnit(e.target.value as ItemUnit)}>{UNITS.map((u) => <option key={u} value={u}>{t(`stock.unit.${u}`)}</option>)}</Select>}</Field>
             <Field label={t('stock.lowQty')} hint={t('stock.lowQtyHint')} error={errors.low}>{({ id, describedBy, invalid }) => <Input id={id} inputMode="decimal" value={low} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setLow(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}</Field>
           </FormGrid>
-          <div className="mt-2 flex flex-col gap-2 md:flex-row">
+          <FormActions>
             <Button type="submit" size="lg" disabled={busy} className="md:flex-1">{t('action.save')}</Button>
             {!existing && <Button type="button" variant="secondary" size="lg" disabled={busy} onClick={() => void save(true)} className="md:flex-1">{t('action.saveAdd')}</Button>}
-          </div>
+          </FormActions>
         </form>
       </Card>
     </section>

@@ -96,7 +96,7 @@ export default function WagePayPage() {
   const breakdownCard = (
     <Card className="print:border-0 print:shadow-none" data-testid="wage-breakdown">
       <div className="mb-3 flex items-center gap-3 border-b border-line pb-3">
-        <Avatar name={worker.name} size={48} />
+        <Avatar name={worker.name} size={48} photoId={worker.photoId} />
         <div className="flex-1"><p className="text-lg font-medium text-ink">{worker.name}</p><p className="text-sm text-muted">{formatMonth(month, lang)} · {t(`worker.payType.${inputs.payType}`)}</p></div>
         {payment ? <Badge tone="received">{t('wages.paidOn', { date: formatDay(payment.day, lang, 'short') })}</Badge> : locked ? <Badge tone="warn">{t('wages.locked')}</Badge> : null}
       </div>

@@ -33,6 +33,12 @@ export async function openDb(opts = {}) {
       CREATE INDEX IF NOT EXISTS idx_records_unit_type ON records (unit_id, type);
       CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, unit_id TEXT NOT NULL, mime TEXT NOT NULL, bytes BYTEA NOT NULL);
       CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      ALTER TABLE units ADD COLUMN IF NOT EXISTS short_code TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_units_short_code ON units (short_code);
+      CREATE TABLE IF NOT EXISTS worker_links (
+        token TEXT PRIMARY KEY, unit_id TEXT NOT NULL, worker_id TEXT NOT NULL,
+        created_at TEXT NOT NULL, revoked_at TEXT);
+      CREATE INDEX IF NOT EXISTS idx_worker_links_unit_worker ON worker_links (unit_id, worker_id);
     `);
   } finally { c.release(); }
   return { pool, schema, async close() { await pool.end(); }, async dropSchema() { if (schema !== 'public') await pool.query(`DROP SCHEMA ${schema} CASCADE`); } };
@@ -45,10 +51,78 @@ export async function setMeta(db, key, value) {
   await q(db, 'INSERT INTO meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, value]);
 }
 export async function getUnit(db, unitId) {
-  const r = await q(db, 'SELECT unit_id, key_hash, salt, name FROM units WHERE unit_id = $1', [unitId]); return r.rows[0];
+  const r = await q(db, 'SELECT unit_id, key_hash, salt, name, short_code FROM units WHERE unit_id = $1', [unitId]); return r.rows[0];
 }
+export async function getUnitByShortCode(db, shortCode) {
+  const r = await q(db, 'SELECT unit_id, name, short_code FROM units WHERE short_code = $1', [shortCode]); return r.rows[0];
+}
+/** Insert a unit with a fresh 6-digit short code (retried on the rare collision). */
 export async function insertUnit(db, { unitId, keyHash, salt, name, createdAt }) {
-  await q(db, 'INSERT INTO units (unit_id, key_hash, salt, name, created_at) VALUES ($1,$2,$3,$4,$5)', [unitId, keyHash, salt, name, createdAt]);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const shortCode = String(100000 + Math.floor(Math.random() * 900000));
+    try {
+      await q(db, 'INSERT INTO units (unit_id, key_hash, salt, name, created_at, short_code) VALUES ($1,$2,$3,$4,$5,$6)', [unitId, keyHash, salt, name, createdAt, shortCode]);
+      return shortCode;
+    } catch (e) { if (!/idx_units_short_code/.test(String(e?.message))) throw e; }
+  }
+  throw new Error('short_code_collision');
+}
+/** Ensure a unit created before short codes existed gets one. */
+export async function ensureShortCode(db, unitId) {
+  const u = await getUnit(db, unitId);
+  if (u?.short_code) return u.short_code;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const shortCode = String(100000 + Math.floor(Math.random() * 900000));
+    try { await q(db, 'UPDATE units SET short_code = $1 WHERE unit_id = $2', [shortCode, unitId]); return shortCode; }
+    catch (e) { if (!/idx_units_short_code/.test(String(e?.message))) throw e; }
+  }
+  throw new Error('short_code_collision');
+}
+/** Latest non-reversed `worker` payload for workerId, or undefined. */
+export async function latestWorker(db, unitId, workerId) {
+  const reversed = await reversedTargetIds(db, unitId);
+  let best;
+  for (const row of await recordsOfType(db, unitId, 'worker')) {
+    if (reversed.has(row.id)) continue;
+    const p = row.rec?.payload;
+    if (!p || p.entityId !== workerId) continue;
+    if (!best || (row.rec.at || '') >= best.at) best = { at: row.rec.at || '', p };
+  }
+  return best?.p;
+}
+/** Latest active workers (name + id) of a unit, for the shop-code join screen. */
+export async function activeWorkers(db, unitId) {
+  const reversed = await reversedTargetIds(db, unitId);
+  const latest = new Map();
+  for (const row of await recordsOfType(db, unitId, 'worker')) {
+    if (reversed.has(row.id)) continue;
+    const p = row.rec?.payload; if (!p?.entityId) continue;
+    const prev = latest.get(p.entityId);
+    if (!prev || (row.rec.at || '') >= prev.at) latest.set(p.entityId, { at: row.rec.at || '', p });
+  }
+  return [...latest.values()].map((v) => v.p).filter((p) => p.active).map((p) => ({ workerId: p.entityId, name: p.name, jobTitle: p.jobTitle }));
+}
+/** Records a worker may see about themselves: their own events + all reversals + period locks + latest settings. */
+export async function workerRecords(db, unitId, workerId) {
+  const r = await q(db, `SELECT json FROM records WHERE unit_id = $1 AND (
+      (type IN ('attendance','piece_entry','advance','wage_payment') AND json->'payload'->>'workerId' = $2)
+      OR type IN ('reversal','period_lock','setting')) ORDER BY seq ASC`, [unitId, workerId]);
+  return r.rows.map((row) => row.json);
+}
+// ---------- worker links ----------
+export async function activeWorkerLink(db, unitId, workerId) {
+  const r = await q(db, 'SELECT token, created_at FROM worker_links WHERE unit_id = $1 AND worker_id = $2 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1', [unitId, workerId]);
+  return r.rows[0];
+}
+export async function createWorkerLink(db, unitId, workerId, token) {
+  await q(db, 'UPDATE worker_links SET revoked_at = $1 WHERE unit_id = $2 AND worker_id = $3 AND revoked_at IS NULL', [new Date().toISOString(), unitId, workerId]);
+  await q(db, 'INSERT INTO worker_links (token, unit_id, worker_id, created_at) VALUES ($1,$2,$3,$4)', [token, unitId, workerId, new Date().toISOString()]);
+}
+export async function revokeWorkerLinks(db, unitId, workerId) {
+  await q(db, 'UPDATE worker_links SET revoked_at = $1 WHERE unit_id = $2 AND worker_id = $3 AND revoked_at IS NULL', [new Date().toISOString(), unitId, workerId]);
+}
+export async function getWorkerLink(db, token) {
+  const r = await q(db, 'SELECT token, unit_id, worker_id, created_at, revoked_at FROM worker_links WHERE token = $1', [token]); return r.rows[0];
 }
 export async function getRecordById(db, id) {
   const r = await q(db, 'SELECT seq, id, unit_id, type, json FROM records WHERE id = $1', [id]); return r.rows[0];

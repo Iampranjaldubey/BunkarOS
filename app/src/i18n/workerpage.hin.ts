@@ -1,0 +1,20 @@
+const d = {
+  'wp.title': 'Mera panna', 'wp.tab.month': 'Is mahine', 'wp.tab.pay': 'Pagaar', 'wp.tab.advance': 'Advance', 'wp.tab.profile': 'Meri jaankari',
+  'wp.hello': 'Namaste, {name}', 'wp.shop': 'Dukaan', 'wp.updated': 'Update: {time}', 'wp.offline': 'Internet nahi — purani jaankari dikh rahi hai',
+  'wp.loading': 'Jaankari aa rahi hai…', 'wp.error': 'Jaankari nahi mili. Internet on karke phir kholein.', 'wp.revoked': 'Yeh link band ho gaya hai. Maalik se naya link maangein.',
+  'wp.expected': 'Is mahine ab tak ki pagaar (andaaza)', 'wp.expectedHint': 'Mahine ke aakhir mein maalik hisaab pakka karega.', 'wp.afterAdvance': 'Advance kaatkar milenge',
+  'wp.days': 'din', 'wp.present': 'Haazir', 'wp.half': 'Aadha din', 'wp.absent': 'Gair-haazir', 'wp.ot': 'Overtime', 'wp.pieces': 'Piece', 'wp.unmarked': 'Haaziri nahi lagi',
+  'wp.yearTotal': '{year} mein kul mila', 'wp.noPay': 'Abhi tak koi payment nahi', 'wp.paidOn': '{date} ko mila', 'wp.slip': 'Poora hisaab', 'wp.gross': 'Kamaai', 'wp.deductions': 'Katauti',
+  'wp.advanceCut': 'Advance kaata', 'wp.paid': 'Mila', 'wp.balance': 'Baaki advance', 'wp.noAdvance': 'Koi advance nahi', 'wp.taken': 'Liya',
+  'wp.job': 'Kaam', 'wp.payType': 'Pagaar ka tareeka', 'wp.rate': 'Rate', 'wp.otRate': 'Overtime rate', 'wp.joined': 'Kab se', 'wp.phone': 'Phone',
+  'wp.ask': 'Maalik se poochhein', 'wp.askText': 'Namaste, main {name} hoon. Mujhe apni pagaar ke baare mein poochhna hai.', 'wp.notMyPhone': 'Yeh mera phone nahi hai', 'wp.notMyPhoneHint': 'Is phone se aapki jaankari hata di jaayegi. Dobara dekhne ke liye maalik se link lein.',
+  'wp.perDay': 'Ek din', 'wp.perPiece': 'Ek piece', 'wp.perMonth': 'Mahina',
+  'wj.title': 'Apni dukaan kholein', 'wj.hint': 'Maalik se mila 6 ank ka dukaan code bharein', 'wj.shopCode': 'Dukaan code', 'wj.next': 'Aage', 'wj.pick': 'Apna naam chunein',
+  'wj.code': 'Apna 4 ank ka code bharein', 'wj.codeHint': 'Yeh code maalik ya munshi se milega', 'wj.open': 'Mera panna kholein', 'wj.wrongShop': 'Yeh dukaan code nahi mila', 'wj.wrongCode': 'Code galat hai',
+  'wj.noWorkers': 'Is dukaan mein abhi koi kaarigar nahi', 'wj.haveLink': 'Maalik ne WhatsApp par link bheja hai? Use hi dabaayein.', 'wj.back': 'Wapas',
+  'worker.link': 'Kaarigar ka panna', 'worker.sendLink': 'Link bhejein', 'worker.copyLink': 'Link copy karein', 'worker.linkCopied': 'Link copy ho gaya', 'worker.cancelLink': 'Link band karein', 'worker.linkCancelled': 'Link band kar diya',
+  'worker.accessCode': 'Kaarigar code', 'worker.accessCodeHint': 'Kaarigar dukaan code + apna naam + yeh code bharkar apna panna khol sakta hai', 'worker.newCode': 'Naya code',
+  'worker.linkText': 'Namaste {name} ji, {unit} ki taraf se aapki haaziri aur pagaar ka panna:\n{url}\nIse ek baar kholein — phir yeh aapke phone mein rahega.',
+  'worker.linkOffline': 'Link banane ke liye internet chahiye', 'settings.shopCode': 'Dukaan code (kaarigaron ke liye)', 'settings.shopCodeHint': 'Kaarigar is code se apna panna kholte hain',
+} as const;
+export default d;

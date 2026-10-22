@@ -20,6 +20,7 @@ import { db } from '../db/db';
 import type { Rec, PhotoRow } from '../db/types';
 import type { SyncResponse, SyncStateView } from './types';
 import { getDeviceId } from '../lib/session-store';
+import { setOnLocalWrite } from '../db/repo';
 
 const PUSH_BATCH = 200;
 const PULL_LIMIT = 500; // == server PULL_LIMIT (routes.mjs)
@@ -510,11 +511,21 @@ function scheduleNext(delayMs: number): void {
 }
 
 let autoStarted = false;
+let writeTimer: ReturnType<typeof setTimeout> | null = null;
+const WRITE_DEBOUNCE_MS = 800;
 
-/** Start automatic syncing: online events + a 30 s loop. Idempotent. */
+/** A local write happened: push soon (debounced so a burst of taps becomes one cycle). */
+function syncSoon(): void {
+  if (!isBrowser) return;
+  if (writeTimer) clearTimeout(writeTimer);
+  writeTimer = setTimeout(() => { writeTimer = null; void syncNow(); }, WRITE_DEBOUNCE_MS);
+}
+
+/** Start automatic syncing: online events + a 30 s loop + soon after every local write. Idempotent. */
 export function startAutoSync(): () => void {
   if (!isBrowser || autoStarted) return () => undefined;
   autoStarted = true;
+  setOnLocalWrite(syncSoon);
 
   const onOnline = () => {
     setState({ online: true });
@@ -534,6 +545,9 @@ export function startAutoSync(): () => void {
     window.removeEventListener('offline', onOffline);
     if (timer) clearTimeout(timer);
     timer = null;
+    if (writeTimer) clearTimeout(writeTimer);
+    writeTimer = null;
+    setOnLocalWrite(null);
     autoStarted = false;
   };
 }

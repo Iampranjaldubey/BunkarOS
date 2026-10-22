@@ -18,5 +18,12 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 7 | M06 | render.yaml, seed demo, README, e2e green | DONE | seed 93 accepted / 0 rejected · full e2e 11/11 · vitest 15/15 · server 12/12 · build precache 90 / 1205 KiB (2026-10-23) |
 | 8 | — | Git: branch `mvp` on Iampranjaldubey/BunkarOS (remote pinned to ShubhamKang account) | DONE | pushes 0be160f…9b9cc90 + final |
 
+## Round 2 (approved 2026-10-23)
+| # | Spec | Deliverable | Status | Evidence |
+|---|---|---|---|---|
+| 9 | M07 | Server: short_code, worker_links, /api/worker-links, /api/w/* + tests | DONE | server 16/16 (worker-links 4 new) |
+| 10 | M07 | App: /w routes, worker page (month, pay history, advances, profile), owner "send link", access code | DONE | e2e 07-worker-page 1/1 (link, shop code, reload, revoke) |
+| 11 | M08 | One-year tokens; UI polish (home, forms, lists, login/setup) | DONE | full e2e 12/12 · screenshots reviewed |
+
 ## Blocked
 - Push to GitHub: needs the user's "yes" and ShubhamKang write access on Pranjal's repo (Git Credential Manager will prompt in the browser).

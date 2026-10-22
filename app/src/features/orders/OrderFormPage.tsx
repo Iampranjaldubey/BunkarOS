@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FormActions } from '../../components/ui/FormActions';
+
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
@@ -78,7 +80,7 @@ export default function OrderFormPage() {
             <Field label={t('order.price')} hint={pricePaise && q ? `${t('common.total')}: ${formatINR(pricePaise * q)}` : t('common.optional')}>{({ id }) => <Input id={id} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}</Field>
             <Field label={t('order.notes')} className="lg:col-span-2">{({ id }) => <Textarea id={id} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />}</Field>
           </FormGrid>
-          <Button type="submit" size="xl" disabled={busy}>{t('action.save')}</Button>
+          <FormActions><Button type="submit" size="xl" disabled={busy}>{t('action.save')}</Button></FormActions>
         </form>
       </Card>
       <BuyerSheet open={buyerOpen} onClose={() => setBuyerOpen(false)} onSaved={(b) => setBuyerId(b.entityId)} />

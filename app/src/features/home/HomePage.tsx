@@ -78,7 +78,16 @@ export default function HomePage() {
 
   return (
     <section>
-      <div className="mb-4"><h1 className="text-2xl md:text-3xl">{t('home.greeting', { name: user?.name ?? '' })}</h1><p className="text-sm text-muted">{formatDay(today, lang, 'long')}{!isOwner ? ` · ${t('home.staffHint')}` : ''}</p></div>
+      <div className="mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-dark p-5 text-white shadow-card">
+        <p className="text-sm text-white/80">{formatDay(today, lang, 'long')}</p>
+        <h1 className="mt-0.5 font-display text-3xl text-white md:text-4xl">{t('home.greeting', { name: user?.name ?? '' })}</h1>
+        <p className="mt-3 flex flex-wrap gap-2 text-sm">
+          <span className={cn('rounded-full px-3 py-1', unmarked > 0 ? 'bg-white/15' : 'bg-white/25')}>{t('home.attendanceOf', { present: d.roll.present + d.roll.half, total: d.roll.total })}</span>
+          {d.lowStock.length > 0 && <span className="rounded-full bg-white/15 px-3 py-1">{t('home.lowStock')}: {d.lowStock.length}</span>}
+          {d.orders.overdue > 0 && <span className="rounded-full bg-white/15 px-3 py-1">{t('home.ordersOverdue')}: {d.orders.overdue}</span>}
+          {!isOwner && <span className="rounded-full bg-white/15 px-3 py-1">{t('home.staffHint')}</span>}
+        </p>
+      </div>
       <PageGrid main={tiles} aside={aside} asideSticky />
     </section>
   );

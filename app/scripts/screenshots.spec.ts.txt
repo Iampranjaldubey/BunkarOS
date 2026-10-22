@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { loginAs } from './fixtures';
 const OUT = '/tmp/claude-1000/-home-sunny-kumar-Desktop-SHUBH-START-UP-BunkarOS/e67ac1fc-eeec-4c83-91d4-e5ee0c92b392/scratchpad/shots';
 test('screenshots', async ({ page }, info) => {
-  const out = execSync('node ../server/seed-demo.mjs', { env: { ...process.env, BASE: 'http://localhost:8791' } }).toString();
+  const out = execSync('node ../server/seed-demo.mjs', { env: { ...process.env, BASE: 'http://localhost:8795' } }).toString();
   const { unitId, unitKey } = JSON.parse(out.slice(out.indexOf('{'), out.indexOf('}') + 1));
   await page.goto('/setup');
   await page.getByRole('radio', { name: /मौजूदा यूनिट से जुड़ें/ }).click();

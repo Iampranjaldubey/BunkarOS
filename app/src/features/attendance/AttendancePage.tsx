@@ -84,7 +84,7 @@ export default function AttendancePage() {
             return (
               <li key={w.entityId} className="rounded-2xl border border-line bg-surface p-3 shadow-card" data-testid={`att-row-${w.entityId}`}>
                 <div className="flex items-center gap-3">
-                  <Avatar name={w.name} />
+                  <Avatar name={w.name} photoId={w.photoId} />
                   <div className="min-w-0 flex-1"><p className="truncate font-medium text-ink">{w.name}</p><p className="text-xs text-muted">{t(`worker.job.${w.jobTitle}`)}{w.payType === 'piece' ? ` · ${t('worker.payType.piece')}` : ''}</p></div>
                   {m && m.otHours > 0 && <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">OT {m.otHours}h</span>}
                 </div>

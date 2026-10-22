@@ -28,7 +28,7 @@ const bearer = { ...auth, Authorization: 'Bearer ' + tok.body.token };
 
 const workers = [['Rafiq', 'weaver', 'monthly', 1200000], ['Salim', 'weaver', 'monthly', 1100000], ['Guddu', 'helper', 'daily', 40000], ['Meena', 'finisher', 'piece', 1500]].map(([name, jobTitle, payType, rate]) => ({
   entityId: randomUUID(), name, jobTitle, payType, salaryPaise: payType === 'monthly' ? rate : undefined, dailyRatePaise: payType === 'daily' ? rate : undefined, pieceRatePaise: payType === 'piece' ? rate : undefined,
-  otRatePaise: payType === 'monthly' ? Math.round(rate / 26 / 8) : payType === 'daily' ? Math.round(rate / 8) : 0, joinedOn: '2026-01-01', active: true }));
+  otRatePaise: payType === 'monthly' ? Math.round(rate / 26 / 8) : payType === 'daily' ? Math.round(rate / 8) : 0, joinedOn: '2026-01-01', active: true, accessCode: '1234' }));
 const items = [['Wool red', 'raw', 'kg', 10000], ['Wool beige', 'raw', 'kg', 10000], ['Cotton yarn', 'raw', 'kg', 5000], ['Dye navy', 'raw', 'litre', 2000], ['Kashan 8x10', 'finished', 'pcs', 0]].map(([name, kind, unit, low]) => ({ entityId: randomUUID(), name, kind, unit, lowStockQty: low, active: true }));
 const buyer = { entityId: randomUUID(), name: 'Sharma Exports', phone: '9811111111', city: 'Bhadohi', active: true };
 const orders = [[`ORD-001`, 'Kashan', '8x10', 20, day(-10), 500000], [`ORD-002`, 'Bokhara', '6x9', 12, day(3), 350000], [`ORD-003`, 'Gabbeh', '5x8', 8, day(-2), 280000]].map(([orderNo, design, size, qty, dueDate, pricePaise]) => ({ entityId: randomUUID(), buyerId: buyer.entityId, orderNo, design, size, qty, dueDate, pricePaise, receivedOn: day(20) }));
@@ -50,6 +50,17 @@ const records = [
   rec('advance', { workerId: workers[0].entityId, amountPaise: 100000, mode: 'cash' }, staffId, 'staff', day(14)),
   rec('advance', { workerId: workers[1].entityId, amountPaise: 200000, mode: 'upi' }, staffId, 'staff', day(7)),
 ];
+// Two settled months (owner-authored) so pay history and year totals show on the worker page.
+const prevM = (n) => { const d = new Date(Date.now() + IST); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - n); return d.toISOString().slice(0, 7); };
+for (const n of [1, 2]) {
+  const mth = prevM(n);
+  for (const w of workers.filter((x) => x.payType === 'monthly')) {
+    const absent = n === 1 ? 1 : 2; const perDay = Math.round(w.salaryPaise / 26); const gross = w.salaryPaise - absent * perDay; const ot = 4 * w.otRatePaise;
+    const net = gross + ot; const paid = Math.round(net / 100) * 100;
+    records.push(rec('wage_payment', { workerId: w.entityId, month: mth, grossPaise: gross, otPaise: ot, deductions: [], advanceRecoveredPaise: 0, netPaise: net, paidPaise: paid, roundingPaise: paid - net, mode: 'cash',
+      snapshot: { present: 26 - absent, half: 0, absent, otHours: 4, pieces: 0, payType: 'monthly', ratePaise: w.salaryPaise } }, ownerId, 'owner', `${mth}-28`));
+  }
+}
 // Attendance for the month so far (skip Sundays): mostly present, a few absences / half days / OT.
 for (let d = 1; d <= Number(day().slice(8)); d++) {
   const dd = `${month}-${String(d).padStart(2, '0')}`;
@@ -71,3 +82,4 @@ const rejected = [...(r1.body.rejected ?? []), ...(r2.body.rejected ?? [])];
 if (rejected.length) console.error('rejected:', rejected);
 console.log(JSON.stringify({ unitId, unitKey, owner: 'Ramesh (Owner)', staff: 'Munshi Ji', pin: PIN, accepted: (r1.body.accepted?.length ?? 0) + (r2.body.accepted?.length ?? 0), rejected: rejected.length }, null, 2));
 console.log(`\nDemo login: open the app → "मौजूदा यूनिट से जुड़ें" → unit code ${unitId} + key above → pick a name → PIN ${PIN}`);
+console.log(`Worker page: open /w/join → shop code ${u.body.shortCode} → pick a worker → code 1234`);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Delete } from 'lucide-react';
+import { Delete, Store } from 'lucide-react';
+import { getUnitName } from './unit-name';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PersonPicker, type Person } from '../components/ui/PersonPicker';
@@ -61,10 +62,12 @@ export default function LoginPage() {
     if (next.length === 4) void submit(next);
   };
 
-  const people: Person[] = (users ?? []).map((u) => ({ id: u.entityId, name: u.name }));
+  const people: Person[] = (users ?? []).map((u) => ({ id: u.entityId, name: u.name, subtitle: t(`role.${u.role}`) }));
+  const unitName = getUnitName();
 
   return (
     <AuthShell subtitle={picked ? t('login.enterPin') : t('login.title')}>
+      {unitName && <div className="-mt-2 flex items-center justify-center gap-2 text-ink"><Store aria-hidden="true" size={18} className="text-primary" /><span className="font-medium">{unitName}</span></div>}
       {!picked ? (
         <Card className="md:p-6">
           {users && users.length === 0 ? (
@@ -87,7 +90,7 @@ export default function LoginPage() {
               <button key={k} type="button" onClick={() => press(k)} aria-label={t('action.delete')} className="tap-48 flex items-center justify-center rounded-2xl text-muted hover:bg-surface-2"><Delete aria-hidden="true" /></button>
             ) : (
               <button key={k} type="button" onClick={() => press(k)} disabled={lockLeft > 0}
-                className="num min-h-16 rounded-2xl border border-line bg-surface text-2xl font-bold text-ink shadow-card transition-colors hover:bg-surface-2 active:bg-primary-soft disabled:opacity-50">{k}</button>
+                className="num min-h-[4.5rem] rounded-2xl border border-line bg-surface text-3xl font-bold text-ink shadow-card transition-colors hover:bg-surface-2 active:bg-primary-soft disabled:opacity-50">{k}</button>
             ))}
           </div>
           <Button variant="ghost" onClick={() => setPicked(null)}>{t('action.back')}</Button>

@@ -2,11 +2,13 @@ import { Check, CloudOff, LogIn, RefreshCw } from 'lucide-react';
 import { Badge } from './Badge';
 import { useSyncState, syncNow } from '../../sync/client';
 import { useT } from '../../i18n';
+import { usePendingCount } from '../../db/hooks';
 
 /** Header sync status: offline / sign in / n pending (tap to sync) / synced. */
 export function SyncBadge() {
   const { t } = useT();
-  const { pending, online, authState } = useSyncState();
+  const { online, authState } = useSyncState();
+  const pending = usePendingCount(); // live: shows a just-saved entry immediately
   if (!online) return <Badge tone="warn" aria-live="polite"><CloudOff aria-hidden="true" size={16} />{t('sync.offline')}</Badge>;
   if (authState === 'needs_login') return <Badge tone="warn" aria-live="polite"><LogIn aria-hidden="true" size={16} />{t('sync.login')}</Badge>;
   if (pending > 0) {

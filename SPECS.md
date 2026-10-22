@@ -27,13 +27,15 @@ Status legend: Draft | Approved | Built.
 ## Index
 | ID | Title | Status |
 |---|---|---|
-| SPEC-M00 | Foundation: shell, login, roles, entry log, offline sync, photos, i18n | Draft |
-| SPEC-M01 | Workers + attendance | Draft |
-| SPEC-M02 | Wages: advances, monthly settlement, slip, lock | Draft |
-| SPEC-M03 | Inventory: items, in/out/adjust, finished carpets | Draft |
-| SPEC-M04 | Orders: buyers, orders, status, deliveries | Draft |
-| SPEC-M05 | Owner dashboard + monthly analysis + Excel export | Draft |
-| SPEC-M06 | Deploy: Docker Postgres locally, Render in prod | Draft |
+| SPEC-M00 | Foundation: shell, login, roles, entry log, offline sync, photos, i18n | Built |
+| SPEC-M01 | Workers + attendance | Built |
+| SPEC-M02 | Wages: advances, monthly settlement, slip, lock | Built |
+| SPEC-M03 | Inventory: items, in/out/adjust, finished carpets | Built |
+| SPEC-M04 | Orders: buyers, orders, status, deliveries | Built |
+| SPEC-M05 | Owner dashboard + monthly analysis + Excel export | Built |
+| SPEC-M06 | Deploy: Docker Postgres locally, Render in prod | Built |
+| SPEC-M07 | Worker page: WhatsApp link + shop-code fallback, stays signed in | Approved (user 2026-10-23) |
+| SPEC-M08 | UI polish pass + one-year logins | Approved (user 2026-10-23) |
 
 ---
 
@@ -94,6 +96,18 @@ Status legend: Draft | Approved | Built.
 - Local: `docker compose up db` (Postgres 16, port 5432), server `DATABASE_URL`, `npm run dev` for app (proxy /api). Tests: Vitest (domain + sync), `node --test` server suites against the Docker DB (ephemeral schema per run), Playwright e2e (mobile 390×844 + offline project with built PWA).
 - Prod: Render **web service** (Node, `server/`, serves the built app from `app/dist` as static + `/api`), Render **Postgres** (free → starter), env `DATABASE_URL`, `BUNKAR_SECRET`, `TRUST_PROXY=1`. HTTPS by Render. One `render.yaml` blueprint in repo. Demo unit seeded by `npm run seed:demo` with a documented demo login for faculty.
 - **Acceptance**: AC1 `render.yaml` deploy from branch `mvp` reaches `/api/health` 200 and the app installs as PWA on Android Chrome. AC2 a record entered offline on a phone appears in Postgres after reconnect.
+
+### SPEC-M07 — Worker page (कारीगर का पन्ना)
+- **Goal**: a worker sees their own month, pay history, advances and profile on their phone with nothing to remember. Opened once from a WhatsApp link (or shop code + name + 4-digit code), then remembered on that phone until the owner cancels it.
+- **Server**: `units.short_code` (6 digits, unique, generated at unit creation; `GET /api/units/me` returns it with unit-key auth). Table `worker_links(token pk, unit_id, worker_id, created_at, revoked_at)`. `POST /api/worker-links` (owner/staff token) {workerId, regenerate?} → active token (new one revokes old). `POST /api/w/claim` {shopCode, workerId, code} (rate-limited) → checks the latest active `worker` record's `accessCode` → token. `GET /api/w/shop/:shopCode` → unit name + active worker names/ids (rate-limited). `GET /api/w/:token` → {unitName, ownerPhone, shopCode, worker, settings{workingDaysPerMonth, holidays}, records} where records = this worker's active attendance / piece_entry / advance / wage_payment + reversals + period_lock (so the same domain code computes everything in the browser). A revoked token → 410.
+- **App**: public routes `/w/:token` (stores token in localStorage, → `/w`), `/w` (saved token → page; none → join screen), `/w/join` (shop code → pick name → 4-digit code). Page sections (cards, one scroll): इस महीने (P/H/A/OT, pieces, expected pay with advance deduction), पगार (months grouped by year, yearly total, tap → slip lines), एडवांस (list + outstanding), प्रोफ़ाइल (job, pay type and rate, joined; "मालिक से पूछें" → wa.me to ownerPhone with prefilled text; "यह मेरा फ़ोन नहीं है" forgets the token after confirm). Last fetched data cached in localStorage for offline viewing with a "last updated" line. Three languages; no login/logout vocabulary anywhere on this page.
+- **Owner side**: `WorkerP.accessCode` (4 digits, generated on create, visible on the worker page to owner/staff, regenerable). Worker detail gets "लिंक भेजें" (creates link → PreviewShareSheet with the URL) and "लिंक रद्द करें".
+- **Acceptance**: AC1 owner sends link → opening `/w/<token>` shows the worker's month with the same numbers as the owner's wage sheet; reload → still there, no prompt. AC2 join by shop code + name + code works; wrong code refused. AC3 after regenerate, the old link shows "लिंक बंद है" and the new one works. AC4 pay history lists a paid month with the slip lines and the year total.
+
+### SPEC-M08 — UI polish + one-year logins
+- Owner/staff token TTL 365 days; PIN only on first login per phone or after explicit logout.
+- Home: hero header (greeting, date, shop name, one-line status), tiles with icon chips and sub-lines, "needs attention" ordering. Forms: taller inputs, sticky save bar on phones, inline success. Lists: worker photos in avatars, status chips with icons, zebra tables. Login/setup: shop-name card, role chips, larger PIN pad, step hints.
+- **Acceptance**: all existing e2e stay green; phone + desktop overflow sweeps green; screenshots reviewed.
 
 ## Scope — Out (all modules)
 GST/invoicing, payment gateway, subscription billing, multi-branch, AI/voice, push notifications, barcodes/QR, supplier ledger, per-carpet loom tracking, thekedar chain, tauli, exporter links, Tally export, IVR.

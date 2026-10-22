@@ -4,7 +4,7 @@ import { getMeta, setMeta } from './db.mjs';
 
 const ITERATIONS = 100_000;
 const KEY_LEN = 32;
-export const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000; // SPEC-M08: a year, PIN only after explicit logout
 
 const b64url = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const fromB64url = (s) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/') + (s.length % 4 ? '='.repeat(4 - (s.length % 4)) : ''), 'base64');

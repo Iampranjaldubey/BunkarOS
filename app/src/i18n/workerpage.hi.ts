@@ -1,0 +1,20 @@
+const d = {
+  'wp.title': 'मेरा पन्ना', 'wp.tab.month': 'इस महीने', 'wp.tab.pay': 'पगार', 'wp.tab.advance': 'एडवांस', 'wp.tab.profile': 'मेरी जानकारी',
+  'wp.hello': 'नमस्ते, {name}', 'wp.shop': 'दुकान', 'wp.updated': 'अपडेट: {time}', 'wp.offline': 'इंटरनेट नहीं — पुरानी जानकारी दिख रही है',
+  'wp.loading': 'जानकारी आ रही है…', 'wp.error': 'जानकारी नहीं मिली। इंटरनेट चालू करके फिर खोलें।', 'wp.revoked': 'यह लिंक बंद हो गया है। मालिक से नया लिंक माँगें।',
+  'wp.expected': 'इस महीने अब तक की पगार (अंदाज़ा)', 'wp.expectedHint': 'महीने के आख़िर में मालिक हिसाब पक्का करेगा।', 'wp.afterAdvance': 'एडवांस काटकर मिलेंगे',
+  'wp.days': 'दिन', 'wp.present': 'हाज़िर', 'wp.half': 'आधा दिन', 'wp.absent': 'ग़ैरहाज़िर', 'wp.ot': 'ओवरटाइम', 'wp.pieces': 'पीस', 'wp.unmarked': 'हाज़िरी नहीं लगी',
+  'wp.yearTotal': '{year} में कुल मिला', 'wp.noPay': 'अभी तक कोई भुगतान नहीं', 'wp.paidOn': '{date} को मिला', 'wp.slip': 'पूरा हिसाब', 'wp.gross': 'कमाई', 'wp.deductions': 'कटौती',
+  'wp.advanceCut': 'एडवांस काटा', 'wp.paid': 'मिला', 'wp.balance': 'बाकी एडवांस', 'wp.noAdvance': 'कोई एडवांस नहीं', 'wp.taken': 'लिया',
+  'wp.job': 'काम', 'wp.payType': 'पगार का तरीका', 'wp.rate': 'रेट', 'wp.otRate': 'ओवरटाइम रेट', 'wp.joined': 'कब से', 'wp.phone': 'फ़ोन',
+  'wp.ask': 'मालिक से पूछें', 'wp.askText': 'नमस्ते, मैं {name} हूँ। मुझे अपनी पगार के बारे में पूछना है।', 'wp.notMyPhone': 'यह मेरा फ़ोन नहीं है', 'wp.notMyPhoneHint': 'इस फ़ोन से आपकी जानकारी हटा दी जाएगी। दोबारा देखने के लिए मालिक से लिंक लें।',
+  'wp.perDay': 'एक दिन', 'wp.perPiece': 'एक पीस', 'wp.perMonth': 'महीना',
+  'wj.title': 'अपनी दुकान खोलें', 'wj.hint': 'मालिक से मिला 6 अंक का दुकान कोड भरें', 'wj.shopCode': 'दुकान कोड', 'wj.next': 'आगे', 'wj.pick': 'अपना नाम चुनें',
+  'wj.code': 'अपना 4 अंक का कोड भरें', 'wj.codeHint': 'यह कोड मालिक या मुंशी से मिलेगा', 'wj.open': 'मेरा पन्ना खोलें', 'wj.wrongShop': 'यह दुकान कोड नहीं मिला', 'wj.wrongCode': 'कोड ग़लत है',
+  'wj.noWorkers': 'इस दुकान में अभी कोई कारीगर नहीं', 'wj.haveLink': 'मालिक ने WhatsApp पर लिंक भेजा है? उसे ही दबाएँ।', 'wj.back': 'वापस',
+  'worker.link': 'कारीगर का पन्ना', 'worker.sendLink': 'लिंक भेजें', 'worker.copyLink': 'लिंक कॉपी करें', 'worker.linkCopied': 'लिंक कॉपी हो गया', 'worker.cancelLink': 'लिंक बंद करें', 'worker.linkCancelled': 'लिंक बंद कर दिया',
+  'worker.accessCode': 'कारीगर कोड', 'worker.accessCodeHint': 'कारीगर दुकान कोड + अपना नाम + यह कोड भरकर अपना पन्ना खोल सकता है', 'worker.newCode': 'नया कोड',
+  'worker.linkText': 'नमस्ते {name} जी, {unit} की तरफ़ से आपकी हाज़िरी और पगार का पन्ना:\n{url}\nइसे एक बार खोलें — फिर यह आपके फ़ोन में रहेगा।',
+  'worker.linkOffline': 'लिंक बनाने के लिए इंटरनेट चाहिए', 'settings.shopCode': 'दुकान कोड (कारीगरों के लिए)', 'settings.shopCodeHint': 'कारीगर इस कोड से अपना पन्ना खोलते हैं',
+} as const;
+export default d;

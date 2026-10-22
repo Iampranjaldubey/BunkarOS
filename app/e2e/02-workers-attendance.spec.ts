@@ -38,7 +38,7 @@ test('add worker → mark attendance with OT → re-mark logs an edit → detail
   await expect(page).toHaveURL(/\/workers\//);
   const half = page.locator('p', { hasText: /^1$/ }).first();
   await expect(half).toBeVisible();
-  await expect(page.getByText('2h')).toBeVisible();
+  await expect(page.getByText('2h').first()).toBeVisible();
 });
 
 test('staff cannot edit pay figures (fields disabled, note shown)', async ({ page }) => {

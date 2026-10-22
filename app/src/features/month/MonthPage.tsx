@@ -68,7 +68,7 @@ export default function MonthPage() {
           <table className="w-full border-collapse text-xs" data-testid="attendance-sheet">
             <thead><tr><th className="sticky left-0 bg-surface py-1 pr-2 text-left font-medium text-muted">{t('worker.name')}</th>{days.map((d) => <th key={d} className={`num px-0.5 py-1 font-normal ${weekday(d) === 0 ? 'text-given' : 'text-muted'}`}>{Number(d.slice(8))}</th>)}<th className="px-1 text-received">P</th><th className="px-1 text-accent-ink">H</th><th className="px-1 text-given">A</th><th className="px-1">OT</th></tr></thead>
             <tbody>{r.attendance.map((row) => (
-              <tr key={row.worker.entityId} className="border-t border-line">
+              <tr key={row.worker.entityId} className="border-t border-line odd:bg-surface-2/50">
                 <td className="sticky left-0 bg-surface py-1 pr-2 font-medium text-ink">{row.worker.name}</td>
                 {days.map((d) => <td key={d} className="px-0.5 py-1 text-center"><span className={`inline-block w-4 rounded ${mark(row.days[d])}`}>{row.days[d] || '·'}</span></td>)}
                 <td className="num px-1 text-center">{row.present}</td><td className="num px-1 text-center">{row.half}</td><td className="num px-1 text-center">{row.absent}</td><td className="num px-1 text-center">{row.otHours}</td>
@@ -83,7 +83,7 @@ export default function MonthPage() {
         <table className="w-full text-sm" data-testid="wage-sheet">
           <thead><tr className="text-left text-muted"><th className="py-1 pr-2 font-medium">{t('worker.name')}</th><th className="px-1 text-right font-medium">P/H/A</th><th className="px-1 text-right font-medium">{t('wages.gross')}</th><th className="px-1 text-right font-medium">{t('wages.advances')}</th><th className="px-1 text-right font-medium">{t('wages.net')}</th><th className="px-1 font-medium"></th></tr></thead>
           <tbody>{r.wages.map((row) => { const p = row.payment?.payload; return (
-            <tr key={row.worker.entityId} className="border-t border-line">
+            <tr key={row.worker.entityId} className="border-t border-line odd:bg-surface-2/50">
               <td className="py-1.5 pr-2 font-medium text-ink">{row.worker.name}</td>
               <td className="num px-1 text-right text-muted">{row.inputs.present}/{row.inputs.half}/{row.inputs.absent}</td>
               <td className="num px-1 text-right">{formatINR((p?.grossPaise ?? row.settlement.grossPaise) + (p?.otPaise ?? row.settlement.otPaise))}</td>

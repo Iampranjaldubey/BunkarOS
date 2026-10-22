@@ -9,7 +9,7 @@ export const Label = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelE
 Label.displayName = 'Label';
 
 const fieldBase =
-  'w-full min-h-12 rounded-2xl border border-line bg-surface px-4 py-2.5 text-lg text-ink ' +
+  'w-full min-h-14 rounded-2xl border border-line bg-surface px-4 py-2.5 text-lg text-ink md:min-h-12 ' +
   'placeholder:text-muted focus-visible:outline focus-visible:outline-3 ' +
   'focus-visible:outline-accent-ink focus-visible:outline-offset-1 ' +
   'aria-[invalid=true]:border-given';

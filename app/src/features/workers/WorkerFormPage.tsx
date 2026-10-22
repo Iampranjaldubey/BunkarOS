@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FormActions } from '../../components/ui/FormActions';
+
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
@@ -20,6 +22,8 @@ import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
 
 const JOBS: JobTitle[] = ['weaver', 'finisher', 'helper', 'other'];
+/** 4-digit code the worker uses with the shop code to open their own page (SPEC-M07). */
+export const newAccessCode = () => String(1000 + Math.floor(Math.random() * 9000));
 
 export default function WorkerFormPage() {
   const { t } = useT();
@@ -63,6 +67,7 @@ export default function WorkerFormPage() {
       const base: WorkerP = {
         entityId: existing?.entityId ?? uuid(), name: name.trim(), phone: phone.trim() || undefined, jobTitle: job, payType,
         otRatePaise: existing && !canRates ? existing.otRatePaise : otPaise, joinedOn, active: existing?.active ?? true, photoId,
+        accessCode: existing?.accessCode ?? newAccessCode(),
       };
       const rateField = payType === 'monthly' ? 'salaryPaise' : payType === 'daily' ? 'dailyRatePaise' : 'pieceRatePaise';
       if (existing && !canRates) {
@@ -105,10 +110,10 @@ export default function WorkerFormPage() {
             </Field>
             <div className="lg:col-span-2"><PhotoCapture label={t('worker.photo')} value={photoId} onChange={setPhotoId} /></div>
           </FormGrid>
-          <div className="mt-2 flex flex-col gap-2 md:flex-row">
+          <FormActions>
             <Button type="submit" size="lg" disabled={busy} className="md:flex-1">{t('action.save')}</Button>
             {!existing && <Button type="button" variant="secondary" size="lg" disabled={busy} onClick={() => void save(true)} className="md:flex-1">{t('action.saveAdd')}</Button>}
-          </div>
+          </FormActions>
         </form>
       </Card>
     </section>

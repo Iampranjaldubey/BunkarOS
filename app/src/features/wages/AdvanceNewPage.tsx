@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FormActions } from '../../components/ui/FormActions';
+
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
@@ -71,7 +73,7 @@ export default function AdvanceNewPage() {
             <Field label={t('common.note')}>{({ id }) => <Textarea id={id} rows={2} value={note} onChange={(e) => setNote(e.target.value)} />}</Field>
             <div className="lg:col-span-2"><PhotoCapture label={needPhoto ? `${t('common.photo')} — ${t('wages.photoHint')}` : t('common.photo')} required={needPhoto} value={photoId} onChange={setPhotoId} error={errors.photo} /></div>
           </FormGrid>
-          <Button type="submit" size="xl" disabled={busy}>{t('action.save')}</Button>
+          <FormActions><Button type="submit" size="xl" disabled={busy}>{t('action.save')}</Button></FormActions>
         </form>
       </Card>
     </section>

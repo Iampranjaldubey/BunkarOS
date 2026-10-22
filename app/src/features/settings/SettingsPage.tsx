@@ -18,6 +18,7 @@ import { can } from '../../domain/permissions';
 import { uuid } from '../../domain/ids';
 import { hashPin } from '../../lib/pin';
 import { getUnitMeta, useSession } from '../../app/session';
+import { authedFetch } from '../../sync';
 import { useT } from '../../i18n';
 import { useEffect } from 'react';
 
@@ -49,7 +50,12 @@ export default function SettingsPage() {
   useEffect(() => {
     if (settings) { setWorkingDays(String(settings.workingDaysPerMonth)); setPhotoAbove(String(settings.photoRequiredAbovePaise / 100)); setUnitName(settings.unitName); }
   }, [settings]);
+  const [shopCode, setShopCode] = useState<string>('');
   useEffect(() => { void getUnitMeta().then((m) => m && setMeta({ unitId: m.unitId, unitKey: m.unitKey })); }, []);
+  useEffect(() => {
+    if (!navigator.onLine) return;
+    void authedFetch('/api/units/me').then(async (r) => { if (r.ok) { const b = (await r.json()) as { shortCode?: string }; if (b.shortCode) setShopCode(b.shortCode); } }).catch(() => undefined);
+  }, []);
 
   const saveSettings = async () => {
     if (!settings) return;
@@ -112,6 +118,16 @@ export default function SettingsPage() {
         </ul>
       </Card>
 
+      {shopCode && (
+        <Card className="mb-4 lg:mb-0 bg-primary-soft/40" data-testid="shop-code-card">
+          <CardTitle>{t('settings.shopCode')}</CardTitle>
+          <div className="flex items-center gap-3">
+            <p className="num text-4xl font-bold tracking-[0.25em] text-ink" data-testid="shop-code">{shopCode}</p>
+            <button type="button" onClick={() => void copy(shopCode)} aria-label={t('settings.copy')} className="tap-48 rounded-xl text-primary hover:bg-primary-soft"><Copy aria-hidden="true" size={20} /></button>
+          </div>
+          <p className="mt-1 text-sm text-muted">{t('settings.shopCodeHint')}</p>
+        </Card>
+      )}
       {isOwner && meta && (
         <Card className="mb-4 lg:mb-0">
           <CardTitle>{t('settings.joinInfo')}</CardTitle>

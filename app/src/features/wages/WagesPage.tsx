@@ -43,7 +43,7 @@ export default function WagesPage() {
 
   const card = (r: WageRow) => (
     <button type="button" onClick={() => navigate(`/wages/${month}/${r.worker.entityId}`)} className="card-hover flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-3 text-left shadow-card">
-      <Avatar name={r.worker.name} size={44} />
+      <Avatar name={r.worker.name} size={44} photoId={r.worker.photoId} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-ink">{r.worker.name}</p>
         <p className="num text-xs text-muted">P {r.inputs.present} · H {r.inputs.half} · A {r.inputs.absent}{r.inputs.otHours ? ` · OT ${r.inputs.otHours}h` : ''}{r.inputs.payType === 'piece' ? ` · ${r.inputs.pieces} ${t('wages.pieces')}` : ''}</p>
@@ -70,7 +70,7 @@ export default function WagesPage() {
         rows={rows} rowKey={(r) => r.worker.entityId} renderCard={card} onRowClick={(r) => navigate(`/wages/${month}/${r.worker.entityId}`)}
         empty={<EmptyState icon={<Wallet size={40} />} title={t('wages.noWorkers')} />}
         columns={[
-          { key: 'name', header: t('worker.name'), cell: (r) => <span className="flex items-center gap-2"><Avatar name={r.worker.name} size={32} /><span className="font-medium">{r.worker.name}</span></span> },
+          { key: 'name', header: t('worker.name'), cell: (r) => <span className="flex items-center gap-2"><Avatar name={r.worker.name} size={32} photoId={r.worker.photoId} /><span className="font-medium">{r.worker.name}</span></span> },
           { key: 'att', header: t('att.title'), cell: (r) => <span className="num">P {r.inputs.present} · H {r.inputs.half} · A {r.inputs.absent}</span> },
           { key: 'ot', header: t('wages.ot'), align: 'right', cell: (r) => <span className="num">{r.inputs.otHours}h</span> },
           { key: 'gross', header: t('wages.gross'), align: 'right', cell: (r) => <span className="num">{formatINR((r.payment?.payload.grossPaise ?? r.settlement.grossPaise) + (r.payment?.payload.otPaise ?? r.settlement.otPaise))}</span> },

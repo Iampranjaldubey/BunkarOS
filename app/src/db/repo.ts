@@ -3,6 +3,11 @@ import type { Rec, RecordType, ReversalP, Role } from './types';
 import { uuid, istDay } from '../domain/ids';
 import { getDeviceId, getStoredSession } from '../lib/session-store';
 
+// The sync client registers here so a save is pushed within a second when online
+// (instead of waiting for the 30 s timer). Kept as a plain callback to avoid an import cycle.
+let onWrite: (() => void) | null = null;
+export function setOnLocalWrite(fn: (() => void) | null): void { onWrite = fn; }
+
 export interface AddRecordOpts {
   photoIds?: string[];
   /** Business day (back-dating). Defaults to today in IST. */
@@ -31,6 +36,7 @@ export async function addRecord<P>(type: RecordType, payload: P, opts: AddRecord
     ...(opts.replaces ? { replaces: opts.replaces } : {}),
   };
   await db.records.put(rec as Rec);
+  onWrite?.();
   return rec;
 }
 

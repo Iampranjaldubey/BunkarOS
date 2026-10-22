@@ -25,3 +25,4 @@ export { useIsDesktop, useMediaQuery, DESKTOP_QUERY } from './useIsDesktop';
 export { PhoneOnly, DesktopOnly } from './Responsive';
 export { LanguageSwitch } from './LanguageSwitch';
 export { DateField } from './DateField';
+export { FormActions } from './FormActions';

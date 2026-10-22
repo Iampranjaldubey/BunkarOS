@@ -40,6 +40,15 @@ BASE=https://<service>.onrender.com node server/seed-demo.mjs
 
 Environment: `DATABASE_URL` (from the database), `BUNKAR_SECRET` (generated), `TRUST_PROXY=1`, `PORT` (Render sets it).
 
+## Worker's own page
+
+Each worker can see their own month, pay history, advances and profile on their phone, with nothing to remember:
+
+- **Link (normal way):** owner or munshi opens the worker → "लिंक भेजें" → WhatsApp preview → the worker taps the link once. The page is then remembered on that phone (`/w`). "लिंक बंद करें" cancels it.
+- **Shop code (fallback):** the worker opens `/w/join`, enters the 6-digit shop code (Settings), taps their name and enters the 4-digit worker code shown on their worker page.
+
+The page never shows login/logout vocabulary; "यह मेरा फ़ोन नहीं है" in the profile forgets the phone. Owner and staff logins last a year unless they log out.
+
 ## How it works
 
 Every entry is an append-only record written to the phone first (IndexedDB) and pushed to the server when online. Edits create a new record and reverse the old one, so the owner always sees who wrote what, when, and the old value. The server verifies the author, owner-only record types, locked months, duplicate wage payments and wage arithmetic.

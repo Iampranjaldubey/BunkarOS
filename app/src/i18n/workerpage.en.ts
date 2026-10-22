@@ -1,0 +1,20 @@
+const d = {
+  'wp.title': 'My page', 'wp.tab.month': 'This month', 'wp.tab.pay': 'Pay', 'wp.tab.advance': 'Advances', 'wp.tab.profile': 'My details',
+  'wp.hello': 'Hello, {name}', 'wp.shop': 'Shop', 'wp.updated': 'Updated: {time}', 'wp.offline': 'No internet — showing saved information',
+  'wp.loading': 'Loading…', 'wp.error': 'Could not load. Turn on internet and reopen.', 'wp.revoked': 'This link has been closed. Ask the owner for a new one.',
+  'wp.expected': 'Pay so far this month (estimate)', 'wp.expectedHint': 'The owner settles the final amount at month end.', 'wp.afterAdvance': 'After advance deduction',
+  'wp.days': 'days', 'wp.present': 'Present', 'wp.half': 'Half day', 'wp.absent': 'Absent', 'wp.ot': 'Overtime', 'wp.pieces': 'Pieces', 'wp.unmarked': 'Not marked',
+  'wp.yearTotal': 'Total received in {year}', 'wp.noPay': 'No payment yet', 'wp.paidOn': 'Received on {date}', 'wp.slip': 'Full breakdown', 'wp.gross': 'Earned', 'wp.deductions': 'Deductions',
+  'wp.advanceCut': 'Advance deducted', 'wp.paid': 'Received', 'wp.balance': 'Advance outstanding', 'wp.noAdvance': 'No advances', 'wp.taken': 'Taken',
+  'wp.job': 'Job', 'wp.payType': 'Pay type', 'wp.rate': 'Rate', 'wp.otRate': 'Overtime rate', 'wp.joined': 'Since', 'wp.phone': 'Phone',
+  'wp.ask': 'Ask the owner', 'wp.askText': 'Hello, this is {name}. I have a question about my pay.', 'wp.notMyPhone': 'This is not my phone', 'wp.notMyPhoneHint': 'Your information will be removed from this phone. Ask the owner for the link to see it again.',
+  'wp.perDay': 'per day', 'wp.perPiece': 'per piece', 'wp.perMonth': 'per month',
+  'wj.title': 'Open your shop', 'wj.hint': 'Enter the 6-digit shop code from the owner', 'wj.shopCode': 'Shop code', 'wj.next': 'Next', 'wj.pick': 'Pick your name',
+  'wj.code': 'Enter your 4-digit code', 'wj.codeHint': 'The owner or munshi gives you this code', 'wj.open': 'Open my page', 'wj.wrongShop': 'Shop code not found', 'wj.wrongCode': 'Wrong code',
+  'wj.noWorkers': 'No workers in this shop yet', 'wj.haveLink': 'Got a WhatsApp link from the owner? Just tap that.', 'wj.back': 'Back',
+  'worker.link': "Worker's page", 'worker.sendLink': 'Send link', 'worker.copyLink': 'Copy link', 'worker.linkCopied': 'Link copied', 'worker.cancelLink': 'Cancel link', 'worker.linkCancelled': 'Link cancelled',
+  'worker.accessCode': 'Worker code', 'worker.accessCodeHint': 'The worker can open their page with the shop code + their name + this code', 'worker.newCode': 'New code',
+  'worker.linkText': 'Hello {name} ji, your attendance and pay page from {unit}:\n{url}\nOpen it once — it stays on your phone.',
+  'worker.linkOffline': 'Internet is needed to create the link', 'settings.shopCode': 'Shop code (for workers)', 'settings.shopCodeHint': 'Workers open their page with this code',
+} as const;
+export default d;

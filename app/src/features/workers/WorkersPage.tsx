@@ -34,7 +34,7 @@ export default function WorkersPage() {
 
   const card = (w: WorkerP) => (
     <Link to={`/workers/${w.entityId}`} className="card-hover flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-card">
-      <Avatar name={w.name} size={44} />
+      <Avatar name={w.name} size={44} photoId={w.photoId} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-ink">{w.name}{!w.active && <Badge tone="neutral" className="ml-2">{t('common.inactive')}</Badge>}</p>
         <PaySummary w={w} />
@@ -64,7 +64,7 @@ export default function WorkersPage() {
         renderCard={card}
         empty={<EmptyState icon={<Users size={40} />} title={t('worker.empty')} hint={t('worker.emptyHint')} action={canManage && <Button onClick={() => navigate('/workers/new')}>{t('worker.new')}</Button>} />}
         columns={[
-          { key: 'name', header: t('worker.name'), cell: (w) => <span className="flex items-center gap-2"><Avatar name={w.name} size={32} /><span className="font-medium">{w.name}</span>{!w.active && <Badge tone="neutral">{t('common.inactive')}</Badge>}</span> },
+          { key: 'name', header: t('worker.name'), cell: (w) => <span className="flex items-center gap-2"><Avatar name={w.name} size={32} photoId={w.photoId} /><span className="font-medium">{w.name}</span>{!w.active && <Badge tone="neutral">{t('common.inactive')}</Badge>}</span> },
           { key: 'job', header: t('worker.jobTitle'), cell: (w) => <JobBadge w={w} /> },
           { key: 'pay', header: t('worker.payType'), cell: (w) => <PaySummary w={w} /> },
           { key: 'att', header: t('worker.thisMonth'), align: 'right', cell: (w) => <span className="num">P {att.get(w.entityId)?.present ?? 0} · H {att.get(w.entityId)?.half ?? 0} · A {att.get(w.entityId)?.absent ?? 0}</span> },

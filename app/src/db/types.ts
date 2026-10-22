@@ -63,6 +63,8 @@ export interface WorkerP {
   pieceRatePaise?: number;   // piece
   otRatePaise: number;       // per hour
   joinedOn: string; active: boolean; photoId?: string; note?: string;
+  /** 4-digit code the worker types (with the shop code) to open their own page (SPEC-M07). */
+  accessCode?: string;
 }
 
 export type ItemKind = 'raw' | 'finished';

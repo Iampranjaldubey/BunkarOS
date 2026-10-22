@@ -11,6 +11,8 @@ export interface Person {
   village?: string;
   fatherName?: string;
   photoId?: string;
+  /** Small chip under the name (e.g. role). */
+  subtitle?: string;
 }
 
 export interface PersonPickerProps {
@@ -59,6 +61,7 @@ function PersonTile({
         )}
       </span>
       <span className="text-base font-medium leading-tight text-ink">{person.name}</span>
+      {person.subtitle && <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">{person.subtitle}</span>}
       {person.fatherName && (
         <span className="text-xs text-muted">
           {t('person.father')}: {person.fatherName}

@@ -53,9 +53,9 @@ export function PwaInstallCard() {
   return (
     <div
       data-testid="pwa-install"
-      className="mb-4 flex items-center gap-3 rounded-2xl border border-indigo/30 bg-indigo/5 p-4 shadow-card"
+      className="mb-4 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 shadow-card"
     >
-      <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo/10 text-indigo">
+      <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
         <Download size={22} />
       </span>
       <span className="min-w-0 flex-1">
@@ -66,7 +66,7 @@ export function PwaInstallCard() {
         type="button"
         data-testid="pwa-install-add"
         onClick={() => void install()}
-        className="min-h-12 shrink-0 rounded-xl bg-indigo px-4 text-base font-medium text-white focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+        className="min-h-12 shrink-0 rounded-xl bg-primary px-4 text-base font-medium text-white focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
       >
         {t('pwa.install.add')}
       </button>
@@ -75,7 +75,7 @@ export function PwaInstallCard() {
         data-testid="pwa-install-dismiss"
         aria-label={t('pwa.install.dismiss')}
         onClick={dismiss}
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-muted focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-muted focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
       >
         <X aria-hidden="true" size={20} />
       </button>

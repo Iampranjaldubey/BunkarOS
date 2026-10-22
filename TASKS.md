@@ -3,12 +3,12 @@
 Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence required before DONE.
 
 ## Now
-- Waiting on user approval of SPECS.md (SPEC-M00..M06) and the assumptions A1..A6.
+- Spec approved 2026-10-23. Building M01 → M06 in order; each milestone committed to branch `mvp`.
 
 ## Build sequence (after approval)
 | # | Spec | Deliverable | Status | Evidence |
 |---|---|---|---|---|
-| 1 | M00 | Scaffold app + server + docker compose; copy foundation files; types; sync; login/setup; shell; i18n; photos | TODO | |
+| 1 | M00 | Scaffold app + server + docker compose; copy foundation files; types; sync; login/setup; shell; i18n; photos | DONE | tsc 0 · build OK · server 12/12 · e2e 3/3 (2026-10-23) |
 | 2 | M01 | Workers + attendance screens, domain, tests | TODO | |
 | 3 | M02 | Advances, wage engine, settlement, slip, lock | TODO | |
 | 4 | M03 | Items, stock in/out/adjust, finished stock | TODO | |

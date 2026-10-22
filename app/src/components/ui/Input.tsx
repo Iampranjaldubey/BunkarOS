@@ -11,8 +11,8 @@ Label.displayName = 'Label';
 const fieldBase =
   'w-full min-h-12 rounded-2xl border border-line bg-surface px-4 py-2.5 text-lg text-ink ' +
   'placeholder:text-muted focus-visible:outline focus-visible:outline-3 ' +
-  'focus-visible:outline-saffron-ink focus-visible:outline-offset-1 ' +
-  'aria-[invalid=true]:border-madder';
+  'focus-visible:outline-accent-ink focus-visible:outline-offset-1 ' +
+  'aria-[invalid=true]:border-given';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (

@@ -22,7 +22,7 @@ const sizeCls: Record<NonNullable<MoneyProps['size']>, string> = {
 };
 
 const flowCls: Record<MoneyFlow, string> = {
-  given: 'text-madder',
+  given: 'text-given',
   received: 'text-ok',
   neutral: 'text-ink',
 };

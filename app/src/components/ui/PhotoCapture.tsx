@@ -52,7 +52,7 @@ export function PhotoCapture({
     <div className={cn('mb-4', className)}>
       <span className="block text-base font-medium text-ink mb-1.5">
         {label ?? t('photo.capture')}
-        {required && <span className="text-madder" aria-hidden="true"> *</span>}
+        {required && <span className="text-given" aria-hidden="true"> *</span>}
       </span>
 
       <input
@@ -81,7 +81,7 @@ export function PhotoCapture({
             type="button"
             onClick={pick}
             disabled={busy}
-            className="tap-48 inline-flex items-center gap-2 rounded-2xl border border-line bg-surface px-4 text-base text-indigo focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+            className="tap-48 inline-flex items-center gap-2 rounded-2xl border border-line bg-surface px-4 text-base text-primary focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
           >
             <RefreshCw aria-hidden="true" size={20} />
             {t('photo.retake')}
@@ -96,8 +96,8 @@ export function PhotoCapture({
           aria-describedby={errId}
           className={cn(
             'flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-bg text-muted',
-            'focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink',
-            error ? 'border-madder text-madder' : 'border-line',
+            'focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink',
+            error ? 'border-given text-given' : 'border-line',
           )}
         >
           <Camera aria-hidden="true" size={28} />
@@ -106,7 +106,7 @@ export function PhotoCapture({
       )}
 
       {error && (
-        <p id={errId} role="alert" className="mt-1.5 text-sm font-medium text-madder">
+        <p id={errId} role="alert" className="mt-1.5 text-sm font-medium text-given">
           {error}
         </p>
       )}

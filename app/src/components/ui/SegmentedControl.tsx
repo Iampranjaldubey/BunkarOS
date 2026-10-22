@@ -38,8 +38,8 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             className={cn(
               'min-h-12 min-w-12 rounded-xl px-4 text-base font-medium transition-colors',
-              'focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink',
-              selected ? 'bg-surface text-indigo shadow-card' : 'text-muted hover:text-ink',
+              'focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink',
+              selected ? 'bg-surface text-primary shadow-card' : 'text-muted hover:text-ink',
             )}
           >
             {opt.label}

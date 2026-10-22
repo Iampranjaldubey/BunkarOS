@@ -8,11 +8,11 @@ const badge = cva(
     variants: {
       tone: {
         neutral: 'bg-bg text-muted border border-line',
-        given: 'bg-madder/10 text-madder',
+        given: 'bg-given/10 text-given',
         received: 'bg-ok/12 text-ok',
-        warn: 'bg-saffron/20 text-saffron-ink',
-        info: 'bg-indigo/10 text-indigo',
-        danger: 'bg-madder text-white',
+        warn: 'bg-accent/20 text-accent-ink',
+        info: 'bg-primary/10 text-primary',
+        danger: 'bg-given text-white',
       },
     },
     defaultVariants: { tone: 'neutral' },

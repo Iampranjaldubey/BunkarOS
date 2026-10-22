@@ -32,9 +32,9 @@ export interface StatTileProps {
 
 const toneCls = {
   neutral: 'bg-surface border-line',
-  given: 'bg-madder/5 border-madder/20',
+  given: 'bg-given/5 border-given/20',
   received: 'bg-ok/5 border-ok/20',
-  info: 'bg-indigo/5 border-indigo/20',
+  info: 'bg-primary/5 border-primary/20',
 };
 
 /** Compact labelled statistic for home/digest grids. */

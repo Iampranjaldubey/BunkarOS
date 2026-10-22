@@ -27,7 +27,7 @@ export function Field({ label, hint, error, required, className, children }: Fie
     <div className={cn('mb-4', className)}>
       <Label htmlFor={id}>
         {label}
-        {required && <span className="text-madder" aria-hidden="true"> *</span>}
+        {required && <span className="text-given" aria-hidden="true"> *</span>}
       </Label>
       {hint && (
         <p id={hintId} className="text-sm text-muted mb-1.5">
@@ -36,7 +36,7 @@ export function Field({ label, hint, error, required, className, children }: Fie
       )}
       {children({ id, describedBy, invalid: Boolean(error) })}
       {error && (
-        <p id={errId} role="alert" className="mt-1.5 text-sm font-medium text-madder">
+        <p id={errId} role="alert" className="mt-1.5 text-sm font-medium text-given">
           {error}
         </p>
       )}

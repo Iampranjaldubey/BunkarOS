@@ -61,7 +61,7 @@ export function Sheet({ open, onClose, title, children, footer, className }: She
         <button
           type="button"
           onClick={onClose}
-          className="tap-48 -mr-2 inline-flex items-center justify-center rounded-full text-muted hover:text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+          className="tap-48 -mr-2 inline-flex items-center justify-center rounded-full text-muted hover:text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
         >
           <X aria-hidden="true" />
           <span className="visually-hidden">{t('action.cancel')}</span>

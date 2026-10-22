@@ -30,7 +30,7 @@ export function PageHeader({ title, back, right }: PageHeaderProps) {
         <button
           type="button"
           onClick={onBack}
-          className="tap-48 -ml-2 inline-flex items-center justify-center rounded-full text-indigo hover:bg-indigo/10 focus-visible:outline focus-visible:outline-3 focus-visible:outline-saffron-ink"
+          className="tap-48 -ml-2 inline-flex items-center justify-center rounded-full text-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
         >
           <ArrowRight aria-hidden="true" className="rotate-180" />
           <span className="visually-hidden">{t('action.back')}</span>

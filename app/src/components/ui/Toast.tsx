@@ -47,7 +47,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={cn(
               'pointer-events-auto max-w-md rounded-2xl px-4 py-3 text-base text-white shadow-sheet',
               t.tone === 'success' && 'bg-ok',
-              t.tone === 'error' && 'bg-madder',
+              t.tone === 'error' && 'bg-given',
               t.tone === 'info' && 'bg-ink',
             )}
           >

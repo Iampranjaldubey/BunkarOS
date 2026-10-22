@@ -34,8 +34,9 @@ Status legend: Draft | Approved | Built.
 | SPEC-M04 | Orders: buyers, orders, status, deliveries | Built |
 | SPEC-M05 | Owner dashboard + monthly analysis + Excel export | Built |
 | SPEC-M06 | Deploy: Docker Postgres locally, Render in prod | Built |
-| SPEC-M07 | Worker page: WhatsApp link + shop-code fallback, stays signed in | Approved (user 2026-10-23) |
-| SPEC-M08 | UI polish pass + one-year logins | Approved (user 2026-10-23) |
+| SPEC-M07 | Worker page: WhatsApp link + shop-code fallback, stays signed in | Built |
+| SPEC-M08 | UI polish pass + one-year logins | Built |
+| SPEC-M09 | Platform admin: founders see every unit, its users, workers and details (read-only) | Approved (user 2026-10-23) |
 
 ---
 
@@ -108,6 +109,13 @@ Status legend: Draft | Approved | Built.
 - Owner/staff token TTL 365 days; PIN only on first login per phone or after explicit logout.
 - Home: hero header (greeting, date, shop name, one-line status), tiles with icon chips and sub-lines, "needs attention" ordering. Forms: taller inputs, sticky save bar on phones, inline success. Lists: worker photos in avatars, status chips with icons, zebra tables. Login/setup: shop-name card, role chips, larger PIN pad, step hints.
 - **Acceptance**: all existing e2e stay green; phone + desktop overflow sweeps green; screenshots reviewed.
+
+### SPEC-M09 — Platform admin (founders)
+- **Goal**: Shubham and Pranjal see every unit on the server, each unit's users, workers, month, stock, orders, usage and entry log. Read-only. English UI (internal).
+- **Auth**: server env `ADMIN_KEYS="shubham:<key>,pranjal:<key>"` (admin disabled when unset → 403 `admin_disabled`). `POST /api/admin/login {name, key}` (rate-limited 10/min) → HMAC token (30 d) stored in localStorage `bunkar.admin`. Admin tokens are separate from unit tokens and never grant unit writes.
+- **API**: `GET /api/admin/units` → per unit: id, name, shortCode, createdAt, ownerName/phone, counts (users, workers, records), entries this month, days with entries this month, last activity. `GET /api/admin/units/:unitId` → unit + all records (pinHash/pinSalt stripped) so the browser reuses the domain projections.
+- **App**: `/admin` (login when no token; else units table sorted by last activity, search, totals), `/admin/units/:unitId` (overview tiles, users, workers table incl. worker code, month: attendance summary + wage sheet, stock balances, orders, usage per user, last 50 log entries; month picker). Logout button (admins can handle it).
+- **Acceptance**: AC1 wrong key → 401; no env → 403. AC2 units list shows a unit created a minute ago with its owner and worker counts. AC3 unit page shows the worker, today's entries and the month's wage sheet with the same numbers as the owner sees. AC4 an admin token cannot call `/api/sync` or `/api/worker-links`.
 
 ## Scope — Out (all modules)
 GST/invoicing, payment gateway, subscription billing, multi-branch, AI/voice, push notifications, barcodes/QR, supplier ledger, per-carpet loom tracking, thekedar chain, tauli, exporter links, Tally export, IVR.

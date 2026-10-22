@@ -189,3 +189,50 @@ export async function putPhoto(db, { id, unitId, mime, bytes }) {
 export async function getPhoto(db, unitId, id) {
   const r = await q(db, 'SELECT mime, bytes FROM photos WHERE id = $1 AND unit_id = $2', [id, unitId]); return r.rows[0];
 }
+
+// ---------- SPEC-M09: platform admin (read-only, all units) ----------
+/** Every unit with activity counts (one query each; unit counts are small). */
+export async function adminUnits(db, month) {
+  const units = (await q(db, 'SELECT unit_id, name, short_code, created_at FROM units ORDER BY created_at DESC')).rows;
+  const out = [];
+  for (const u of units) {
+    const stats = (await q(db, `SELECT
+        COUNT(*)::int AS records,
+        COUNT(*) FILTER (WHERE type = 'user')::int AS user_versions,
+        MAX(at) AS last_at,
+        COUNT(*) FILTER (WHERE day LIKE $2 || '%' AND type NOT IN ('usage','reversal'))::int AS month_entries,
+        COUNT(DISTINCT day) FILTER (WHERE day LIKE $2 || '%' AND type NOT IN ('usage','reversal'))::int AS month_days
+      FROM records WHERE unit_id = $1`, [u.unit_id, month])).rows[0];
+    const users = await latestOf(db, u.unit_id, 'user');
+    const workers = await latestOf(db, u.unit_id, 'worker');
+    const owner = users.find((x) => x.role === 'owner');
+    out.push({
+      unitId: u.unit_id, name: u.name, shortCode: u.short_code, createdAt: u.created_at,
+      ownerName: owner?.name ?? '', ownerPhone: owner?.phone ?? '',
+      users: users.filter((x) => x.active).length, workers: workers.filter((x) => x.active).length,
+      records: stats.records, monthEntries: stats.month_entries, monthDays: stats.month_days, lastAt: stats.last_at,
+    });
+  }
+  return out;
+}
+/** Latest non-reversed payload per entityId for a master type. */
+async function latestOf(db, unitId, type) {
+  const reversed = await reversedTargetIds(db, unitId);
+  const latest = new Map();
+  for (const row of await recordsOfType(db, unitId, type)) {
+    if (reversed.has(row.id)) continue;
+    const p = row.rec?.payload; if (!p?.entityId) continue;
+    const prev = latest.get(p.entityId);
+    if (!prev || (row.rec.at || '') >= prev.at) latest.set(p.entityId, { at: row.rec.at || '', p });
+  }
+  return [...latest.values()].map((v) => v.p);
+}
+/** All records of a unit with secrets stripped (PIN hashes). */
+export async function adminUnitRecords(db, unitId) {
+  const r = await q(db, 'SELECT json FROM records WHERE unit_id = $1 ORDER BY seq ASC', [unitId]);
+  return r.rows.map((row) => {
+    const rec = row.json;
+    if (rec.type === 'user' && rec.payload) { const { pinHash: _h, pinSalt: _s, ...rest } = rec.payload; return { ...rec, payload: rest }; }
+    return rec;
+  });
+}

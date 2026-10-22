@@ -49,6 +49,16 @@ Each worker can see their own month, pay history, advances and profile on their 
 
 The page never shows login/logout vocabulary; "यह मेरा फ़ोन नहीं है" in the profile forgets the phone. Owner and staff logins last a year unless they log out.
 
+## Platform admin (founders)
+
+`/admin` is a read-only view of every unit on the server: owner, shop code, logins, workers (with their worker codes, for support), this month's wage sheet, stock, orders, usage per user and the last entries. It needs admin keys on the server:
+
+```bash
+ADMIN_KEYS="shubham:<long-random-key>,pranjal:<long-random-key>" node index.mjs   # locally
+```
+
+On Render add the same `ADMIN_KEYS` environment variable. Without it the admin login answers 403. Admin tokens are separate from unit logins and can never write unit data.
+
 ## How it works
 
 Every entry is an append-only record written to the phone first (IndexedDB) and pushed to the server when online. Edits create a new record and reverse the old one, so the owner always sees who wrote what, when, and the old value. The server verifies the author, owner-only record types, locked months, duplicate wage payments and wage arithmetic.

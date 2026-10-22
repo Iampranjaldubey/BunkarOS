@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   webServer: [
     { command: 'node ../server/index.mjs', url: 'http://localhost:8795/api/health', reuseExistingServer: false, timeout: 30_000,
-      env: { PORT: '8795', PGSCHEMA: 'e2e', PG_RESET: '1', AUTH_RATE_MAX: '100000', CLAIM_RATE_MAX: '100000', WORKER_RATE_MAX: '100000', SERVE_APP: '0' } },
+      env: { PORT: '8795', PGSCHEMA: 'e2e', PG_RESET: '1', AUTH_RATE_MAX: '100000', CLAIM_RATE_MAX: '100000', WORKER_RATE_MAX: '100000', ADMIN_RATE_MAX: '100000', ADMIN_KEYS: 'shubham:e2e-admin-key-123,pranjal:e2e-admin-key-456', SERVE_APP: '0' } },
     { command: 'npx vite --port 5174 --strictPort', url: 'http://localhost:5174', reuseExistingServer: false, timeout: 60_000, env: { VITE_API_TARGET: 'http://localhost:8795' } },
   ],
 });

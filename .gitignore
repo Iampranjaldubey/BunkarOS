@@ -6,3 +6,4 @@ test-results/
 playwright-report/
 .playwright-mcp/
 server/data/
+server/.env.local-demo

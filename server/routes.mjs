@@ -2,11 +2,11 @@
 import { getUnit, insertUnit, getRecordById, insertRecord, recordsSince, userRecordsSince, putPhoto, getPhoto,
   userRecordCount, latestUser, userRole, lockedMonths, paidPairs, recordsOfType,
   getUnitByShortCode, ensureShortCode, latestWorker, activeWorkers, workerRecords,
-  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink } from './db.mjs';
-import { randomBytes } from 'node:crypto';
+  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords } from './db.mjs';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { hashUnitKey, verifyUnitKey } from './auth.mjs';
 import { evaluate } from './rules.mjs';
-import { signToken, verifyToken, verifyPinServer } from './token.mjs';
+import { signToken, verifyToken, verifyPinServer, signAdminToken, verifyAdminToken } from './token.mjs';
 import { serveStatic } from './static.mjs';
 
 const BODY_LIMIT = Math.round(2.5 * 1024 * 1024);
@@ -17,6 +17,22 @@ const PULL_LIMIT = 500;
 const PHOTO_MIME_ALLOW = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const WORKER_RATE_MAX = Number(process.env.WORKER_RATE_MAX) > 0 ? Number(process.env.WORKER_RATE_MAX) : 60; // /api/w/* per IP per minute
 const CLAIM_RATE_MAX = Number(process.env.CLAIM_RATE_MAX) > 0 ? Number(process.env.CLAIM_RATE_MAX) : 10;   // code guesses per IP per minute
+const ADMIN_RATE_MAX = Number(process.env.ADMIN_RATE_MAX) > 0 ? Number(process.env.ADMIN_RATE_MAX) : 10;   // admin login attempts per IP per minute
+
+/** ADMIN_KEYS="shubham:<key>,pranjal:<key>" → Map(name → key). Empty map = admin disabled. */
+function adminKeys() {
+  const out = new Map();
+  for (const part of String(process.env.ADMIN_KEYS || '').split(',')) {
+    const i = part.indexOf(':');
+    if (i > 0) { const name = part.slice(0, i).trim().toLowerCase(); const key = part.slice(i + 1).trim(); if (name && key.length >= 8) out.set(name, key); }
+  }
+  return out;
+}
+function constantTimeEqual(a, b) {
+  const A = Buffer.from(String(a)); const B = Buffer.from(String(b));
+  if (A.length !== B.length) return false;
+  return timingSafeEqual(A, B);
+}
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const ALLOWED_ORIGINS = new Set(['http://localhost:5174', 'http://localhost:4174', 'http://127.0.0.1:5174', 'http://127.0.0.1:4174']);
 
@@ -67,6 +83,7 @@ export function makeHandler(db, opts = {}) {
   const authLimiter = makeRateLimiter(AUTH_RATE_MAX, RATE_WINDOW_MS);
   const workerLimiter = makeRateLimiter(WORKER_RATE_MAX, RATE_WINDOW_MS);
   const claimLimiter = makeRateLimiter(CLAIM_RATE_MAX, RATE_WINDOW_MS);
+  const adminLimiter = makeRateLimiter(ADMIN_RATE_MAX, RATE_WINDOW_MS);
   const staticDir = opts.staticDir;
   return async function handler(req, res) {
     try {
@@ -78,6 +95,11 @@ export function makeHandler(db, opts = {}) {
       if (req.method === 'POST' && path === '/api/auth/token') return await handleAuthToken(db, req, res, authLimiter);
       if (req.method === 'POST' && path === '/api/sync') return await handleSync(db, req, res);
       if (req.method === 'GET' && path === '/api/units/me') return await handleUnitMe(db, req, res);
+      // Platform admin (SPEC-M09): separate key, read-only.
+      if (req.method === 'POST' && path === '/api/admin/login') { if (!adminLimiter(clientIp(req))) return sendError(res, 429, 'rate_limited', req); return await handleAdminLogin(db, req, res); }
+      if (req.method === 'GET' && path === '/api/admin/units') return await handleAdminUnits(db, req, res);
+      const adminUnit = path.match(/^\/api\/admin\/units\/([^/]+)$/);
+      if (adminUnit && req.method === 'GET') return await handleAdminUnit(db, req, res, decodeURIComponent(adminUnit[1]));
       if (req.method === 'POST' && path === '/api/worker-links') return await handleWorkerLink(db, req, res);
       if (req.method === 'POST' && path === '/api/worker-links/revoke') return await handleWorkerLinkRevoke(db, req, res);
       // Public worker endpoints (SPEC-M07): shop lookup, claim by code, data by token.
@@ -299,3 +321,38 @@ async function handleWorkerData(db, req, res, token) {
   for (const r of records) if (r.type === 'setting' && typeof r.payload?.ownerPhone === 'string') ownerPhone = r.payload.ownerPhone;
   return sendJson(res, 200, { ok: true, unitName: unit.name, shopCode: await ensureShortCode(db, unit.unit_id), ownerPhone, worker: safeWorker, workerId: link.worker_id, records, fetchedAt: new Date().toISOString() }, req);
 }
+
+// ---------- SPEC-M09: platform admin ----------
+async function requireAdmin(db, req, res) {
+  const h = req.headers['authorization'];
+  const m = typeof h === 'string' ? h.match(/^Bearer\s+(.+)$/) : null;
+  const tok = m ? await verifyAdminToken(db, m[1]) : null;
+  if (!tok || !adminKeys().has(tok.admin)) { sendError(res, 401, 'admin_unauthorized', req); return null; }
+  return tok;
+}
+/** POST /api/admin/login {name, key} → {token, name}. */
+async function handleAdminLogin(db, req, res) {
+  const keys = adminKeys();
+  if (keys.size === 0) return sendError(res, 403, 'admin_disabled', req);
+  const body = await readJson(req, BODY_LIMIT);
+  const name = String(body.name || '').trim().toLowerCase();
+  const key = String(body.key || '');
+  const expected = keys.get(name);
+  if (!expected || !constantTimeEqual(expected, key)) return sendError(res, 401, 'admin_unauthorized', req);
+  const { token, exp } = await signAdminToken(db, name);
+  return sendJson(res, 200, { ok: true, token, exp, name }, req);
+}
+/** GET /api/admin/units → every unit with counts for the current IST month. */
+async function handleAdminUnits(db, req, res) {
+  if (!(await requireAdmin(db, req, res))) return undefined;
+  const month = istDay(new Date()).slice(0, 7);
+  return sendJson(res, 200, { ok: true, month, units: await adminUnits(db, month) }, req);
+}
+/** GET /api/admin/units/:unitId → unit + all records (PIN hashes stripped). */
+async function handleAdminUnit(db, req, res, unitId) {
+  if (!(await requireAdmin(db, req, res))) return undefined;
+  const unit = await getUnit(db, unitId);
+  if (!unit) return sendError(res, 404, 'not_found', req);
+  return sendJson(res, 200, { ok: true, unit: { unitId: unit.unit_id, name: unit.name, shortCode: unit.short_code }, records: await adminUnitRecords(db, unitId) }, req);
+}
+function istDay(date) { const s = new Date(date.getTime() + 5.5 * 3600 * 1000); return s.toISOString().slice(0, 10); }

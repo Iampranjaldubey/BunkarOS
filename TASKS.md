@@ -24,6 +24,7 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 9 | M07 | Server: short_code, worker_links, /api/worker-links, /api/w/* + tests | DONE | server 16/16 (worker-links 4 new) |
 | 10 | M07 | App: /w routes, worker page (month, pay history, advances, profile), owner "send link", access code | DONE | e2e 07-worker-page 1/1 (link, shop code, reload, revoke) |
 | 11 | M08 | One-year tokens; UI polish (home, forms, lists, login/setup) | DONE | full e2e 12/12 · screenshots reviewed |
+| 12 | M09 | Platform admin: ADMIN_KEYS login, /api/admin/*, /admin pages | DONE | server admin.test 4/4 (20/20 total) · e2e 08-admin 1/1 (13/13 total) |
 
 ## Blocked
 - Push to GitHub: needs the user's "yes" and ShubhamKang write access on Pranjal's repo (Git Credential Manager will prompt in the browser).

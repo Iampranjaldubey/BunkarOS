@@ -28,6 +28,8 @@ const MonthPage = lazy(() => import('../features/month/MonthPage'));
 const WorkerLinkPage = lazy(() => import('../worker/WorkerLinkPage'));
 const WorkerHomePage = lazy(() => import('../worker/WorkerHomePage'));
 const WorkerJoinPage = lazy(() => import('../worker/WorkerJoinPage'));
+const AdminUnitsPage = lazy(() => import('../admin/AdminUnitsPage'));
+const AdminUnitPage = lazy(() => import('../admin/AdminUnitPage'));
 
 const guard = (action: Parameters<typeof RequireCan>[0]['action'], el: React.ReactNode) => <RequireCan action={action}>{el}</RequireCan>;
 
@@ -38,6 +40,9 @@ export const router = createBrowserRouter([
   { path: '/w', element: <WorkerHomePage /> },
   { path: '/w/join', element: <WorkerJoinPage /> },
   { path: '/w/:token', element: <WorkerLinkPage /> },
+  // Platform admin (SPEC-M09): founders only, separate key.
+  { path: '/admin', element: <AdminUnitsPage /> },
+  { path: '/admin/units/:unitId', element: <AdminUnitPage /> },
   {
     path: '/',
     element: (<RequireSession><AppLayout /></RequireSession>),

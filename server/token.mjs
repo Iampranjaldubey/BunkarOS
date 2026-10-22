@@ -49,3 +49,23 @@ export async function verifyToken(db, token) {
   if (typeof payload.unitId !== 'string' || typeof payload.userId !== 'string') return null;
   return payload;
 }
+
+/** Platform admin token: {admin:name, exp}. Verified with the same HMAC secret; never carries a unitId. */
+export async function signAdminToken(db, name) {
+  const secret = await getServerSecret(db);
+  const exp = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const payloadB64 = b64url(JSON.stringify({ admin: name, exp }));
+  const mac = createHmac('sha256', secret).update(payloadB64).digest();
+  return { token: `${payloadB64}.${b64url(mac)}`, exp };
+}
+export async function verifyAdminToken(db, token) {
+  if (typeof token !== 'string' || !token.includes('.')) return null;
+  const dot = token.indexOf('.');
+  const payloadB64 = token.slice(0, dot); const macB64 = token.slice(dot + 1);
+  const expectedMac = createHmac('sha256', await getServerSecret(db)).update(payloadB64).digest();
+  let gotMac; try { gotMac = fromB64url(macB64); } catch { return null; }
+  if (gotMac.length !== expectedMac.length || !timingSafeEqual(gotMac, expectedMac)) return null;
+  let payload; try { payload = JSON.parse(fromB64url(payloadB64).toString('utf8')); } catch { return null; }
+  if (!payload || typeof payload.admin !== 'string' || typeof payload.exp !== 'number' || Date.now() >= payload.exp) return null;
+  return payload;
+}

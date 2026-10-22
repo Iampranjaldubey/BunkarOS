@@ -12,8 +12,8 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 2 | M01 | Workers + attendance screens, domain, tests | DONE | vitest attendance 4/4 · e2e 02-workers-attendance 2/2 (2026-10-23) |
 | 3 | M02 | Advances, wage engine, settlement, slip, lock | DONE | vitest wage 5/5 (AC1 exact) · e2e 03-wages 1/1 (2026-10-23) |
 | 4 | M03 | Items, stock in/out/adjust, finished stock | TODO | |
-| 5 | M04 | Buyers, orders, status, deliveries | TODO | |
-| 6 | M05 | Dashboard, monthly analysis, xlsx export, print | TODO | |
+| 5 | M04 | Buyers, orders, status, deliveries | DONE | vitest orders 2/2 · e2e 05-orders 1/1 (2026-10-23) |
+| 6 | M05 | Dashboard, monthly analysis, xlsx export, print | DONE | vitest export 1/1 · e2e 06-dashboard-month 1/1 incl. real .xlsx download (2026-10-23) |
 | 7 | M06 | render.yaml, seed demo, README, e2e green | TODO | |
 | 8 | — | Git init, remote = Iampranjaldubey/BunkarOS, branch `mvp`; push on explicit "yes" | TODO | |
 

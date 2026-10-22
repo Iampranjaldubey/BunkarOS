@@ -54,6 +54,8 @@ export default defineConfig({
       },
     },
   },
+  // Pre-bundle the lazily imported Excel library so the first export click never triggers a dev reload.
+  optimizeDeps: { include: ['exceljs'] },
   server: { proxy: { '/api': { target: process.env.VITE_API_TARGET || 'http://localhost:8791', changeOrigin: true } } },
   preview: { proxy: { '/api': { target: process.env.VITE_API_TARGET || 'http://localhost:8792', changeOrigin: true } } },
   test: { environment: 'node', include: ['src/**/*.test.ts'] },

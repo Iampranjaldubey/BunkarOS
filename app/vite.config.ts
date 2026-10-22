@@ -32,7 +32,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['**/*.woff'],
+        // The Excel library (~930 KB) is fetched on first export, not precached: keeps the offline shell small.
+        globIgnores: ['**/*.woff', '**/xlsx-vendor-*.js'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [{ urlPattern: ({ url }) => url.pathname.startsWith('/api'), handler: 'NetworkOnly' }],

@@ -1,0 +1,22 @@
+import { test, expect } from '@playwright/test';
+import { execSync } from 'node:child_process';
+import { loginAs } from './fixtures';
+const OUT = '/tmp/claude-1000/-home-sunny-kumar-Desktop-SHUBH-START-UP-BunkarOS/e67ac1fc-eeec-4c83-91d4-e5ee0c92b392/scratchpad/shots';
+test('screenshots', async ({ page }, info) => {
+  const out = execSync('node ../server/seed-demo.mjs', { env: { ...process.env, BASE: 'http://localhost:8791' } }).toString();
+  const { unitId, unitKey } = JSON.parse(out.slice(out.indexOf('{'), out.indexOf('}') + 1));
+  await page.goto('/setup');
+  await page.getByRole('radio', { name: /मौजूदा यूनिट से जुड़ें/ }).click();
+  await page.getByLabel(/यूनिट कोड/).fill(unitId); await page.getByLabel(/यूनिट चाबी/).fill(unitKey);
+  await page.getByRole('button', { name: /^जुड़ें$/ }).click();
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole('button', { name: 'Ramesh (Owner)' })).toBeVisible({ timeout: 15000 });
+  await page.screenshot({ path: `${OUT}/${info.project.name}-login.png` });
+  await loginAs(page, 'Ramesh (Owner)', '1234');
+  await expect(page.getByText('सिंक हो गया')).toBeVisible({ timeout: 20000 });
+  await page.waitForTimeout(800);
+  for (const [name, path] of [['home', '/'], ['attendance', '/attendance'], ['wages', '/wages'], ['stock', '/stock'], ['orders', '/orders'], ['month', '/month'], ['workers', '/workers']]) {
+    await page.goto(path); await page.waitForTimeout(600);
+    await page.screenshot({ path: `${OUT}/${info.project.name}-${name}.png`, fullPage: info.project.name === 'mobile' });
+  }
+});

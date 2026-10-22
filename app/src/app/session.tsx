@@ -117,7 +117,7 @@ export async function loginWithPin(user: UserP, pin: string, unitId: string): Pr
     for (let attempt = 0; attempt < 3; attempt++) {
       try { await syncNow(); } catch { /* never throws */ }
       const result = await requestToken(unitId, user.entityId, pin);
-      if (result.ok) break;
+      if (result.ok) { try { await syncNow(); } catch { /* never throws */ } break; } // pull the unit's data now, not on the 30 s timer
       if (attempt < 2) await new Promise((r) => setTimeout(r, 150));
     }
   } else {

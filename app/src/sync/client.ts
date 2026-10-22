@@ -317,15 +317,19 @@ async function pushPendingPhotos(creds: { unitId: string; unitKey: string }): Pr
   }
 }
 
+/**
+ * Push one batch of pending records. On a shared phone, records written by ANOTHER
+ * user (still pending when this user logged in) are left alone: the server would
+ * reject them as a forged author under this user's token, and a rejected record
+ * disappears from every screen. They sync when their author logs in again.
+ */
 async function pushPending(
   creds: { unitId: string; unitKey: string },
   token: string | undefined,
+  authorId?: string,
 ): Promise<SyncResponse | null> {
-  const pending: Rec[] = await db.records
-    .where('sync')
-    .equals('pending')
-    .limit(PUSH_BATCH)
-    .toArray();
+  const allPending: Rec[] = await db.records.where('sync').equals('pending').toArray();
+  const pending = (authorId ? allPending.filter((r) => r.by === authorId) : allPending).slice(0, PUSH_BATCH);
 
   const since = (await metaGet<number>('cursor')) ?? 0;
   const res = await fetch('/api/sync', {
@@ -455,15 +459,17 @@ async function syncCycle(): Promise<void> {
     const auth = await storedToken();
     const token = auth?.token;
 
-    // Push (may be several batches if a lot is pending).
-    let data = await pushPending(creds, token);
+    // Push (may be several batches if a lot is pending). With a token, only this
+    // user's records are pushed (see pushPending).
+    const authorId = auth?.userId;
+    let data = await pushPending(creds, token, authorId);
     if (data) await applyPulled(data);
 
-    // If a full push batch went out, keep draining until < PUSH_BATCH pending.
+    // If a full batch went out there may be more: keep going until a short batch.
     let guard = 0;
-    while (data && (await db.records.where('sync').equals('pending').count()) > 0 && guard < 50) {
+    while (data && data.accepted.length + data.rejected.length >= PUSH_BATCH && guard < 50) {
       guard += 1;
-      data = await pushPending(creds, token);
+      data = await pushPending(creds, token, authorId);
       if (data) await applyPulled(data);
     }
 

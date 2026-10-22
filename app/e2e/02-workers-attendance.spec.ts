@@ -47,6 +47,7 @@ test('staff cannot edit pay figures (fields disabled, note shown)', async ({ pag
   await page.getByLabel(/^नाम/).fill('Salim');
   await page.getByLabel(/महीने की तनख्वाह/).fill('10000');
   await page.getByRole('button', { name: 'सेव करें', exact: true }).click();
+  await expect(page).toHaveURL(/\/workers$/);
   await page.goto('/settings');
   await page.getByRole('button', { name: /स्टाफ़ जोड़ें/ }).click();
   await page.getByRole('dialog').getByLabel(/^नाम/).fill('Munshi');

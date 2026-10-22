@@ -1,0 +1,28 @@
+# Render blueprint: one web service (Node API + built PWA) and one Postgres.
+# Deploy: Render dashboard → New → Blueprint → pick this repo, branch `mvp`.
+services:
+  - type: web
+    name: bunkar-mvp
+    runtime: node
+    plan: free            # upgrade to starter to stop the free-tier sleep
+    region: singapore
+    branch: mvp
+    rootDir: .
+    buildCommand: cd app && npm ci && npm run build && cd ../server && npm ci
+    startCommand: cd server && node index.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bunkar-mvp-db
+          property: connectionString
+      - key: BUNKAR_SECRET
+        generateValue: true
+      - key: TRUST_PROXY
+        value: "1"
+databases:
+  - name: bunkar-mvp-db
+    plan: free            # 1 GB, expires after 90 days on free; starter keeps it
+    region: singapore

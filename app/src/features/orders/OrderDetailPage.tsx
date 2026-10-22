@@ -50,6 +50,7 @@ export default function OrderDetailPage() {
     const q = Number(dQty);
     if (!Number.isInteger(q) || q <= 0) { setDErr(t('valid.positive')); return; }
     if (q > v.pendingQty) { setDErr(t('order.tooMany', { pending: v.pendingQty })); return; }
+    if (dItem) { const bal = stockBalance(recs, dItem); if (q * 1000 > bal) { setDErr(t('stock.overIssue', { bal: String(bal / 1000) })); return; } }
     await addRecord<DeliveryP>('delivery', { orderId: id, qty: q, note: dNote.trim() || undefined, finishedItemId: dItem || undefined }, { day: dDay });
     setDeliverOpen(false); setDQty(''); setDNote(''); setDErr(''); toast.show(t('action.done'), 'success');
   };

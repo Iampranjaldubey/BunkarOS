@@ -4,6 +4,7 @@ import { Delete } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PersonPicker, type Person } from '../components/ui/PersonPicker';
+import { LanguageSwitch } from '../components/ui/LanguageSwitch';
 import type { UserP } from '../db/types';
 import { useT } from '../i18n';
 import { bootstrapUsers } from '../sync';
@@ -113,14 +114,18 @@ export default function LoginPage() {
   }));
 
   return (
-    <div className="lg:flex lg:min-h-dvh lg:flex-col lg:items-center lg:justify-center lg:bg-bg lg:px-4 lg:py-10">
+    <div className="relative lg:flex lg:min-h-dvh lg:flex-col lg:items-center lg:justify-center lg:bg-bg lg:px-4 lg:py-10">
+      {/* Language choice before login: applies at once and is remembered. */}
+      <div className="absolute right-4 top-3 z-10 lg:right-8 lg:top-6">
+        <LanguageSwitch />
+      </div>
       {/* App name/logo above the card — desktop only (phones keep today's layout). */}
       <div className="hidden text-center lg:mb-6 lg:block">
         <h1 className="text-3xl font-bold text-indigo">{t('app.name')}</h1>
         <p className="mt-1 text-muted">{t('app.tagline')}</p>
       </div>
 
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 py-10 lg:min-h-0 lg:w-full lg:gap-5 lg:rounded-3xl lg:border lg:border-line lg:bg-surface lg:px-8 lg:py-8 lg:shadow-card">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 pb-10 pt-20 lg:min-h-0 lg:w-full lg:gap-5 lg:rounded-3xl lg:border lg:border-line lg:bg-surface lg:px-8 lg:py-8 lg:shadow-card">
         <h1 className="text-center text-3xl">
           {picked ? t('login.enterPin') : t('login.title')}
         </h1>

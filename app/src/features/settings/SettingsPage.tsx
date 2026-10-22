@@ -29,7 +29,7 @@ import { hashPin } from '../../lib/pin';
 import { uuid, istDay } from '../../domain/ids';
 import type { Lang, Role, SettingP, UserP } from '../../db/types';
 import { loadDemoData } from '../demo/seed';
-import { useT, setLang as persistLang } from '../../i18n';
+import { useT } from '../../i18n';
 import { formatINR } from '../../lib/utils';
 
 interface LinkDef { to: string; icon: LucideIcon; key: string; }
@@ -46,7 +46,7 @@ const LINKS: LinkDef[] = [
 ];
 
 export default function SettingsPage() {
-  const { t, lang } = useT();
+  const { t, lang, setLang } = useT();
   const toast = useToast();
   const recs = useRecords();
   const { role, user, logout } = useSession();
@@ -229,7 +229,7 @@ export default function SettingsPage() {
       openingCashDay: openDay,
     };
     await addRecord<SettingP>('setting', payload);
-    persistLang(prefLang);
+    setLang(prefLang);
     toast.show(t('settings.prefsSaved'), 'success');
     setPrefsOpen(false);
   };

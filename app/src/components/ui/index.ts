@@ -26,3 +26,4 @@ export { PhotoThumb } from './PhotoThumb';
 export { PwaInstallCard } from './PwaInstallCard';
 export { useIsDesktop, useMediaQuery, DESKTOP_QUERY } from './useIsDesktop';
 export { PhoneOnly, DesktopOnly } from './Responsive';
+export { LanguageSwitch } from './LanguageSwitch';

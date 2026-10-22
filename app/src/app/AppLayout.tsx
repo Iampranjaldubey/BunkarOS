@@ -1,12 +1,11 @@
 import { Suspense, useEffect, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 import { SyncBadge } from '../components/ui/SyncBadge';
-import { SegmentedControl } from '../components/ui/SegmentedControl';
+import { LanguageSwitch } from '../components/ui/LanguageSwitch';
 import { BottomNav } from '../components/ui/BottomNav';
 import { SideNav } from '../components/ui/SideNav';
 import { useIsDesktop } from '../components/ui/useIsDesktop';
 import { Skeleton } from '../components/ui/Feedback';
-import type { Lang } from '../db/types';
 import { useRecords } from '../db/hooks';
 import { getSettings } from '../domain/pieces';
 import { useT } from '../i18n';
@@ -16,7 +15,7 @@ import { getUnitName, setUnitName } from './unit-name';
 /** App chrome for authenticated role screens. */
 export function AppLayout() {
   const { role } = useSession();
-  const { lang, setLang, t } = useT();
+  const { t } = useT();
   const isDesktop = useIsDesktop();
   // Live from the latest synced settings record, so a phone that just JOINED a unit
   // shows the unit's name as soon as the first sync lands (no reload needed).
@@ -48,15 +47,7 @@ export function AppLayout() {
             {unitName || t('app.name')}
           </span>
           <SyncBadge />
-          <SegmentedControl<Lang>
-            label={t('lang.toggle')}
-            value={lang}
-            onChange={setLang}
-            options={[
-              { value: 'hi', label: 'हिंदी' },
-              { value: 'en', label: 'EN' },
-            ]}
-          />
+          <LanguageSwitch />
         </div>
       </header>
 

@@ -101,3 +101,4 @@ Original notes:
 | D7 | Peshgi recovery | Netted from wage; roker records net paid only; recovery in peshgi ledger. |
 | D8 | Thekedar | Minimal entity (name, phone, looms) + wool balance per thekedar. No tiers/ledger (D1 feature stays P1). |
 | D9 | Idle threshold | Yellow after 4 days, red after 7 days with no check-in progress; owner-configurable. |
+| Language switch (हिंदी / EN) on setup + login; Settings language applies immediately | — (UX fix) | DONE — `e2e/24-language.spec.ts` |

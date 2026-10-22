@@ -49,12 +49,13 @@ export function ResponsiveTable<T>({
   testid = 'data-table',
   className,
 }: ResponsiveTableProps<T>) {
+  // Hooks first — an early return before a hook changes the hook count between renders.
+  const desktop = useIsDesktop();
   if (rows.length === 0 && empty !== undefined) {
     return <>{empty}</>;
   }
 
   const clickable = Boolean(onRowClick);
-  const desktop = useIsDesktop();
 
   if (!desktop) {
     // Phone/small tablet: exactly today's mobile cards (the table is not built at all).

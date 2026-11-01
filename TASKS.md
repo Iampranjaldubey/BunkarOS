@@ -34,7 +34,7 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 15 | M11 | PIN hashes never sent to phones; user edits keep the stored hash; photos need a login; login checked by the server, offline only with this phone's verifier | DONE | server security.test 6/6 (26/26) · vitest session 8/8 (29/29) · seed 31 accepted / 0 rejected · full e2e 14/14 |
 | 16 | — | docs/ARCHITECTURE.md (features, schema, API, rules) | DONE | 213 lines; versions, routes, rules and formulas checked against package.json, routes.mjs, rules.mjs, domain/* |
 | 17 | M12 | Desktop-first UI/UX, phone keeps working | DONE | tsc 0 · build OK · vitest 9 files / 33 (incl. contrast AA both themes) · server 26/26 · e2e 27/27 twice (12 mobile + 15 desktop; 01–09 in both projects, new 22-desktop-ux, sweeps 1024/1440/1920 + 390/768 × 3 languages, 44 px target audit) · screenshots docs/screenshots/m12/after (4 widths × 19 routes, 0 overflow, 0 page errors) |
-| 18 | — | Commit branch `desktop-first` | BLOCKED | waits for the user's "yes" |
+| 18 | — | Commit branch `desktop-first` | DONE | commit fcacb46 on desktop-first (190 files, +2974/−233); push waits for the user (agent config denies `git push`) |
 
 ## Blocked
 - Push to GitHub: needs the user's "yes" and ShubhamKang write access on Pranjal's repo (Git Credential Manager will prompt in the browser).

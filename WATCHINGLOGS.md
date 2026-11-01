@@ -95,3 +95,9 @@
 - Not done: independent sub-agent review — `sp-final-reviewer` / `sp-implementer` / `sp-reviewer` are not installed here and `kiro_default` is refused for crew stages; I reviewed the diff myself.
 - Local servers: API :8791 restarted on the new code (serves the new `app/dist`, bundle index-DQtZphKl.js), dev app :5174 started; both health 200.
 - Next: user reviews; commit `desktop-first` only after an explicit "yes".
+
+## 2026-11-01 — Branch `desktop-first` committed (push pending)
+- What: committed all M10/M11/M12 work, docs and screenshots as fcacb46 on `desktop-first` (190 files, +2974 / −233; author Pranjal Dubey). Ignored folders (dist, node_modules, test-results, playwright-report, .playwright-mcp) stay out.
+- Why: user said "commit and push everything to the branch".
+- Evidence: `git log --oneline -1` → fcacb46; `git status -sb` → `## desktop-first`, clean; staged-diff secret scan printed no matches. Push not run: `.kiro/agents/superpowers.json` denies `git push.*`.
+- Next: user runs `git push -u origin desktop-first`; then a PR into main when wanted.

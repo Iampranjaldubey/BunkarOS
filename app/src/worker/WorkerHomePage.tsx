@@ -8,6 +8,7 @@ import { ConfirmSheet } from '../components/ui/Sheet';
 import { waMeLink } from '../components/ui/PreviewShareSheet';
 import type { WagePaymentP, Rec } from '../db/types';
 import { getSettings } from '../domain/masters';
+import { unitRules } from '../domain/settings';
 import { monthAttendance, monthPieces } from '../domain/attendance';
 import { wageInputsFor, computeGross, settle, rateOf, paidView, liveView } from '../domain/wage';
 import { wageLineText, signedINR } from '../features/wages/lines';
@@ -55,6 +56,7 @@ export default function WorkerHomePage() {
   const today = todayIST();
   const recs: Rec[] = useMemo(() => data?.records ?? [], [data]);
   const settings = useMemo(() => getSettings(recs), [recs]);
+  const rules = useMemo(() => unitRules(settings), [settings]);
   const worker = data?.worker;
   const att = useMemo(() => (worker ? monthAttendance(recs, worker.entityId, month, month === monthOf(today) ? today : `${month}-31`, settings) : null), [recs, worker, month, today, settings]);
   const pieces = useMemo(() => (worker ? monthPieces(recs, worker.entityId, month) : null), [recs, worker, month]);
@@ -88,7 +90,9 @@ export default function WorkerHomePage() {
   const rate = rateOf(worker);
   const rateUnit = worker.payType === 'monthly' ? t('wp.perMonth') : worker.payType === 'daily' ? t('wp.perDay') : t('wp.perPiece');
   // SPEC-M16 §1: the same lines as the owner's pay screen, built only from the saved payment.
-  const slipLines = (p: WagePaymentP): [string, number][] => paidView(p).lines.map((l) => [l.kind === 'advance' ? t('wp.advanceCut') : wageLineText(l, t), l.amountPaise]);
+  // SPEC-M14 AC5: a line the owner changed is marked "मालिक ने बदला".
+  const slipLines = (p: WagePaymentP): [string, number, boolean][] => paidView(p).lines.map((l) => [l.kind === 'advance' ? t('wp.advanceCut') : wageLineText(l, t), l.amountPaise, 'override' in l && Boolean(l.override)]);
+  const showOt = (otPaise = 0) => rules.overtimeEnabled || otPaise !== 0;
   const monthCounts = estimate.paid
     ? { present: estimate.view.present, half: estimate.view.half, absent: estimate.view.absent, otHours: estimate.view.otHours }
     : { present: att.present, half: att.half, absent: att.absent, otHours: att.otHours };
@@ -121,12 +125,12 @@ export default function WorkerHomePage() {
             <p className="mt-1 text-xs text-muted">{estimate.paid ? t('wp.paidOn', { date: formatDay(estimate.paid.day, lang, 'medium') }) : t('wp.expectedHint')}</p>
           </Card>
           <div className="grid grid-cols-4 gap-2 text-center">
-            {[[t('wp.present'), monthCounts.present, 'text-received'], [t('wp.half'), monthCounts.half, 'text-accent-ink'], [t('wp.absent'), monthCounts.absent, 'text-given'], [t('wp.ot'), `${monthCounts.otHours}h`, 'text-ink']].map(([l, v, c]) => (
+            {[[t('wp.present'), monthCounts.present, 'text-received'], [t('wp.half'), monthCounts.half, 'text-accent-ink'], [t('wp.absent'), monthCounts.absent, 'text-given'], ...(showOt(estimate.paid?.payload.otPaise) ? [[t('wp.ot'), `${monthCounts.otHours}h`, 'text-ink']] : [])].map(([l, v, c]) => (
               <div key={String(l)} className="rounded-2xl border border-line bg-surface p-2" data-testid={`wp-count-${String(l)}`}><p className={`num text-2xl font-bold ${c}`}>{v}</p><p className="text-xs text-muted">{l}</p></div>
             ))}
           </div>
           {worker.payType === 'piece' && pieces && <p className="text-sm text-ink">{t('wp.pieces')}: <span className="num font-medium">{pieces.count}</span> · {formatINR(pieces.amountPaise)}</p>}
-          <Card><MonthGrid att={att} today={today} holidays={settings?.holidays} /></Card>
+          <Card><MonthGrid att={att} today={today} holidays={settings?.holidays} showOt={rules.overtimeEnabled} /></Card>
         </div>
       )}
 
@@ -147,8 +151,8 @@ export default function WorkerHomePage() {
                     </button>
                     {openPay === p.id && (
                       <dl className="mb-3 rounded-xl bg-surface-2 p-3 text-sm">
-                        <p className="num mb-1 text-xs text-muted">P {p.payload.snapshot.present} · H {p.payload.snapshot.half} · A {p.payload.snapshot.absent} · OT {p.payload.snapshot.otHours}h</p>
-                        {slipLines(p.payload).map(([l, v], i) => <div key={i} className="flex justify-between py-0.5" data-testid="wp-slip-line"><dt className="text-ink">{l}</dt><dd className={`num ${v < 0 ? 'text-given' : 'text-ink'}`}>{signedINR(v)}</dd></div>)}
+                        <p className="num mb-1 text-xs text-muted">P {p.payload.snapshot.present} · H {p.payload.snapshot.half} · A {p.payload.snapshot.absent}{showOt(p.payload.otPaise) ? ` · OT ${p.payload.snapshot.otHours}h` : ''}</p>
+                        {slipLines(p.payload).map(([l, v, changed], i) => <div key={i} className="flex justify-between py-0.5" data-testid="wp-slip-line"><dt className="text-ink">{l}{changed && <span className="ml-1 rounded-full bg-accent-soft px-2 text-xs font-medium text-accent-ink" data-testid="wp-owner-changed">{t('wp.ownerChanged')}</span>}</dt><dd className={`num ${v < 0 ? 'text-given' : 'text-ink'}`}>{signedINR(v)}</dd></div>)}
                         <div className="mt-1 flex justify-between border-t border-line pt-1 font-bold"><dt>{t('wp.paid')}</dt><dd className="num">{formatINR(p.payload.paidPaise)}</dd></div>
                       </dl>
                     )}
@@ -176,7 +180,7 @@ export default function WorkerHomePage() {
           <Card>
             <div className="mb-3 flex items-center gap-3"><Avatar name={worker.name} size={56} /><div><p className="text-xl font-medium text-ink">{worker.name}</p><Badge tone="info">{t(`worker.job.${worker.jobTitle}`)}</Badge></div></div>
             <dl className="divide-y divide-line text-base">
-              {[[t('wp.payType'), t(`worker.payType.${worker.payType}`)], [t('wp.rate'), `${formatINR(rate)} / ${rateUnit}`], [t('wp.otRate'), `${formatINR(worker.otRatePaise)} / h`], [t('wp.joined'), formatDay(worker.joinedOn, lang, 'medium')], [t('wp.phone'), worker.phone ?? '—'], [t('wp.shop'), data.unitName]].map(([k, v]) => (
+              {[[t('wp.payType'), t(`worker.payType.${worker.payType}`)], [t('wp.rate'), `${formatINR(rate)} / ${rateUnit}`], ...(rules.overtimeEnabled ? [[t('wp.otRate'), `${formatINR(worker.otRatePaise)} / h`]] : []), [t('wp.joined'), formatDay(worker.joinedOn, lang, 'medium')], [t('wp.phone'), worker.phone ?? '—'], [t('wp.shop'), data.unitName]].map(([k, v]) => (
                 <div key={String(k)} className="flex justify-between gap-3 py-2"><dt className="text-muted">{k}</dt><dd className="num text-right font-medium text-ink">{v}</dd></div>
               ))}
             </dl>

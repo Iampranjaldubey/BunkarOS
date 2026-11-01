@@ -4,7 +4,8 @@ import type { Rec, WagePaymentP, WorkerP, SettingP, AttendanceP, AdvanceP } from
 import { wageInputsFor, computeGross, settle, buildSnapshot, paidView, liveView, wageSheet } from './wage';
 import { isRecordLocked } from './locks';
 
-const settings: SettingP = { entityId: 'unit', unitName: 'U', ownerPhone: '', lang: 'hi', workingDaysPerMonth: 26, photoRequiredAbovePaise: 200_000, holidays: [] };
+// Example A as AC1: the unit has overtime on (D-001 default is off).
+const settings: SettingP = { entityId: 'unit', unitName: 'U', ownerPhone: '', lang: 'hi', workingDaysPerMonth: 26, photoRequiredAbovePaise: 200_000, holidays: [], overtimeEnabled: true };
 let seq = 0;
 const rec = <P,>(type: Rec['type'], payload: P, day: string, at = `${day}T10:00:${String(seq++ % 60).padStart(2, '0')}Z`): Rec<P> =>
   ({ id: `r${seq++}`, type, unitId: 'u', payload, by: 'owner', role: 'owner', device: 'd', at, day, sync: 'synced' });
@@ -24,7 +25,7 @@ function exampleA() {
   const s = settle(b, [], 100_000);
   const payment: WagePaymentP = {
     workerId: 'w1', month: '2026-10', grossPaise: s.grossPaise, otPaise: s.otPaise, deductions: [], advanceRecoveredPaise: s.advanceRecoveredPaise,
-    netPaise: s.netPaise, paidPaise: s.paidPaise, roundingPaise: s.roundingPaise, mode: 'cash', snapshot: buildSnapshot(inputs, b, 100_000),
+    netPaise: s.netPaise, paidPaise: s.paidPaise, roundingPaise: s.roundingPaise, mode: 'cash', snapshot: buildSnapshot(inputs, b, 100_000, s),
   };
   return { recs: [...recs, rec<WagePaymentP>('wage_payment', payment, '2026-10-31')], payment, inputs, b, s };
 }
@@ -42,12 +43,12 @@ describe('SPEC-M16 §1 paid month from the saved payment', () => {
     const v = paidView(payment);
     expect(v).toEqual(liveView(inputs, b, s)); // identical to what the owner saw before confirming
     expect(v.lines).toEqual([
-      { kind: 'base', amountPaise: 1_200_000 },
-      { kind: 'absent', n: 2, amountPaise: -92_308 },
-      { kind: 'half', n: 1, amountPaise: -23_077 },
-      { kind: 'ot', hours: 3, ratePaise: 5_800, amountPaise: 17_400 },
-      { kind: 'advance', amountPaise: -100_000 },
-      { kind: 'rounding', amountPaise: -15 },
+      { kind: 'base', key: 'base', amountPaise: 1_200_000 },
+      { kind: 'absent', key: 'absent_deduct', n: 2, amountPaise: -92_308 },
+      { kind: 'half', key: 'half_deduct', n: 1, amountPaise: -23_077 },
+      { kind: 'ot', key: 'overtime', hours: 3, ratePaise: 5_800, amountPaise: 17_400 },
+      { kind: 'advance', key: 'advance_recovered', amountPaise: -100_000 },
+      { kind: 'rounding', key: 'rounding', amountPaise: -15 },
     ]);
     expect([v.paidPaise, v.balanceAfterPaise, v.present, v.half, v.absent, v.otHours]).toEqual([1_002_000, 0, 1, 1, 2, 3]);
   });
@@ -73,7 +74,7 @@ describe('SPEC-M16 §1 paid month from the saved payment', () => {
       netPaise: 1_084_615, paidPaise: 1_084_600, roundingPaise: -15, mode: 'cash',
       snapshot: { present: 23, half: 1, absent: 2, otHours: 0, pieces: 0, payType: 'monthly', ratePaise: 1_200_000 } };
     const v = paidView(old);
-    expect(v.lines).toEqual([{ kind: 'base', amountPaise: 1_200_000 }, { kind: 'attendanceDeduct', amountPaise: -115_385 }, { kind: 'rounding', amountPaise: -15 }]);
+    expect(v.lines).toEqual([{ kind: 'base', key: 'base', amountPaise: 1_200_000 }, { kind: 'attendanceDeduct', amountPaise: -115_385 }, { kind: 'rounding', key: 'rounding', amountPaise: -15 }]);
     expect(v.lines.reduce((sum, l) => sum + l.amountPaise, 0)).toBe(v.paidPaise);
     expect(v.balanceAfterPaise).toBeUndefined();
   });

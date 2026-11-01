@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { LogOut, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import type { Role } from '../../db/types';
-import { can } from '../../domain/permissions';
+import { useCan } from '../../app/useCan';
 import { useT } from '../../i18n';
 import { cn } from '../../lib/utils';
 import { PRIMARY, MORE, QUICK, type NavItem } from './nav-items';
@@ -34,14 +34,15 @@ function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
 }
 
 /** "New entry" disclosure: a short list of the entry screens this role may use. Esc / outside click closes. */
-function QuickEntry({ role, collapsed }: { role: Role; collapsed: boolean }) {
+function QuickEntry({ collapsed }: { role: Role; collapsed: boolean }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const wrap = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const location = useLocation();
-  const items = QUICK.filter((i) => !i.action || can(role, i.action));
+  const allowed = useCan();
+  const items = QUICK.filter((i) => !i.action || allowed(i.action));
   useEffect(() => { setOpen(false); }, [location.pathname]);
   useEffect(() => {
     if (!open) return;
@@ -82,7 +83,8 @@ export interface SideNavProps {
 export function SideNav({ role, unitName, userName, collapsed, onToggle, onLogout }: SideNavProps) {
   const { t } = useT();
   const primary = PRIMARY[role].filter((i) => i.to !== '/more');
-  const more = MORE.filter((it) => !it.action || can(role, it.action));
+  const allowed = useCan();
+  const more = MORE.filter((it) => !it.action || allowed(it.action));
   const toggleLabel = collapsed ? t('nav.expand') : t('nav.collapse');
   return (
     <nav aria-label={t('nav.label')} data-testid="side-nav" data-collapsed={collapsed ? 'true' : 'false'} className="flex h-full flex-col">

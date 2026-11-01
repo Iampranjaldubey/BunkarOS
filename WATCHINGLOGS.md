@@ -150,3 +150,23 @@
 - Why: user goal 2026-11-02 (six criteria, each with a test; no push; no real-data database changes).
 - Evidence: `cd server && npm test` 30 pass / 0 fail; `npx vitest run` 10 files / 40 passed; `npx playwright test` 27 passed on three full runs; typecheck exit 0; lint 0 errors / 53 warnings; build exit 0 (precache 108 / 1320.72 KiB); seed against a throwaway schema accepted 34 / rejected 0. All tests on throwaway schemas; local `public` untouched. Local API :8791 and dev app :5174 restarted on the new code (bundle index-lMfOqypx.js).
 - Next: user review; push when the user asks (run by the user); owner confirmations still open in docs/decisions.md.
+
+## 2026-11-02 — Owner-controlled settings and wage behaviour (D-001…D-005, SPEC-M13 stage 1, SPEC-M14, M02 AC5–AC9), branch `desktop-first`
+- What:
+  - Settings "पगार के नियम": overtime on/off (default off), off-day policy none / Sundays / Sundays and holidays (default the last), slip-section checklist with a live A4 preview.
+  - Settings "ऑपरेटर क्या कर सकते हैं": 4 toggles (add entries, edit past, see prices, export). No "see wages" toggle.
+  - Overtime is hidden on 8 screens while off and not paid in unpaid months.
+  - Daily workers get paid off days (paid once; an explicit Absent removes the day).
+  - Real A4 slip from the chosen sections, with an automatic Rounding row. The WhatsApp text has the same rows plus the worker-page link.
+  - Owner override on any wage line before payment, with a reason. The four logged correction steps for a paid month.
+  - The server enforces the operator toggles, strips prices for operators, keeps stored prices on operator edits, and returns a `view` that forces a resync.
+  - Two bugs found by the new e2e tests and fixed: (1) the sync client pushed pending records in random id order, so an unlock / reverse / pay-again batch was refused (`period_locked`, `duplicate_payment`); it now pushes in written order, with a unit test; (2) the pay button was enabled without a required correction reason.
+- Why: user goal (8 criteria, each with a test; local commit, no push, throwaway schemas only).
+- Evidence:
+  - typecheck exit 0; lint 0 errors / 53 warnings;
+  - vitest 12 files / 61 passed; server 36/36;
+  - Playwright 35 passed, twice (mobile and desktop; new specs 10, 11, 12);
+  - build exit 0 (precache 112 / 1368.36 KiB); seed on schema `seedcheck` accepted 34 / rejected 0;
+  - every docs/wage-examples.md example: actual = expected (new "Actual results" section).
+  Details: docs/run-summary.md.
+- Next: user review; owner confirms D-001 / D-002 / D-003 / D-005 assumptions; SPEC-M15 catalogue (TASKS 25); "see wages" stage 2 later (TASKS 27). Push is run by the user.

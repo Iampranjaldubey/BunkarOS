@@ -17,21 +17,19 @@ import { useRecords } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
 import type { WorkerP } from '../../db/types';
 import { listWorkers, getSettings, nameMaps } from '../../domain/masters';
-import { monthAttendance, monthPieces } from '../../domain/attendance';
+import { monthAttendance, monthPieces, paidOffDays } from '../../domain/attendance';
 import { advancesFor, advanceBalance, lastPayment } from '../../domain/advances';
 import { formatINR } from '../../domain/money';
 import { formatDay, formatMonth } from '../../domain/dates';
 import { todayIST, monthOf, prevMonth, nextMonth } from '../../domain/ids';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
 import { Avatar, PaySummary, JobBadge } from './shared';
+import { useCan, useUnitRules } from '../../app/useCan';
 
 export default function WorkerDetailPage() {
   const { t, lang } = useT();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role } = useSession();
   const recs = useRecords();
   const today = todayIST();
   const [month, setMonth] = useState(monthOf(today));
@@ -48,8 +46,11 @@ export default function WorkerDetailPage() {
   const advances = useMemo(() => (w ? advancesFor(recs, w.entityId) : []), [recs, w]);
   const balance = w ? advanceBalance(recs, w.entityId) : 0;
   const last = w ? lastPayment(recs, w.entityId) : undefined;
+  const allowed = useCan();
+  const rules = useUnitRules();
+  const paidOff = useMemo(() => (w && w.payType === 'daily' ? paidOffDays(recs, w.entityId, month, w.joinedOn, rules.offDayPolicy, settings?.holidays) : []), [recs, w, month, rules.offDayPolicy, settings]);
   if (!w || !att) return <EmptyState title={t('common.empty')} />;
-  const canManage = role ? can(role, 'worker.manage') : false;
+  const canManage = allowed('worker.manage');
 
   const toggleActive = async () => { await addRecord<WorkerP>('worker', { ...w, active: !w.active }); setConfirm(false); };
 
@@ -136,12 +137,12 @@ export default function WorkerDetailPage() {
                 <button type="button" onClick={() => setMonth(nextMonth(month))} disabled={month >= monthOf(today)} aria-label={t('action.next')} className="tap-48 rounded-xl text-muted hover:bg-surface-2 disabled:opacity-30"><ChevronRight aria-hidden="true" /></button>
               </div>
             </div>
-            <div className="mb-3 grid grid-cols-4 gap-2 text-center">
-              {[['att.present', att.present, 'text-received'], ['att.half', att.half, 'text-accent-ink'], ['att.absent', att.absent, 'text-given'], ['att.ot', `${att.otHours}h`, 'text-ink']].map(([k, v, c]) => (
+            <div className={`mb-3 grid ${rules.overtimeEnabled || w.payType === 'daily' ? 'grid-cols-4' : 'grid-cols-3'} gap-2 text-center`}>
+              {[['att.present', att.present, 'text-received'], ['att.half', att.half, 'text-accent-ink'], ['att.absent', att.absent, 'text-given'], ...(rules.overtimeEnabled ? [['att.ot', `${att.otHours}h`, 'text-ink']] : w.payType === 'daily' ? [['att.paidOff', paidOff.length, 'text-received']] : [])].map(([k, v, c]) => (
                 <div key={String(k)} className="rounded-xl bg-surface-2 p-2"><p className={`num text-xl font-bold ${c}`}>{v}</p><p className="text-xs text-muted">{t(String(k))}</p></div>
               ))}
             </div>
-            <MonthGrid att={att} today={today} holidays={settings?.holidays} />
+            <MonthGrid att={att} today={today} holidays={settings?.holidays} showOt={rules.overtimeEnabled} paidOff={paidOff} />
             {w.payType === 'piece' && pieces && <p className="mt-2 text-sm text-ink">{t('att.pieces')}: <span className="num font-medium">{pieces.count}</span> · {formatINR(pieces.amountPaise)}</p>}
             {last && <p className="mt-2 text-sm text-muted">{t('worker.lastPayment')}: {formatMonth(last.payload.month, lang)} · {formatINR(last.payload.paidPaise)} · {t('common.by', { name: names.users.get(last.by) ?? '' })}</p>}
             <Link to={`/wages/${month}/${w.entityId}`} className="mt-3 inline-block text-sm font-medium text-primary">{t('nav.wages')} →</Link>

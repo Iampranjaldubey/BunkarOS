@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { setupAndLogin, istPrevMonth, attRow, attList, markRadio, setSalary } from './fixtures';
+import { setupAndLogin, istPrevMonth, attRow, attList, markRadio, setSalary, setOvertime } from './fixtures';
 
 /**
  * SPEC-M02 AC1 on the real screens: ₹12,000, 2 absent, 1 half, 3h OT @ ₹58, ₹1,000 advance → paid ₹10,020.
@@ -10,6 +10,7 @@ test('advance → attendance → wage sheet → pay → slip → lock month', as
   const goPrevMonth = async (p: Page) => p.getByTestId('month-picker').getByRole('button', { name: 'वापस' }).click();
 
   await setupAndLogin(page);
+  await setOvertime(page, true); // AC1 has overtime; D-001 default is off
   await page.goto('/workers/new');
   await page.getByLabel(/^नाम/).fill('Rafiq');
   await page.getByLabel(/^फ़ोन/).fill('9876501234');
@@ -39,11 +40,21 @@ test('advance → attendance → wage sheet → pay → slip → lock month', as
     if (ot) await expect(row.getByText(`OT ${ot}h`)).toBeVisible();
   }
 
-  // Wage sheet shows the computed amount; pay page breakdown matches AC1.
-  await page.goto('/wages');
-  await goPrevMonth(page);
-  await page.getByText('Rafiq').first().click();
-  await expect(page).toHaveURL(/\/wages\/\d{4}-\d{2}\//);
+  // SPEC-M02 AC5 / D-001: with overtime off the recorded 3 h stay but pay nothing for this unpaid month → ₹9,846.
+  const openPay = async () => {
+    await page.goto('/wages');
+    await goPrevMonth(page);
+    await page.getByText('Rafiq').first().click();
+    await expect(page).toHaveURL(/\/wages\/\d{4}-\d{2}\//);
+  };
+  await setOvertime(page, false);
+  await openPay();
+  await expect(page.getByTestId('wage-paid')).toHaveText('₹9,846');
+  await expect(page.getByTestId('wage-counts')).not.toContainText('OT');
+  await expect(page.getByTestId('wage-lines')).not.toContainText('ओवरटाइम');
+  // Overtime on again → AC1: the same hours are paid, ₹10,020.
+  await setOvertime(page, true);
+  await openPay();
   await expect(page.getByTestId('wage-paid')).toHaveText('₹10,020');
   await expect(page.getByText(/ग़ैरहाज़िरी \(2 दिन\)/).first()).toBeVisible();
   // > ₹2,000 → photo required (D8): attach one, then confirm.

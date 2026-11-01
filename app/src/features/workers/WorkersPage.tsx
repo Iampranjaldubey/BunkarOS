@@ -14,14 +14,12 @@ import { allAdvanceBalances } from '../../domain/advances';
 import { monthAttendance } from '../../domain/attendance';
 import { formatINR } from '../../domain/money';
 import { todayIST, monthOf } from '../../domain/ids';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
 import { Avatar, PaySummary, JobBadge } from './shared';
+import { useCan } from '../../app/useCan';
 
 export default function WorkersPage() {
   const { t } = useT();
-  const { role } = useSession();
   const navigate = useNavigate();
   const recs = useRecords();
   const [q, setQ] = useState('');
@@ -30,7 +28,8 @@ export default function WorkersPage() {
   const workers = useMemo(() => listWorkers(recs, !showInactive).filter((w) => w.name.toLowerCase().includes(q.trim().toLowerCase())), [recs, q, showInactive]);
   const balances = useMemo(() => allAdvanceBalances(recs, workers.map((w) => w.entityId)), [recs, workers]);
   const att = useMemo(() => new Map(workers.map((w) => [w.entityId, monthAttendance(recs, w.entityId, monthOf(today), today)])), [recs, workers, today]);
-  const canManage = role ? can(role, 'worker.manage') : false;
+  const allowed = useCan();
+  const canManage = allowed('worker.manage');
 
   const card = (w: WorkerP) => (
     <Link to={`/workers/${w.entityId}`} className="card-hover flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-card">

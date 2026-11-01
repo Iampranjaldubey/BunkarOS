@@ -22,8 +22,7 @@ import { stockBalance } from '../../domain/stock';
 import { formatINR } from '../../domain/money';
 import { formatDay } from '../../domain/dates';
 import { todayIST } from '../../domain/ids';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
+import { useCan } from '../../app/useCan';
 import { useT } from '../../i18n';
 import { StatusBadge, DueLine } from './shared';
 
@@ -32,7 +31,6 @@ export default function OrderDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { role } = useSession();
   const recs = useRecords();
   const today = todayIST();
   const v = useMemo(() => orderView(recs, id, today), [recs, id, today]);
@@ -42,8 +40,10 @@ export default function OrderDetailPage() {
   const finishedItems = useMemo(() => listItems(recs).filter((i) => i.kind === 'finished'), [recs]);
   const [deliverOpen, setDeliverOpen] = useState(false); const [dQty, setDQty] = useState(''); const [dDay, setDDay] = useState(today); const [dNote, setDNote] = useState(''); const [dItem, setDItem] = useState('');
   const [noteOpen, setNoteOpen] = useState(false); const [note, setNote] = useState(''); const [share, setShare] = useState(false); const [dErr, setDErr] = useState('');
+  const allowed = useCan();
   if (!v) return <EmptyState title={t('common.empty')} />;
-  const canManage = role ? can(role, 'order.manage') : false;
+  const canManage = allowed('order.manage');
+  const canSeePrice = allowed('price.view');
 
   const setStatus = async (status: OrderStatus) => { await addRecord<OrderStatusP>('order_status', { orderId: id, status }); toast.show(t('action.done'), 'success'); };
   const deliver = async () => {
@@ -73,7 +73,7 @@ export default function OrderDetailPage() {
             <StatTile label={t('order.delivered')} tone="received" value={<span className="num">{v.deliveredQty}/{v.order.qty}</span>} testid="order-delivered" />
             <StatTile label={t('order.pending')} tone={v.pendingQty > 0 ? 'given' : 'neutral'} value={<span className="num">{v.pendingQty}</span>} testid="order-pending" />
           </div>
-          {v.amountPendingPaise !== undefined && <StatTile label={t('order.amountPending')} value={formatINR(v.amountPendingPaise)} />}
+          {canSeePrice && v.amountPendingPaise !== undefined && <StatTile label={t('order.amountPending')} value={formatINR(v.amountPendingPaise)} />}
           {canManage && v.status !== 'delivered' && (
             <div className="flex flex-col gap-2">
               {v.status === 'new' && <Button onClick={() => void setStatus('in_production')}><Play aria-hidden="true" size={18} />{t('order.start')}</Button>}

@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { setupAndLogin, loginAs, logout, attRow, markRadio } from './fixtures';
+import { setupAndLogin, loginAs, logout, attRow, markRadio, setOvertime } from './fixtures';
 
 test('add worker → mark attendance with OT → re-mark logs an edit → detail grid counts', async ({ page }) => {
   await setupAndLogin(page);
+  await setOvertime(page, true); // D-001: overtime is off by default
   // New monthly worker ₹12,000
   await page.goto('/workers/new');
   await page.getByLabel(/^नाम/).fill('Rafiq');

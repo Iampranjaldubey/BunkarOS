@@ -12,6 +12,7 @@ import { Input } from '../../components/ui/Input';
 import { useToast } from '../../components/ui/Toast';
 import { useIsDesktop } from '../../components/ui/useIsDesktop';
 import { useRecords } from '../../db/hooks';
+import { useCan, useUnitRules } from '../../app/useCan';
 import { addRecord, reverse } from '../../db/repo';
 import type { AttendanceP, AttendanceStatus, PieceEntryP, WorkerP } from '../../db/types';
 import { listWorkers, getSettings } from '../../domain/masters';
@@ -48,7 +49,12 @@ export default function AttendancePage() {
   const workers = useMemo(() => listWorkers(recs).filter((w) => w.joinedOn <= day), [recs, day]);
   const idx = useMemo(() => attendanceIndex(recs), [recs]);
   const roll = useMemo(() => dayRollCall(recs, workers.map((w) => w.entityId), day), [recs, workers, day]);
-  const locked = useMemo(() => isDayLocked(recs, day), [recs, day]);
+  const monthLocked = useMemo(() => isDayLocked(recs, day), [recs, day]);
+  const rules = useUnitRules();
+  const allowed = useCan();
+  const canMark = allowed('attendance.mark'); // SPEC-M13: "add entries" off → look only
+  const locked = monthLocked || !canMark;
+  const ot = rules.overtimeEnabled; // D-001: overtime hidden when the unit has it off
   const settings = useMemo(() => getSettings(recs), [recs]);
   const dayPieces = useMemo(() => {
     const m = new Map<string, number>();
@@ -61,12 +67,12 @@ export default function AttendancePage() {
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
 
   const mark = async (w: WorkerP, status: AttendanceStatus, otHours?: number) => {
-    if (locked) { toast.show(t('valid.locked'), 'error'); return; }
+    if (locked) { if (monthLocked) toast.show(t('valid.locked'), 'error'); return; }
     const prev = idx.get(markKey(w.entityId, day));
-    const ot = otHours ?? prev?.otHours ?? 0;
-    if (prev && prev.status === status && prev.otHours === ot) return;
+    const hours = otHours ?? prev?.otHours ?? 0;
+    if (prev && prev.status === status && prev.otHours === hours) return;
     if (prev) await reverse(prev.recId, 'edited');
-    await addRecord<AttendanceP>('attendance', { workerId: w.entityId, status, otHours: status === 'absent' ? 0 : ot }, { day, replaces: prev?.recId });
+    await addRecord<AttendanceP>('attendance', { workerId: w.entityId, status, otHours: status === 'absent' ? 0 : hours }, { day, replaces: prev?.recId });
   };
   const allPresent = async () => {
     for (const w of workers) if (!idx.get(markKey(w.entityId, day))) await mark(w, 'present', 0);
@@ -93,16 +99,16 @@ export default function AttendancePage() {
     const status = KEY_TO_STATUS[k];
     if (status) {
       e.preventDefault();
-      if (locked) { toast.show(t('valid.locked'), 'error'); return; }
+      if (locked) { if (monthLocked) toast.show(t('valid.locked'), 'error'); return; }
       const nextId = shown[i + 1]?.entityId ?? (onlyUnmarked ? undefined : w.entityId);
       void mark(w, status).then(() => focusRow(nextId));
       return;
     }
     if (k === '+' || k === '=' || k === '-' || k === '−' || k === '_') {
       e.preventDefault();
-      if (!m || m.status === 'absent' || locked) return;
-      const ot = k === '+' || k === '=' ? Math.min(MAX_OT, m.otHours + 0.5) : Math.max(0, m.otHours - 0.5);
-      if (ot !== m.otHours) void mark(w, m.status, ot);
+      if (!ot || !m || m.status === 'absent' || locked) return;
+      const hours = k === '+' || k === '=' ? Math.min(MAX_OT, m.otHours + 0.5) : Math.max(0, m.otHours - 0.5);
+      if (hours !== m.otHours) void mark(w, m.status, hours);
       return;
     }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -113,7 +119,7 @@ export default function AttendancePage() {
 
   const notes = (
     <>
-      {locked && <p role="alert" className="mb-3 rounded-xl bg-warn-soft px-4 py-2 text-sm font-medium text-warn">{t('att.locked')}</p>}
+      {monthLocked && <p role="alert" className="mb-3 rounded-xl bg-warn-soft px-4 py-2 text-sm font-medium text-warn">{t('att.locked')}</p>}
       {(isHoliday || isSunday) && (
         <p className="mb-3 flex items-center gap-2 rounded-xl bg-accent-soft px-4 py-2 text-sm font-medium text-accent-ink" data-testid="day-off-note">
           <CalendarOff aria-hidden="true" size={16} />{isHoliday ? t('att.holiday') : t('att.sunday')}
@@ -155,20 +161,20 @@ export default function AttendancePage() {
         </div>
         {workers.length === 0 ? empty : (
           <>
-            <p className="mb-2 flex items-center gap-2 text-sm text-muted" id="att-key-hint"><Keyboard aria-hidden="true" size={16} />{t('att.keyHint')}</p>
+            <p className="mb-2 flex items-center gap-2 text-sm text-muted" id="att-key-hint"><Keyboard aria-hidden="true" size={16} />{ot ? t('att.keyHint') : t('att.keyHintNoOt')}</p>
             <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-card">
               <table className="w-full border-collapse text-base" data-testid="attendance-table" aria-describedby="att-key-hint">
                 <thead>
                   <tr className="text-left text-sm text-muted">
                     <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colWorker')}</th>
                     <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colMark')}</th>
-                    <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colOt')}</th>
+                    {ot && <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colOt')}</th>}
                     <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colPieces')}</th>
                     <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colState')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {shown.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted">{t('att.allMarked')}</td></tr>}
+                  {shown.length === 0 && <tr><td colSpan={ot ? 5 : 4} className="px-4 py-8 text-center text-muted">{t('att.allMarked')}</td></tr>}
                   {shown.map((w, i) => {
                     const m = idx.get(markKey(w.entityId, day));
                     const st = STATUSES.find((s) => s.v === m?.status);
@@ -192,7 +198,7 @@ export default function AttendancePage() {
                             ))}
                           </div>
                         </td>
-                        <td className="border-b border-line px-4 py-2">
+                        {ot && <td className="border-b border-line px-4 py-2">
                           {m && m.status !== 'absent' ? (
                             <div className="inline-flex items-center gap-1">
                               <button type="button" aria-label="−0.5h" disabled={locked || m.otHours <= 0} onClick={() => void mark(w, m.status, Math.max(0, m.otHours - 0.5))} className={iconBtn}><Minus aria-hidden="true" size={18} /></button>
@@ -200,7 +206,7 @@ export default function AttendancePage() {
                               <button type="button" aria-label="+0.5h" disabled={locked || m.otHours >= MAX_OT} onClick={() => void mark(w, m.status, m.otHours + 0.5)} className={iconBtn}><Plus aria-hidden="true" size={18} /></button>
                             </div>
                           ) : <span className="text-muted">—</span>}
-                        </td>
+                        </td>}
                         <td className="border-b border-line px-4 py-2">
                           {w.payType === 'piece' ? (
                             <div className="flex items-center gap-2">{pcs > 0 && <span className="num font-medium text-ink">{pcs}</span>}
@@ -210,7 +216,7 @@ export default function AttendancePage() {
                         <td className="border-b border-line px-4 py-2">
                           <div className="flex flex-wrap items-center gap-1.5">
                             {st ? <Badge tone={st.tone}>{t(st.key)}</Badge> : <Badge tone="neutral">{t('att.notMarked')}</Badge>}
-                            {m && m.otHours > 0 && <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">OT {m.otHours}h</span>}
+                            {ot && m && m.otHours > 0 && <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">OT {m.otHours}h</span>}
                           </div>
                         </td>
                       </tr>
@@ -248,7 +254,7 @@ export default function AttendancePage() {
                 <div className="flex items-center gap-3">
                   <Avatar name={w.name} photoId={w.photoId} />
                   <div className="min-w-0 flex-1"><p className="truncate font-medium text-ink">{w.name}</p><p className="text-xs text-muted">{t(`worker.job.${w.jobTitle}`)}{w.payType === 'piece' ? ` · ${t('worker.payType.piece')}` : ''}</p></div>
-                  {m && m.otHours > 0 && <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">OT {m.otHours}h</span>}
+                  {ot && m && m.otHours > 0 && <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">OT {m.otHours}h</span>}
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label={w.name}>
                   {STATUSES.map((s) => (
@@ -258,7 +264,7 @@ export default function AttendancePage() {
                     </button>
                   ))}
                 </div>
-                {m && m.status !== 'absent' && (
+                {ot && m && m.status !== 'absent' && (
                   <div className="mt-2 flex items-center justify-between text-sm">
                     <span className="text-muted">{t('att.otHours')}</span>
                     <div className="flex items-center gap-1">

@@ -15,11 +15,10 @@ import { useRecords } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
 import type { JobTitle, PayType, WorkerP } from '../../db/types';
 import { listWorkers, getSettings } from '../../domain/masters';
-import { can } from '../../domain/permissions';
 import { formatINR, rupeesToPaise } from '../../domain/money';
 import { uuid, todayIST } from '../../domain/ids';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
+import { useCan, useUnitRules } from '../../app/useCan';
 
 const JOBS: JobTitle[] = ['weaver', 'finisher', 'helper', 'other'];
 /** 4-digit code the worker uses with the shop code to open their own page (SPEC-M07). */
@@ -30,11 +29,12 @@ export default function WorkerFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { role } = useSession();
   const recs = useRecords();
   const existing = useMemo(() => (id ? listWorkers(recs, false).find((w) => w.entityId === id) : undefined), [recs, id]);
   const settings = useMemo(() => getSettings(recs), [recs]);
-  const canRates = role ? can(role, 'worker.rates') : false;
+  const allowed = useCan();
+  const rules = useUnitRules();
+  const canRates = allowed('worker.rates');
 
   const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [job, setJob] = useState<JobTitle>('weaver');
   const [payType, setPayType] = useState<PayType>('monthly'); const [amount, setAmount] = useState(''); const [otRate, setOtRate] = useState('');
@@ -53,6 +53,8 @@ export default function WorkerFormPage() {
   const amountPaise = rupeesToPaise(Number(amount) || 0);
   const defaultOt = payType === 'monthly' ? Math.round(amountPaise / wd / 8) : payType === 'daily' ? Math.round(amountPaise / 8) : 0;
   const otPaise = otRate.trim() ? rupeesToPaise(Number(otRate)) : defaultOt;
+  // D-001: with overtime off the field is hidden; new workers get ₹0, existing workers keep their stored rate.
+  const otToSave = rules.overtimeEnabled ? otPaise : (existing?.otRatePaise ?? 0);
 
   const save = async (addAnother: boolean) => {
     const e: Record<string, string> = {};
@@ -66,7 +68,7 @@ export default function WorkerFormPage() {
     try {
       const base: WorkerP = {
         entityId: existing?.entityId ?? uuid(), name: name.trim(), phone: phone.trim() || undefined, jobTitle: job, payType,
-        otRatePaise: existing && !canRates ? existing.otRatePaise : otPaise, joinedOn, active: existing?.active ?? true, photoId,
+        otRatePaise: existing && !canRates ? existing.otRatePaise : otToSave, joinedOn, active: existing?.active ?? true, photoId,
         accessCode: existing?.accessCode ?? newAccessCode(),
       };
       const rateField = payType === 'monthly' ? 'salaryPaise' : payType === 'daily' ? 'dailyRatePaise' : 'pieceRatePaise';
@@ -105,9 +107,9 @@ export default function WorkerFormPage() {
             <Field label={amountLabel} required error={errors.amount} hint={payType === 'monthly' && amountPaise > 0 ? t('worker.perDay', { amount: formatINR(Math.round(amountPaise / wd)) }) : undefined}>
               {({ id, describedBy, invalid }) => <Input id={id} inputMode="decimal" value={amount} disabled={ratesDisabled} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} className="num text-xl" />}
             </Field>
-            <Field label={t('worker.otRate')} hint={payType !== 'piece' ? `${t('worker.otHint')} = ${formatINR(defaultOt)}` : undefined}>
+            {rules.overtimeEnabled && <Field label={t('worker.otRate')} hint={payType !== 'piece' ? `${t('worker.otHint')} = ${formatINR(defaultOt)}` : undefined}>
               {({ id }) => <Input id={id} inputMode="decimal" value={otRate} disabled={ratesDisabled} placeholder={payType !== 'piece' ? String(defaultOt / 100) : '0'} onChange={(e) => setOtRate(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}
-            </Field>
+            </Field>}
             <div className="lg:col-span-2"><PhotoCapture label={t('worker.photo')} value={photoId} onChange={setPhotoId} /></div>
           </FormGrid>
           <FormActions>

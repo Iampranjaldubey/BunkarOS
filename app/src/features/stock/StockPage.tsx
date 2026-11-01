@@ -9,21 +9,20 @@ import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 import { useRecords } from '../../db/hooks';
 import { listItems } from '../../domain/masters';
 import { stockRows, type StockRow } from '../../domain/stock';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
 import { Qty } from './shared';
+import { useCan } from '../../app/useCan';
 
 export default function StockPage() {
   const { t } = useT();
-  const { role } = useSession();
   const navigate = useNavigate();
   const recs = useRecords();
   const items = useMemo(() => listItems(recs), [recs]);
   const rows = useMemo(() => stockRows(recs, items), [recs, items]);
   const raw = rows.filter((r) => r.item.kind === 'raw'); const finished = rows.filter((r) => r.item.kind === 'finished');
   const lowCount = rows.filter((r) => r.low).length;
-  const canMove = role ? can(role, 'stock.move') : false; const canManage = role ? can(role, 'item.manage') : false;
+  const allowed = useCan();
+  const canMove = allowed('stock.move'); const canManage = allowed('item.manage');
 
   const card = (r: StockRow) => (
     <Link to={`/stock/${r.item.entityId}`} className={`card-hover flex items-center gap-3 rounded-2xl border bg-surface p-3 shadow-card ${r.low ? 'border-given/40' : 'border-line'}`} data-testid={`stock-row-${r.item.entityId}`}>

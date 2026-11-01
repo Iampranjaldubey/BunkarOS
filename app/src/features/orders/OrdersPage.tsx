@@ -10,23 +10,22 @@ import { useRecords } from '../../db/hooks';
 import { orderViews, orderCounts, type OrderView } from '../../domain/orders';
 import { formatDay } from '../../domain/dates';
 import { todayIST } from '../../domain/ids';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
 import { StatusBadge, DueLine } from './shared';
+import { useCan } from '../../app/useCan';
 
 type Filter = 'open' | 'all';
 
 export default function OrdersPage() {
   const { t, lang } = useT();
-  const { role } = useSession();
   const navigate = useNavigate();
   const recs = useRecords();
   const [filter, setFilter] = useState<Filter>('open');
   const views = useMemo(() => orderViews(recs, todayIST()), [recs]);
   const counts = useMemo(() => orderCounts(views), [views]);
   const rows = filter === 'open' ? views.filter((v) => v.status !== 'delivered') : views;
-  const canManage = role ? can(role, 'order.manage') : false;
+  const allowed = useCan();
+  const canManage = allowed('order.manage');
 
   const card = (v: OrderView) => (
     <Link to={`/orders/${v.order.entityId}`} className={`card-hover flex items-center gap-3 rounded-2xl border bg-surface p-3 shadow-card ${v.overdue ? 'border-given/40' : 'border-line'}`}>

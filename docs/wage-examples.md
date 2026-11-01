@@ -7,7 +7,7 @@ Exact inputs and expected values for the wage acceptance tests in `SPECS.md`. Te
 - net = gross + overtime − deductions − advance recovered
 - paid = net rounded to ₹1, half-up; rounding = paid − net
 
-`round` is `Math.round`. All values below were recomputed by script on 2026-11-02.
+`round` is `Math.round`. All values below were recomputed by script on 2026-11-02. The section "Actual results" compares them with what the app computes.
 
 ## Example A: monthly worker (SPEC-M02 AC1 and AC5)
 
@@ -107,6 +107,28 @@ Rounding is 0 in all three cases.
 - 1,126,923 + 0 − 0 − 100,000 = 1,026,923.
 - 1,026,923 + (−23) = 1,026,900.
 - The worker's salary stays 1,200,000 (AC6).
+
+## Actual results (2026-11-02, branch `desktop-first`)
+
+The actual column comes from the app's wage code (`computeGross` and `settle` in `app/src/domain/wage.ts`, `paidOffDays` in `app/src/domain/attendance.ts`), run on the inputs above. The same values are asserted by `app/src/domain/rules.test.ts` (Vitest). The "Screen" column is what the Playwright tests read on the real pages.
+
+| Example | Inputs | Expected | Actual (wage code) | Screen (Playwright) |
+|---|---|---|---|---|
+| A, AC1 | Example A, overtime on | net 1,002,015, rounding −15, paid 1,002,000 (₹10,020) | net 1,002,015, rounding −15, paid 1,002,000 | pay page "₹10,020" (e2e 03) |
+| A, AC5 | Example A, overtime off | gross 1,084,615, net 984,615, rounding −15, paid 984,600 (₹9,846) | gross 1,084,615, overtime 0, net 984,615, rounding −15, paid 984,600 | pay page "₹9,846", no overtime in counts or lines (e2e 03, e2e 11); new worker `otRatePaise` 0 (e2e 10) |
+| B, AC8 `none` | Example B, daily ₹400 | off days none, gross 740,000 (₹7,400) | off days none, present 18, half 1, gross 740,000, paid 740,000 | see note 1 |
+| B, AC8 `sundays` | Example B | off days 8, 15, 29, gross 860,000 (₹8,600) | off days 8, 15, 29, gross 860,000, paid 860,000 | see note 1 |
+| B, AC6/AC8 `sundays_and_holidays` | Example B | off days 8, 9, 15, 29, gross 900,000 (₹9,000) | off days 8, 9, 15, 29, gross 900,000, paid 900,000 | see note 1 |
+| B, AC6 piece | same marks, 120 × ₹15 | ₹1,800 under every policy | 180,000 under all three policies | not run on screen |
+| B, AC6 monthly | same marks, ₹12,000 | gross 1,130,769, paid ₹11,308 under every policy | gross 1,130,769, paid 1,130,800 under all three policies | not run on screen |
+| C, M14 AC1 | Example A + `absent_deduct` 92,308 → 50,000 | gross 1,126,923, net 1,026,923, rounding −23, paid 1,026,900 (₹10,269) | gross 1,126,923, net 1,026,923, rounding −23, paid 1,026,900; overrides `[{line: absent_deduct, computedPaise: 92308, finalPaise: 50000, reason}]` | pay page "₹10,269"; the stored payment in IndexedDB has the same amounts and override (e2e 11) |
+
+Every actual value equals the expected value.
+
+**Notes**
+1. Example B is dated November 2026, which is the current month on the test date, so it cannot be paid from the screen yet. e2e 10 runs the same rule on the previous month's calendar with a ₹400 daily worker. That worker has 3 present weekdays, is absent on the first Sunday, present on the second Sunday and has one unmarked listed holiday. The pay page shows: `none` = 4 days; `sundays` = 3 + (Sundays − 1) days; `sundays_and_holidays` = one day more. The worked Sunday is paid once and the absent Sunday is not paid.
+2. **Paid once / Absent removes:** `rules.test.ts` changes Example B to Present on Sunday 8 Nov, Half on holiday 9 Nov and Absent on Sunday 15 Nov. Under the default policy the paid off days are 8, 9 and 29. The Present and Half marks on 8 and 9 Nov are not added again, so gross = (18 + 3) × 40,000 + 20,000 = 860,000. Under `none` the same marks count as ordinary work days (present 19, half 2).
+3. **Correction of a paid month (e2e 11):** after Example C is paid and locked, the owner unlocks, reverses the payment and pays again. The second payment overrides `half_deduct` 23,077 → 0: gross 1,107,692, net 1,007,692, paid ₹10,077 (rounding +8). The worker's page then shows only ₹10,077.
 
 ## Notes for the owner (needs confirmation)
 

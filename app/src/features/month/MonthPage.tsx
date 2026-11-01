@@ -12,16 +12,14 @@ import { monthReport } from '../../domain/dashboard';
 import { formatINR } from '../../domain/money';
 import { formatQty } from '../../domain/qty';
 import { monthOf, todayIST, weekday } from '../../domain/ids';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
 import { MonthPicker } from '../wages/shared';
 import { exportMonthXlsx, downloadBlob } from './export';
+import { useCan, useUnitRules } from '../../app/useCan';
 
 /** Monthly analysis: attendance grid, wage sheet, stock movement, orders, cash out, usage. Excel + print. */
 export default function MonthPage() {
   const { t, lang } = useT();
-  const { role } = useSession();
   const toast = useToast();
   const recs = useRecords();
   const today = todayIST();
@@ -32,11 +30,14 @@ export default function MonthPage() {
   const items = useMemo(() => listItems(recs), [recs]);
   const r = useMemo(() => monthReport(recs, month, today, workers, items, settings), [recs, month, today, workers, items, settings]);
   const days = Object.keys(r.attendance[0]?.days ?? {});
-  const canExport = role ? can(role, 'export') : false;
+  const allowed = useCan();
+  const rules = useUnitRules();
+  const canExport = allowed('export');
+  const canSeePrice = allowed('price.view'); // SPEC-M13: amounts derived from prices are hidden from operators
 
   const doExport = async () => {
     setBusy(true);
-    try { downloadBlob(await exportMonthXlsx(r, settings?.unitName ?? 'Bunkar', lang), `Bunkar_${(settings?.unitName ?? 'unit').replace(/\s+/g, '_')}_${month}.xlsx`); toast.show(t('month.exported'), 'success'); }
+    try { downloadBlob(await exportMonthXlsx(r, settings?.unitName ?? 'Bunkar', lang, { overtime: rules.overtimeEnabled, prices: canSeePrice }), `Bunkar_${(settings?.unitName ?? 'unit').replace(/\s+/g, '_')}_${month}.xlsx`); toast.show(t('month.exported'), 'success'); }
     finally { setBusy(false); }
   };
   const mark = (m: string) => (m === 'P' ? 'bg-received-soft text-received' : m === 'H' ? 'bg-accent-soft text-accent-ink' : m === 'A' ? 'bg-given-soft text-given' : 'text-line');
@@ -66,12 +67,12 @@ export default function MonthPage() {
         <CardTitle>{t('month.attendance')}</CardTitle>
         {r.attendance.length === 0 ? <p className="text-sm text-muted">{t('common.empty')}</p> : (
           <table className="w-full border-collapse text-xs" data-testid="attendance-sheet">
-            <thead><tr><th className="sticky left-0 bg-surface py-1 pr-2 text-left font-medium text-muted">{t('worker.name')}</th>{days.map((d) => <th key={d} className={`num px-0.5 py-1 font-normal ${weekday(d) === 0 ? 'text-given' : 'text-muted'}`}>{Number(d.slice(8))}</th>)}<th className="px-1 text-received">P</th><th className="px-1 text-accent-ink">H</th><th className="px-1 text-given">A</th><th className="px-1">OT</th></tr></thead>
+            <thead><tr><th className="sticky left-0 bg-surface py-1 pr-2 text-left font-medium text-muted">{t('worker.name')}</th>{days.map((d) => <th key={d} className={`num px-0.5 py-1 font-normal ${weekday(d) === 0 ? 'text-given' : 'text-muted'}`}>{Number(d.slice(8))}</th>)}<th className="px-1 text-received">P</th><th className="px-1 text-accent-ink">H</th><th className="px-1 text-given">A</th>{rules.overtimeEnabled && <th className="px-1">OT</th>}</tr></thead>
             <tbody>{r.attendance.map((row) => (
               <tr key={row.worker.entityId} className="border-t border-line odd:bg-surface-2/50">
                 <td className="sticky left-0 bg-surface py-1 pr-2 font-medium text-ink">{row.worker.name}</td>
                 {days.map((d) => <td key={d} className="px-0.5 py-1 text-center"><span className={`inline-block w-4 rounded ${mark(row.days[d])}`}>{row.days[d] || '·'}</span></td>)}
-                <td className="num px-1 text-center">{row.present}</td><td className="num px-1 text-center">{row.half}</td><td className="num px-1 text-center">{row.absent}</td><td className="num px-1 text-center">{row.otHours}</td>
+                <td className="num px-1 text-center">{row.present}</td><td className="num px-1 text-center">{row.half}</td><td className="num px-1 text-center">{row.absent}</td>{rules.overtimeEnabled && <td className="num px-1 text-center">{row.otHours}</td>}
               </tr>
             ))}</tbody>
           </table>
@@ -113,7 +114,7 @@ export default function MonthPage() {
             <CardTitle>{t('month.orders')}</CardTitle>
             <dl className="grid grid-cols-2 gap-2 text-sm">
               {[[t('month.received'), r.orders.received], [t('month.deliveredQty'), r.orders.delivered], [t('month.open'), r.orders.open], [t('month.overdue'), r.orders.overdue]].map(([l, v]) => <div key={String(l)} className="rounded-xl bg-surface-2 p-2"><dt className="text-xs text-muted">{l}</dt><dd className="num text-xl font-bold text-ink">{v}</dd></div>)}
-              <div className="col-span-2 rounded-xl bg-surface-2 p-2"><dt className="text-xs text-muted">{t('month.amountPending')}</dt><dd className="num text-xl font-bold text-ink">{formatINR(r.orders.amountPendingPaise)}</dd></div>
+              {canSeePrice && <div className="col-span-2 rounded-xl bg-surface-2 p-2" data-testid="month-amount-pending"><dt className="text-xs text-muted">{t('month.amountPending')}</dt><dd className="num text-xl font-bold text-ink">{formatINR(r.orders.amountPendingPaise)}</dd></div>}
             </dl>
           </Card>
           <Card className="mb-6" data-testid="usage">

@@ -18,6 +18,7 @@ import { rupeesToPaise, formatINR } from '../../domain/money';
 import { uuid, todayIST, addDays } from '../../domain/ids';
 import { useT } from '../../i18n';
 import { BuyerSheet } from './BuyersPage';
+import { useCan } from '../../app/useCan';
 
 export default function OrderFormPage() {
   const { t } = useT();
@@ -27,6 +28,8 @@ export default function OrderFormPage() {
   const recs = useRecords();
   const existing = useMemo(() => (id ? listOrders(recs).find((o) => o.entityId === id) : undefined), [recs, id]);
   const buyers = useMemo(() => listBuyers(recs), [recs]);
+  const allowed = useCan();
+  const canSeePrice = allowed('price.view'); // SPEC-M13: the server removes prices for operators while the owner hides them
   const [buyerId, setBuyerId] = useState(''); const [orderNo, setOrderNo] = useState(''); const [design, setDesign] = useState(''); const [size, setSize] = useState('');
   const [qty, setQty] = useState(''); const [dueDate, setDueDate] = useState(addDays(todayIST(), 30)); const [price, setPrice] = useState(''); const [notes, setNotes] = useState('');
   const [receivedOn, setReceivedOn] = useState(todayIST()); const [buyerOpen, setBuyerOpen] = useState(false);
@@ -39,7 +42,7 @@ export default function OrderFormPage() {
     setDueDate(existing.dueDate); setPrice(existing.pricePaise ? String(existing.pricePaise / 100) : ''); setNotes(existing.notes ?? ''); setReceivedOn(existing.receivedOn);
   }, [existing]);
 
-  const q = Number(qty); const pricePaise = price.trim() ? rupeesToPaise(Number(price)) : undefined;
+  const q = Number(qty); const pricePaise = canSeePrice && price.trim() ? rupeesToPaise(Number(price)) : undefined;
   const save = async () => {
     const e: Record<string, string> = {};
     if (!buyerId) e.buyer = t('valid.required');
@@ -77,7 +80,7 @@ export default function OrderFormPage() {
             <Field label={t('order.size')}>{({ id }) => <Input id={id} value={size} onChange={(e) => setSize(e.target.value)} placeholder="8x10" />}</Field>
             <Field label={t('order.qty')} required error={errors.qty}>{({ id, describedBy, invalid }) => <Input id={id} inputMode="numeric" value={qty} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setQty(e.target.value.replace(/\D/g, ''))} className="num text-xl" />}</Field>
             <Field label={t('order.dueDate')} required error={errors.dueDate}>{({ id }) => <Input id={id} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="num" />}</Field>
-            <Field label={t('order.price')} hint={pricePaise && q ? `${t('common.total')}: ${formatINR(pricePaise * q)}` : t('common.optional')}>{({ id }) => <Input id={id} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}</Field>
+            {canSeePrice && <Field label={t('order.price')} hint={pricePaise && q ? `${t('common.total')}: ${formatINR(pricePaise * q)}` : t('common.optional')}>{({ id }) => <Input id={id} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}</Field>}
             <Field label={t('order.notes')} className="lg:col-span-2">{({ id }) => <Textarea id={id} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />}</Field>
           </FormGrid>
           <FormActions><Button type="submit" size="xl" disabled={busy}>{t('action.save')}</Button></FormActions>

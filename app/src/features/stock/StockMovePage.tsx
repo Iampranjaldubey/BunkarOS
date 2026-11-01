@@ -23,9 +23,8 @@ import { parseQty, formatQty } from '../../domain/qty';
 import { formatINR, rupeesToPaise } from '../../domain/money';
 import { isDayLocked } from '../../domain/locks';
 import { todayIST } from '../../domain/ids';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
+import { useCan } from '../../app/useCan';
 
 type Kind = 'in' | 'out' | 'adjust' | 'finished';
 const REASONS: AdjustReason[] = ['wastage', 'count_correction', 'damage', 'other'];
@@ -38,7 +37,6 @@ export default function StockMovePage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { role } = useSession();
   const recs = useRecords();
   const settings = useMemo(() => getSettings(recs), [recs]);
   const items = useMemo(() => listItems(recs).filter((i) => (kind === 'finished' ? i.kind === 'finished' : true)), [recs, kind]);
@@ -58,7 +56,8 @@ export default function StockMovePage() {
   const after = balance + signed;
   const ratePaise = rupeesToPaise(Number(rate) || 0);
   const totalPaise = parsed ? Math.round((parsed / 1000) * ratePaise) : 0;
-  const canOverride = role ? can(role, 'record.reverse.any') : false; // owner
+  const allowed = useCan();
+  const canOverride = allowed('record.reverse.any'); // owner
   const takesOut = kind === 'out' || (kind === 'adjust' && negative);
   // SPEC-M16 §4: the server refuses going below zero unless the owner says so explicitly, with a reason.
   const needsOverride = takesOut && parsed !== null && after < 0 && canOverride;

@@ -61,3 +61,61 @@ export async function setSalary(page: Page, name: string, rupees: number) {
   await page.getByRole('button', { name: 'सेव करें', exact: true }).click();
   await expect(page).toHaveURL(/\/workers\/[^/]+$/);
 }
+
+// ---------- SPEC-M13 / M14 helpers ----------
+/** Owner turns overtime on or off in Settings → पगार के नियम (D-001). */
+export async function setOvertime(page: Page, on: boolean) {
+  await page.goto('/settings');
+  const sw = page.getByTestId('overtime-switch');
+  if ((await sw.getAttribute('aria-checked')) !== String(on)) {
+    await sw.click();
+    await page.getByTestId('save-rules').click();
+  }
+  await expect(page.getByTestId('overtime-switch')).toHaveAttribute('aria-checked', String(on));
+  await expect(page.getByTestId('save-rules')).toBeDisabled();
+}
+export const POLICY = { none: 'कोई नहीं', sundays: 'रविवार', sundays_and_holidays: 'रविवार और छुट्टियाँ' } as const;
+/** Owner picks the off-day policy (D-002). */
+export async function setPolicy(page: Page, policy: keyof typeof POLICY) {
+  await page.goto('/settings');
+  const radio = page.locator(`input[name=offDayPolicy][value=${policy}]`);
+  if (!(await radio.isChecked())) { await radio.check(); await page.getByTestId('save-rules').click(); }
+  await expect(page.locator(`input[name=offDayPolicy][value=${policy}]`)).toBeChecked();
+  await expect(page.getByTestId('save-rules')).toBeDisabled(); // saved: nothing left to save
+}
+/** Owner switches operator toggles (D-005); only the given keys change. */
+export async function setPerms(page: Page, perms: Partial<Record<'addEntries' | 'editPast' | 'seePrices' | 'export', boolean>>) {
+  await page.goto('/settings');
+  let changed = false;
+  for (const [k, v] of Object.entries(perms)) {
+    const sw = page.getByTestId(`perm-${k}`);
+    if ((await sw.getAttribute('aria-checked')) !== String(v)) { await sw.click(); changed = true; }
+  }
+  if (changed) await page.getByTestId('save-perms').click();
+  for (const [k, v] of Object.entries(perms)) await expect(page.getByTestId(`perm-${k}`)).toHaveAttribute('aria-checked', String(v));
+  await expect(page.getByTestId('save-perms')).toBeDisabled();
+}
+/** Owner adds a staff (operator) login in Settings. */
+export async function addStaffLogin(page: Page, name: string, pin: string) {
+  await page.goto('/settings');
+  await page.getByRole('button', { name: /स्टाफ़ जोड़ें/ }).click();
+  await page.getByRole('dialog').getByLabel(/^नाम/).fill(name);
+  await page.getByRole('dialog').getByLabel(/4 अंक का पिन/).fill(pin);
+  await page.getByRole('dialog').getByRole('button', { name: /सेव करें/ }).click();
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+}
+/** Records in this browser's IndexedDB (to check what reached the phone). */
+export async function localRecords(page: Page): Promise<{ id: string; type: string; sync: string; payload: Record<string, unknown> }[]> {
+  return page.evaluate(async () => {
+    const req = indexedDB.open('bunkar-mvp');
+    const db: IDBDatabase = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+    return new Promise((res) => { const g = db.transaction('records').objectStore('records').getAll(); g.onsuccess = () => res(g.result); });
+  });
+}
+/** Wait until the header badge says everything is synced. */
+export async function synced(page: Page) { await expect(page.getByText('सिंक हो गया').first()).toBeVisible({ timeout: 20_000 }); }
+/** Wait until no record is pending on this device; return the refused ones as "type reason" strings (expect []). */
+export async function settled(page: Page): Promise<string[]> {
+  await expect.poll(async () => (await localRecords(page)).filter((r) => r.sync === 'pending').length, { timeout: 25_000 }).toBe(0);
+  return (await localRecords(page)).filter((r) => r.sync === 'rejected').map((r) => `${r.type} ${(r as { rejectReason?: string }).rejectReason ?? ''}`);
+}

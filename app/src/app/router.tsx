@@ -55,7 +55,7 @@ export const router = createBrowserRouter([
       { path: 'workers/new', element: guard('worker.manage', <WorkerFormPage />) },
       { path: 'workers/:id', element: <WorkerDetailPage /> },
       { path: 'workers/:id/edit', element: guard('worker.manage', <WorkerFormPage />) },
-      { path: 'attendance', element: guard('attendance.mark', <AttendancePage />) },
+      { path: 'attendance', element: <AttendancePage /> }, // viewable by all; marking needs "add entries" (SPEC-M13)
       { path: 'advances/new', element: guard('advance.give', <AdvanceNewPage />) },
       { path: 'wages', element: guard('wages.view', <WagesPage />) },
       { path: 'wages/:month/:workerId', element: guard('wages.view', <WagePayPage />) },

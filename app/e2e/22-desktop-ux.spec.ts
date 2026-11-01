@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { setupAndLogin, attRow, markRadio } from './fixtures';
+import { setupAndLogin, attRow, markRadio, setOvertime } from './fixtures';
 
 async function addWorker(page: Page, name: string) {
   await page.goto('/workers/new');
@@ -12,6 +12,7 @@ test('desktop UX: keyboard roll call, log table + type filter, quick entry, coll
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await setupAndLogin(page);
+  await setOvertime(page, true); // the + / − keys change overtime, which is off by default (D-001)
   await expect(page.getByTestId('topbar-date')).toBeVisible();
   await addWorker(page, 'Aamir'); await addWorker(page, 'Bilal');
 

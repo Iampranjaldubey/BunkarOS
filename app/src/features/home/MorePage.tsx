@@ -4,15 +4,16 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { MORE } from '../../components/ui/nav-items';
-import { can } from '../../domain/permissions';
 import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
+import { useCan } from '../../app/useCan';
 
 /** Phone "More" menu: every destination not on the bottom bar, plus logout. */
 export default function MorePage() {
   const { t } = useT();
   const { role, user, logout } = useSession();
-  const items = MORE.filter((it) => !it.action || (role && can(role, it.action)));
+  const allowed = useCan();
+  const items = MORE.filter((it) => !it.action || allowed(it.action));
   return (
     <section>
       <PageHeader title={t('nav.more')} />

@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { PageGrid } from '../../components/ui/PageGrid';
 import { PwaInstallCard } from '../../components/ui/PwaInstallCard';
 import { useIsDesktop } from '../../components/ui/useIsDesktop';
+import { useCan } from '../../app/useCan';
 import { useRecords } from '../../db/hooks';
 import type { Rec } from '../../db/types';
 import { listWorkers, listItems } from '../../domain/masters';
@@ -40,6 +41,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const recs = useRecords();
   const isDesktop = useIsDesktop();
+  const allowed = useCan();
   const today = todayIST();
   const workers = useMemo(() => listWorkers(recs), [recs]);
   const items = useMemo(() => listItems(recs), [recs]);
@@ -64,10 +66,10 @@ export default function HomePage() {
       <Card>
         <CardTitle>{t('home.quick')}</CardTitle>
         <div className="grid grid-cols-2 gap-2">
-          <Button size="md" onClick={() => navigate('/attendance')}><CalendarCheck aria-hidden="true" size={18} />{t('nav.attendance')}</Button>
-          <Button size="md" variant="secondary" onClick={() => navigate('/advances/new')}><HandCoins aria-hidden="true" size={18} />{t('adv.title')}</Button>
-          <Button size="md" variant="secondary" onClick={() => navigate('/stock/move/in')}><ArrowDownToLine aria-hidden="true" size={18} />{t('stock.in')}</Button>
-          <Button size="md" variant="secondary" onClick={() => navigate('/orders/new')}><ClipboardList aria-hidden="true" size={18} />{t('order.new')}</Button>
+          {allowed('attendance.mark') && <Button size="md" onClick={() => navigate('/attendance')}><CalendarCheck aria-hidden="true" size={18} />{t('nav.attendance')}</Button>}
+          {allowed('advance.give') && <Button size="md" variant="secondary" onClick={() => navigate('/advances/new')}><HandCoins aria-hidden="true" size={18} />{t('adv.title')}</Button>}
+          {allowed('stock.move') && <Button size="md" variant="secondary" onClick={() => navigate('/stock/move/in')}><ArrowDownToLine aria-hidden="true" size={18} />{t('stock.in')}</Button>}
+          {allowed('order.manage') && <Button size="md" variant="secondary" onClick={() => navigate('/orders/new')}><ClipboardList aria-hidden="true" size={18} />{t('order.new')}</Button>}
         </div>
       </Card>
       {isOwner && (

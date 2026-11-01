@@ -2,10 +2,11 @@
 import { getUnit, insertUnit, getRecordById, insertRecord, recordsSince, userRecordsSince, putPhoto, getPhoto,
   userRecordCount, latestUser, userRole, lockedMonths, paidPairs, recordsOfType,
   getUnitByShortCode, ensureShortCode, latestWorker, activeWorkers, workerRecords,
-  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords, publicRec, stockBalances } from './db.mjs';
+  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords, publicRec, stockBalances,
+  latestSetting, latestByEntity, correctionHistory, PRICE_FIELDS } from './db.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { hashUnitKey, verifyUnitKey } from './auth.mjs';
-import { evaluate, stockMove } from './rules.mjs';
+import { evaluate, stockMove, operatorPerms } from './rules.mjs';
 import { signToken, verifyToken, verifyPinServer, signAdminToken, verifyAdminToken } from './token.mjs';
 import { serveStatic } from './static.mjs';
 
@@ -187,7 +188,16 @@ async function handleSync(db, req, res) {
     targets: null, prevWorker: null,
     serverDay: istDay(new Date()), // SPEC-M16 §5: "today" for staff undo is the server's IST date at receive time
     stock: null,
+    perms: operatorPerms(await latestSetting(db, unitId)), // SPEC-M13: the owner's toggles for all operators
+    ...(await correctionHistory(db, unitId)),               // SPEC-M14: reversed payments, re-locks
   };
+  const isOperator = Boolean(auth && auth.role !== 'owner');
+  // What this token may see: operators lose prices while the owner hides them (SPEC-M13). Sent back as `view`.
+  const view = { seePrices: !isOperator || ctx.perms.seePrices };
+  // Operator edits of price-carrying masters keep the stored prices (the operator's phone never had them).
+  const priceTypes = isOperator && !view.seePrices ? Object.keys(PRICE_FIELDS).filter((t) => incoming.some((r) => r?.type === t)) : [];
+  const prevMasters = new Map();
+  for (const t of priceTypes) prevMasters.set(t, await latestByEntity(db, unitId, t));
   // SPEC-M16 §4: item balances, only when this push moves stock (or may reverse a move).
   const STOCK_TYPES = new Set(['stock_in', 'stock_out', 'stock_adjust', 'finished_in', 'delivery', 'reversal']);
   if (incoming.some((r) => STOCK_TYPES.has(r?.type))) ctx.stock = await stockBalances(db, unitId, stockMove);
@@ -226,6 +236,12 @@ async function handleSync(db, req, res) {
         toCheck = { ...rec, payload: { ...p, pinHash: prev.pinHash, pinSalt: prev.pinSalt } };
       }
     }
+    if (rec && priceTypes.includes(rec.type) && rec.payload && typeof rec.payload === 'object') {
+      const fields = PRICE_FIELDS[rec.type];
+      if (fields.some((k) => rec.payload[k] !== undefined)) { rejected.push({ id: rec.id, reason: 'forbidden_price' }); continue; }
+      const prev = prevMasters.get(rec.type)?.get(rec.payload.entityId);
+      if (prev) toCheck = { ...rec, payload: { ...rec.payload, ...Object.fromEntries(fields.filter((k) => prev[k] !== undefined).map((k) => [k, prev[k]])) } };
+    }
     const verdict = evaluate(toCheck, ctx);
     if (!verdict.ok) { rejected.push({ id: rec?.id, reason: verdict.reason }); continue; }
     const stored = { ...toCheck, sync: 'synced' }; delete stored.rejectReason;
@@ -237,7 +253,8 @@ async function handleSync(db, req, res) {
     if (move) ctx.stock.set(move.itemId, (ctx.stock.get(move.itemId) ?? 0) + move.delta);
     if (rec.type === 'reversal') {
       const target = ctx.targets?.get(rec.payload.targetId);
-      if (target?.type === 'period_lock' && target.payload?.month) ctx.locked.delete(target.payload.month); // unlock reopens the month
+      if (target?.type === 'period_lock' && target.payload?.month) { ctx.locked.delete(target.payload.month); ctx.relocked.add(target.payload.month); } // unlock reopens the month
+      if (target?.type === 'wage_payment' && target.payload) { const k = `${target.payload.workerId}|${target.payload.month}`; ctx.paid.delete(k); ctx.batch.paid.delete(k); ctx.reversedPaid.add(k); }
       const undone = ctx.stock && target ? stockMove(target) : null;
       if (undone) ctx.stock.set(undone.itemId, (ctx.stock.get(undone.itemId) ?? 0) - undone.delta);
     }
@@ -246,7 +263,7 @@ async function handleSync(db, req, res) {
 
   const pulled = await recordsSince(db, unitId, since, limit);
   const cursor = pulled.length ? pulled[pulled.length - 1].seq : since;
-  return sendJson(res, 200, { accepted, rejected, records: pulled.map((r) => publicRec(r.rec)), cursor }, req);
+  return sendJson(res, 200, { accepted, rejected, records: pulled.map((r) => publicRec(r.rec, view)), cursor, view }, req);
 }
 
 /** SPEC-M11: photos need the unit key and, once the unit has users, a valid user token for that unit. */

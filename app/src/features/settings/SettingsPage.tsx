@@ -14,14 +14,16 @@ import { useRecords } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
 import type { Role, SettingP, UserP } from '../../db/types';
 import { getSettings, listUsers } from '../../domain/masters';
-import { can } from '../../domain/permissions';
 import { uuid } from '../../domain/ids';
 import { formatDay } from '../../domain/dates';
+import { WageRulesCard, OperatorsCard } from './RulesCards';
+import { unitRules } from '../../domain/settings';
 import { hashPin } from '../../lib/pin';
 import { getUnitMeta, useSession } from '../../app/session';
 import { authedFetch } from '../../sync';
 import { useT } from '../../i18n';
 import { useEffect } from 'react';
+import { useCan } from '../../app/useCan';
 
 type Theme = 'auto' | 'light' | 'dark';
 function getTheme(): Theme { try { return (localStorage.getItem('bunkar.theme') as Theme) || 'auto'; } catch { return 'auto'; } }
@@ -37,7 +39,8 @@ export default function SettingsPage() {
   const recs = useRecords();
   const settings = useMemo(() => getSettings(recs), [recs]);
   const users = useMemo(() => listUsers(recs), [recs]);
-  const isOwner = role === 'owner' && can(role, 'settings.edit');
+  const allowed = useCan();
+  const isOwner = role === 'owner' && allowed('settings.edit');
 
   const [workingDays, setWorkingDays] = useState<string>('');
   const [photoAbove, setPhotoAbove] = useState<string>('');
@@ -144,6 +147,9 @@ export default function SettingsPage() {
         )}
       </Card>
 
+      {settings && <WageRulesCard key={JSON.stringify(unitRules(settings))} settings={settings} isOwner={isOwner} />}
+      {settings && <OperatorsCard key={JSON.stringify(unitRules(settings).operatorPerms)} settings={settings} isOwner={isOwner} />}
+
       <Card className="mb-4 lg:mb-0">
         <div className="mb-2 flex items-center justify-between"><CardTitle className="mb-0">{t('settings.users')}</CardTitle>
           {isOwner && <Button size="md" variant="secondary" onClick={() => setAddOpen(true)}><UserPlus aria-hidden="true" size={18} />{t('settings.addUser')}</Button>}</div>
@@ -174,7 +180,7 @@ export default function SettingsPage() {
           <p className="mb-3 text-sm text-muted">{t('settings.joinHint')}</p>
           {[['setup.unitCode', meta.unitId], ['setup.unitKey', meta.unitKey]].map(([k, v]) => (
             <div key={k} className="mb-2 flex items-center gap-2 rounded-xl bg-surface-2 p-3">
-              <div className="min-w-0 flex-1"><p className="text-xs text-muted">{t(k)}</p><p className="num truncate font-mono text-sm text-ink">{v}</p></div>
+              <div className="min-w-0 flex-1"><p className="text-xs text-muted">{t(k)}</p><p className="num truncate font-mono text-sm text-ink" data-testid={k === 'setup.unitCode' ? 'join-unit-id' : 'join-unit-key'}>{v}</p></div>
               <button type="button" onClick={() => void copy(v)} aria-label={t('settings.copy')} className="tap-48 rounded-xl text-primary hover:bg-primary-soft"><Copy aria-hidden="true" size={20} /></button>
             </div>
           ))}

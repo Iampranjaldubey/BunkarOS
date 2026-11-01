@@ -7,7 +7,10 @@ import { translate } from '../../i18n';
 
 const rupees = (paise: number) => Math.round(paise) / 100;
 
-export async function exportMonthXlsx(r: MonthReport, unitName: string, lang: Lang): Promise<Blob> {
+/** `overtime`: overtime columns only while the unit has overtime on (D-001). `prices`: amounts from order prices (SPEC-M13). */
+export interface ExportOptions { overtime?: boolean; prices?: boolean }
+export async function exportMonthXlsx(r: MonthReport, unitName: string, lang: Lang, opts: ExportOptions = {}): Promise<Blob> {
+  const withOt = opts.overtime !== false; const withPrices = opts.prices !== false;
   const ExcelJS = (await import('exceljs')).default;
   const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
   const wb = new ExcelJS.Workbook();
@@ -17,17 +20,17 @@ export async function exportMonthXlsx(r: MonthReport, unitName: string, lang: La
   const s = wb.addWorksheet(t('month.sheet.summary'));
   s.addRows([[unitName], [t('common.month'), r.month], [], [t('wages.gross'), rupees(r.wageTotals.gross + r.wageTotals.ot)], [t('wages.advances'), rupees(r.wageTotals.advances)], [t('wages.totalPaid'), rupees(r.wageTotals.paid)], [t('wages.totalPending'), rupees(r.wageTotals.pending)],
     [t('month.advancesGiven'), rupees(r.advancesGivenPaise)], [t('month.cashOut'), rupees(r.cashOutPaise)], [t('month.upiOut'), rupees(r.upiOutPaise)], [],
-    [t('month.received'), r.orders.received], [t('month.deliveredQty'), r.orders.delivered], [t('month.open'), r.orders.open], [t('month.overdue'), r.orders.overdue], [t('month.amountPending'), rupees(r.orders.amountPendingPaise)]]);
+    [t('month.received'), r.orders.received], [t('month.deliveredQty'), r.orders.delivered], [t('month.open'), r.orders.open], [t('month.overdue'), r.orders.overdue], ...(withPrices ? [[t('month.amountPending'), rupees(r.orders.amountPendingPaise)]] : [])]);
   s.getColumn(1).width = 28; s.getColumn(2).width = 16;
 
   const a = wb.addWorksheet(t('month.sheet.attendance'));
   const days = Object.keys(r.attendance[0]?.days ?? {});
-  head(a, [{ header: t('worker.name'), key: 'name', width: 22 }, ...days.map((d) => ({ header: d.slice(8), key: d, width: 4 })), { header: 'P', key: 'p', width: 5 }, { header: 'H', key: 'h', width: 5 }, { header: 'A', key: 'a', width: 5 }, { header: 'OT', key: 'ot', width: 6 }]);
+  head(a, [{ header: t('worker.name'), key: 'name', width: 22 }, ...days.map((d) => ({ header: d.slice(8), key: d, width: 4 })), { header: 'P', key: 'p', width: 5 }, { header: 'H', key: 'h', width: 5 }, { header: 'A', key: 'a', width: 5 }, ...(withOt ? [{ header: 'OT', key: 'ot', width: 6 }] : [])]);
   for (const row of r.attendance) a.addRow({ name: row.worker.name, ...row.days, p: row.present, h: row.half, a: row.absent, ot: row.otHours });
 
   const w = wb.addWorksheet(t('month.sheet.wages'));
-  head(w, [{ header: t('worker.name'), key: 'name', width: 22 }, { header: t('worker.payType'), key: 'type', width: 14 }, { header: 'P', key: 'p', width: 5 }, { header: 'H', key: 'h', width: 5 }, { header: 'A', key: 'a', width: 5 }, { header: 'OT', key: 'ot', width: 6 },
-    { header: t('wages.gross'), key: 'gross', width: 12 }, { header: t('wages.ot'), key: 'otp', width: 10 }, { header: t('wages.deductions'), key: 'ded', width: 12 }, { header: t('wages.advances'), key: 'adv', width: 12 }, { header: t('wages.net'), key: 'net', width: 12 }, { header: t('wages.paid'), key: 'paid', width: 12 }, { header: t('order.status'), key: 'st', width: 10 }]);
+  head(w, [{ header: t('worker.name'), key: 'name', width: 22 }, { header: t('worker.payType'), key: 'type', width: 14 }, { header: 'P', key: 'p', width: 5 }, { header: 'H', key: 'h', width: 5 }, { header: 'A', key: 'a', width: 5 }, ...(withOt ? [{ header: 'OT', key: 'ot', width: 6 }] : []),
+    { header: t('wages.gross'), key: 'gross', width: 12 }, ...(withOt ? [{ header: t('wages.ot'), key: 'otp', width: 10 }] : []), { header: t('wages.deductions'), key: 'ded', width: 12 }, { header: t('wages.advances'), key: 'adv', width: 12 }, { header: t('wages.net'), key: 'net', width: 12 }, { header: t('wages.paid'), key: 'paid', width: 12 }, { header: t('order.status'), key: 'st', width: 10 }]);
   for (const row of r.wages) {
     const p = row.payment?.payload;
     w.addRow({ name: row.worker.name, type: t(`worker.payType.${row.worker.payType}`), p: row.inputs.present, h: row.inputs.half, a: row.inputs.absent, ot: row.inputs.otHours,
@@ -44,7 +47,7 @@ export async function exportMonthXlsx(r: MonthReport, unitName: string, lang: La
   const os = wb.addWorksheet(t('month.sheet.orders'));
   head(os, [{ header: t('order.orderNo'), key: 'no', width: 12 }, { header: t('order.buyer'), key: 'buyer', width: 20 }, { header: t('order.design'), key: 'design', width: 16 }, { header: t('order.size'), key: 'size', width: 8 },
     { header: t('order.qty'), key: 'qty', width: 8 }, { header: t('order.delivered'), key: 'del', width: 10 }, { header: t('order.pending'), key: 'pend', width: 10 }, { header: t('order.dueDate'), key: 'due', width: 12 },
-    { header: t('order.status'), key: 'st', width: 14 }, { header: t('order.overdue'), key: 'late', width: 10 }, { header: t('month.amountPending'), key: 'amt', width: 14 }]);
+    { header: t('order.status'), key: 'st', width: 14 }, { header: t('order.overdue'), key: 'late', width: 10 }, ...(withPrices ? [{ header: t('month.amountPending'), key: 'amt', width: 14 }] : [])]);
   const tot = { qty: 0, del: 0, pend: 0, amt: 0 };
   for (const o of r.orderList) {
     os.addRow({ no: o.orderNo, buyer: o.buyerName, design: o.design, size: o.size, qty: o.qty, del: o.delivered, pend: o.pending, due: o.dueDate,

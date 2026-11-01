@@ -52,7 +52,19 @@ export interface SettingP {
   photoRequiredAbovePaise: number;    // default 200000 (₹2,000)
   holidays: string[];                 // YYYY-MM-DD marked holiday (excluded from unmarked gaps)
   lowStockDefault?: number;           // optional default lowStockQty for new items (thousandths)
+  // ---- SPEC-M13 unit rules (owner only). A missing field means its default (domain/settings.ts). ----
+  overtimeEnabled?: boolean;          // D-001, default false
+  offDayPolicy?: OffDayPolicy;        // D-002, default 'sundays_and_holidays'
+  slipSections?: Partial<Record<SlipSection, boolean>>; // D-003
+  operatorPerms?: Partial<OperatorPerms>;              // D-005 (all operators together)
 }
+export type OffDayPolicy = 'none' | 'sundays' | 'sundays_and_holidays';
+/** Printed / WhatsApp slip sections (D-003). Rounding is not a section: it shows whenever it is not zero. */
+export type SlipSection =
+  | 'businessName' | 'workerName' | 'month' | 'gross' | 'advance' | 'deductions' | 'net' | 'signature'
+  | 'attendance' | 'offDays' | 'pieces' | 'overtime' | 'rate' | 'ownerChanges' | 'advanceBalance' | 'payment';
+/** D-005 operator toggles. `seeWages` stays true until server-side wage redaction exists (SPEC-M13 stage 2). */
+export interface OperatorPerms { addEntries: boolean; editPast: boolean; seeWages: boolean; seePrices: boolean; export: boolean; }
 
 export type PayType = 'monthly' | 'daily' | 'piece';
 export type JobTitle = 'weaver' | 'finisher' | 'helper' | 'other';
@@ -99,7 +111,14 @@ export interface WagePaymentP {
   mode: PayMode; note?: string;
   // snapshot of the inputs for the slip (so a later attendance edit does not rewrite history)
   snapshot: WageSnapshot;
+  /** SPEC-M14: lines the owner changed before paying. Totals above are the final amounts. */
+  overrides?: WageOverride[];
+  /** SPEC-M14: required when this worker already has a reversed payment for the month. */
+  correctionReason?: string;
 }
+/** Wage lines the owner may override (SPEC-M14). Amounts are positive; deductions are subtracted. */
+export type WageLineKey = 'base' | 'absent_deduct' | 'half_deduct' | 'days' | 'off_days' | 'pieces' | 'overtime' | 'advance_recovered' | 'rounding';
+export interface WageOverride { line: WageLineKey; computedPaise: number; finalPaise: number; reason: string; }
 /**
  * What the payment was computed from, saved with it. A paid month is shown only from this and the
  * payment's own totals (SPEC-M16 §1). Fields after `ratePaise` were added 2026-11-02; older payments lack them.
@@ -108,8 +127,12 @@ export interface WageSnapshot {
   present: number; half: number; absent: number; otHours: number; pieces: number; payType: PayType; ratePaise: number;
   workingDays?: number; perDayPaise?: number; absentDeductPaise?: number; halfDeductPaise?: number;
   otRatePaise?: number; advanceOutstandingPaise?: number;
+  // added 2026-11-02 (SPEC-M13/M14): rules in force and the computed amount of every line before overrides
+  offDays?: number; offDayPolicy?: OffDayPolicy; overtimeEnabled?: boolean;
+  parts?: Partial<Record<WageLineKey, number>>;
 }
-export interface PeriodLockP { month: string; }
+/** `reason` is required when the month was locked before (a re-lock after a correction, SPEC-M14). */
+export interface PeriodLockP { month: string; reason?: string; }
 
 // ---------- inventory ----------
 export interface StockInP { itemId: string; qty: number; ratePaise?: number; supplier?: string; note?: string; }

@@ -1,5 +1,5 @@
 // Attendance projections (pure).
-import type { Rec, AttendanceP, AttendanceStatus, PieceEntryP, SettingP } from '../db/types.ts';
+import type { Rec, AttendanceP, AttendanceStatus, PieceEntryP, SettingP, OffDayPolicy } from '../db/types.ts';
 import { recsOfType } from './records.ts';
 import { monthDays, weekday } from './ids.ts';
 
@@ -61,4 +61,17 @@ export function dayRollCall(recs: Rec[], workerIds: string[], day: string) {
     if (m.status === 'present') out.present += 1; else if (m.status === 'half') out.half += 1; else out.absent += 1;
   }
   return out;
+}
+
+/**
+ * D-002 / SPEC-M02: the days of `month` the off-day policy pays to a daily-rate worker.
+ * Chosen days (Sundays, and listed holidays for `sundays_and_holidays`) on or after `joinedOn`,
+ * minus those with an explicit Absent mark. A holiday on a Sunday counts once. A Present or Half mark
+ * on such a day does not add anything: the day is paid once, as an off day.
+ */
+export function paidOffDays(recs: Rec[], workerId: string, month: string, joinedOn: string, policy: OffDayPolicy, holidays: string[] = []): string[] {
+  if (policy === 'none') return [];
+  const hol = new Set(policy === 'sundays_and_holidays' ? holidays : []);
+  const idx = attendanceIndex(recs);
+  return monthDays(month).filter((d) => d >= joinedOn && (weekday(d) === 0 || hol.has(d)) && idx.get(markKey(workerId, d))?.status !== 'absent');
 }

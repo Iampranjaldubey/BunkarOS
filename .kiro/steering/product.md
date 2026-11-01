@@ -62,8 +62,8 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
 ## 5. Users and roles
 | Role | Access | Status |
 |---|---|---|
-| Owner | Sees and edits everything: settings, users, pay rates, locking months, export, undo any entry, override any wage line with a reason | Built, except wage overrides (Planned, D-004) |
-| Operator (staff, munshi) | What the owner allows with toggles that apply to all operators of the unit. Stage 1: add entries (default on), edit past entries (off; otherwise own entries from the same day only), see prices (on; when off the server removes order and catalogue prices from what it sends), export (off). Operators see wages as today; a "see wages" toggle comes later, only together with server-side wage removal. Never: settings, users, pay rates, month lock, wage overrides | Built with today's fixed limits; toggles Planned (D-005) |
+| Owner | Sees and edits everything: settings, users, pay rates, locking months, export, undo any entry, override any wage line with a reason | Built (wage overrides built 2026-11-02, D-004) |
+| Operator (staff, munshi) | What the owner allows with toggles that apply to all operators of the unit. Stage 1: add entries (default on), edit past entries (off; otherwise own entries from the same day only), see prices (on; when off the server removes order and catalogue prices from what it sends), export (off). Operators see wages as today; a "see wages" toggle comes later, only together with server-side wage removal. Never: settings, users, pay rates, month lock, wage overrides | Built: stage 1 toggles 2026-11-02 (D-005); "see wages" later |
 | Worker | Own read-only page by WhatsApp link or by shop code, name and 4-digit worker code. No login | Built |
 | Founders' admin | Read-only view of all units, only when ADMIN_KEYS is set | Built |
 | Faculty or demo viewer | A read-only way to see the product | Gap. Use a demo unit with fake data for now |
@@ -101,12 +101,12 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
 - Corrections: marking the same day again replaces the earlier mark and shows as "edited" in the log. **Built**.
 - Worker page with month grid, advances, last payment and balance. **Built**.
 - Month attendance grid for the whole shop with fast editing. **Partial** (month grid exists on the worker page and in the report; confirm an editable whole-shop grid).
-- **Overtime [Decided by owner 2026-11-01, docs/decisions.md D-001].** Partners do not use it. Owner-only unit setting "Overtime enabled", default off. When off, hide overtime on every screen (worker form, attendance, wage sheet, pay page, slip, month report, export, worker page) and default new workers' overtime rate to zero. Keep the code and data. **Gap** (today overtime is always shown).
+- **Overtime [Decided by owner 2026-11-01, docs/decisions.md D-001].** Partners do not use it. Owner-only unit setting "Overtime enabled", default off. When off, hide overtime on every screen (worker form, attendance, wage sheet, pay page, slip, month report, export, worker page) and default new workers' overtime rate to zero. Keep the code and data. **Built** (2026-11-02).
 
 ### 8.3 Paid Sundays and holidays
 - **[Confirmed]** Partners pay Sundays and holidays.
 - Holiday list: owner-only Settings screen to add and remove holidays; staff see it read-only; the attendance screen notes when the picked day is a holiday or Sunday. Sundays are the default weekly off. **Built**.
-- Current pay: monthly-salary workers lose pay only for marked absences. Daily-rate workers are paid present days times rate, so unmarked Sundays and holidays are not paid. **Gap**.
+- Pay before 2026-11-02: daily-rate workers were paid present days times rate, so unmarked Sundays and holidays were not paid. Now follows the off-day policy below. **Built** (2026-11-02).
 - **Rule [Decided by owner 2026-11-01, docs/decisions.md D-002]:** an owner setting "Off-day policy" with three choices: none, Sundays, or Sundays and listed holidays. Default: **Sundays and listed holidays** (**Provisional** business rule; confirm with design partners before they rely on it).
   - A daily-rate worker gets one paid day for each day the policy chooses that falls on or after their joining date, unless they were explicitly marked Absent that day.
   - Piece-rate workers get nothing for off days. Monthly workers are unaffected.
@@ -114,7 +114,7 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
   - Show paid off days distinctly in the month grid and in the wage sheet and pay-screen breakdown.
   - Pure functions with tests. Works offline.
   - Confirm the rule with design partners before they rely on it.
-- Interim workaround for partners: mark daily workers Present on Sundays.
+- The earlier workaround (mark daily workers Present on Sundays) is no longer needed; a Present mark on a paid off day is paid once, not twice.
 
 ### 8.4 Advances and wages
 - Advances (kharcha or peshgi) any day, cash or UPI, with photo where required. **Built**.
@@ -128,19 +128,19 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
   - Advance recovery cannot exceed what remains of the pay.
 - Paying a worker: line-by-line breakdown, editable deduction lines, adjustable advance recovery, WhatsApp share after preview, printing. **Built**.
 - Locking: the owner locks and unlocks a month. A locked month refuses new entries dated inside it. One payment per worker per month. **Built**.
-- Paid history comes from the stored `wage_payment` snapshot. Never recompute a paid month from current rates. **Partial**: totals come from the stored payment, but the pay screen rebuilds a paid month's line items from current data (docs/decisions.md DM-003).
+- Paid history comes from the stored `wage_payment` snapshot. Never recompute a paid month from current rates. **Built** (SPEC-M16, 2026-11-02): the pay screen, slip, worker page and paid wage-sheet rows use `paidView()` of the stored payment.
 - **[Open]** How partners recover advances (all at once, fixed amount, owner's choice). Current behaviour: owner chooses the recovery, capped at remaining pay.
 - **[Open]** Whether net pay may go negative. Never store a negative net. The server already checks arithmetic.
 - **[Open]** Whether a half day is always half a day.
 - **[Open]** Whether piece rates vary by design or size. The rate is stored on each piece entry, so this already works if entered per entry.
-- **Wage slip [Decided by owner 2026-11-01, docs/decisions.md D-003]:** the printed slip is a real A4 page made of a fixed list of sections that the owner switches on or off (setting "Slip sections"). Default: business name, worker name, month, gross wage (also for monthly workers), advance recovered, deductions, net pay and a signature line. Off by default: attendance summary, paid off days, pieces, overtime, rate, rounding, owner changes, advance balance, payment date and mode. The detailed breakdown stays on the pay screen and the worker's own page. A4 print is the main route; WhatsApp share is secondary. Status: **Gap** (today the slip lists the breakdown lines, monthly workers get no gross line, there is no signature line, and printing prints the screen).
+- **Wage slip [Decided by owner 2026-11-01, docs/decisions.md D-003]:** the printed slip is a real A4 page made of a fixed list of sections that the owner switches on or off (setting "Slip sections"). Default: business name, worker name, month, gross wage (also for monthly workers), advance recovered, deductions, net pay and a signature line. Off by default: attendance summary, paid off days, pieces, overtime, rate, owner changes, advance balance, payment date and mode. A Rounding row is printed automatically when rounding is not zero. The detailed breakdown stays on the pay screen and the worker's own page. A4 print is the main route; WhatsApp share is secondary and carries the same rows plus a link to the worker's page. Status: **Built** (2026-11-02).
 - **Owner override [Decided by owner 2026-11-01/02, docs/decisions.md D-004]:**
   - Only before the payment is confirmed, the owner can change the amount of any calculated wage line. A reason is required.
   - The computed amount, new amount, reason, who and when go to the history; the worker's page marks the line as changed by the owner.
   - Net pay can never go negative. Overrides never change the worker's rates.
   - **To change a paid month**, the owner does four steps in order, each logged with a reason: unlock the month, reverse the payment (the reversed payment stays in the history), pay again, lock the month again.
   - Worked example: docs/wage-examples.md Example C.
-  - Status: **Gap**.
+  - Status: **Built** (2026-11-02).
 
 ### 8.5 Inventory management (raw materials, finished carpets and stock ledger)
 Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adjust and finished_in records). This is the inventory module.

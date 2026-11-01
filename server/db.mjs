@@ -191,6 +191,36 @@ export async function stockBalances(db, unitId, moveOf) {
   }
   return out;
 }
+/** Latest non-reversed `setting` payload of the unit (the unit rules, SPEC-M13). */
+export async function latestSetting(db, unitId) {
+  const reversed = await reversedTargetIds(db, unitId);
+  let best;
+  for (const row of await recordsOfType(db, unitId, 'setting')) {
+    if (reversed.has(row.id)) continue;
+    if (!best || (row.rec.at || '') >= best.at) best = { at: row.rec.at || '', p: row.rec.payload };
+  }
+  return best?.p;
+}
+/** Latest non-reversed payload per entityId of a master type (Map). */
+export async function latestByEntity(db, unitId, type) {
+  const reversed = await reversedTargetIds(db, unitId);
+  const out = new Map();
+  for (const row of await recordsOfType(db, unitId, type)) {
+    if (reversed.has(row.id)) continue;
+    const p = row.rec?.payload; if (!p?.entityId) continue;
+    const prev = out.get(p.entityId);
+    if (!prev || (row.rec.at || '') >= prev.at) out.set(p.entityId, { at: row.rec.at || '', p });
+  }
+  return new Map([...out].map(([k, v]) => [k, v.p]));
+}
+/** SPEC-M14: (worker|month) pairs that have a reversed payment, and months whose lock was reversed (= locked before). */
+export async function correctionHistory(db, unitId) {
+  const reversed = await reversedTargetIds(db, unitId);
+  const reversedPaid = new Set(); const relocked = new Set();
+  for (const row of await recordsOfType(db, unitId, 'wage_payment')) if (reversed.has(row.id) && row.rec?.payload) reversedPaid.add(`${row.rec.payload.workerId}|${row.rec.payload.month}`);
+  for (const row of await recordsOfType(db, unitId, 'period_lock')) if (reversed.has(row.id) && row.rec?.payload?.month) relocked.add(row.rec.payload.month);
+  return { reversedPaid, relocked };
+}
 /** Active wage_payment (worker, month) pairs. */
 export async function paidPairs(db, unitId) {
   const reversed = await reversedTargetIds(db, unitId);
@@ -253,11 +283,23 @@ async function latestOf(db, unitId, type) {
   }
   return [...latest.values()].map((v) => v.p);
 }
-/** SPEC-M11: a record as a client may see it — `user` records never carry PIN hash/salt. */
-export function publicRec(rec) {
+/** Price fields an operator may not see when "See prices" is off (SPEC-M13). */
+export const PRICE_FIELDS = { order: ['pricePaise'], carpet: ['costPaise', 'pricePaise'] };
+/**
+ * A record as a client may see it. `user` records never carry PIN hash/salt (SPEC-M11).
+ * With `view.seePrices === false` (an operator token while the owner hides prices) price fields are removed
+ * by the server, so they never reach the operator's phone (SPEC-M13).
+ */
+export function publicRec(rec, view) {
   if (rec?.type === 'user' && rec.payload && ('pinHash' in rec.payload || 'pinSalt' in rec.payload)) {
     const { pinHash: _h, pinSalt: _s, ...rest } = rec.payload;
     return { ...rec, payload: rest };
+  }
+  const hide = view && view.seePrices === false ? PRICE_FIELDS[rec?.type] : undefined;
+  if (hide && rec.payload && hide.some((k) => k in rec.payload)) {
+    const payload = { ...rec.payload };
+    for (const k of hide) delete payload[k];
+    return { ...rec, payload };
   }
   return rec;
 }

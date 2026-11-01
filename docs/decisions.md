@@ -82,7 +82,7 @@ Terms:
 | Pieces (count × rate) | off |
 | Overtime (hours × rate) | off; can only be switched on while overtime is enabled |
 | Rate (salary, daily rate or piece rate) | off |
-| Rounding | off |
+| Rounding | not a switch: printed automatically above net pay whenever it is not zero (built 2026-11-02) |
 | Owner changes (overridden lines with their reason, D-004) | off |
 | Advance balance after this payment | off |
 | Payment date and mode (cash or UPI) | off |
@@ -90,9 +90,9 @@ Terms:
 - **Details assumed (needs confirmation):**
   - Business name, worker name, month and net pay cannot be switched off; a slip without them is not a slip.
   - The slip is built from the stored payment record, not from today's rates or attendance (see DM-003).
-  - Net pay is the amount handed over: net rounded to ₹1. With the rounding section off, gross − advance − deductions can differ from net pay by up to 50 paise.
+  - Net pay is the amount handed over: net rounded to ₹1. Because the Rounding row is printed whenever rounding is not zero, the printed rows always add up to net pay.
   - "₹0" is printed when there are no deductions.
-  - The WhatsApp slip text uses the same sections as the printed slip, so the worker gets the same content both ways.
+  - The WhatsApp slip text uses the same sections and rows as the printed slip (no signature line) and ends with a link to the worker's own page, so the worker gets the same content both ways and can open the full breakdown.
 
 ### D-004 Owner override on wage lines
 - **Status:** decided by owner (2026-11-01; timing decided 2026-11-02).

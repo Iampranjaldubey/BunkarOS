@@ -18,7 +18,7 @@
 import { useSyncExternalStore } from 'react';
 import { db } from '../db/db';
 import type { Rec, PhotoRow } from '../db/types';
-import type { SyncResponse, SyncStateView } from './types';
+import type { SyncResponse, SyncStateView, SyncView } from './types';
 import { getDeviceId } from '../lib/session-store';
 import { setOnLocalWrite } from '../db/repo';
 
@@ -336,7 +336,10 @@ async function pushPending(
   token: string | undefined,
   authorId?: string,
 ): Promise<SyncResponse | null> {
-  const allPending: Rec[] = await db.records.where('sync').equals('pending').toArray();
+  // Push in the order the entries were written. The index returns them by random id, and the server applies a
+  // batch in order: an unlock must come before the reversal it allows, a reversal before the payment that replaces it.
+  const allPending: Rec[] = (await db.records.where('sync').equals('pending').toArray())
+    .sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
   const pending = (authorId ? allPending.filter((r) => r.by === authorId) : allPending).slice(0, PUSH_BATCH);
 
   const since = (await metaGet<number>('cursor')) ?? 0;
@@ -392,6 +395,29 @@ export async function scrubPinHashes(): Promise<number> {
   return n;
 }
 
+// ---------------- forced resync (SPEC-M13) ----------------
+const VIEW_KEY = 'sync.view';
+const sameView = (a: SyncView, b: SyncView) => a.seePrices === b.seePrices;
+/**
+ * The server tells us what it hid for this token. When that changes (the owner hid or showed prices),
+ * data already on this phone no longer matches: delete every record that is not pending, start the pull
+ * from 0 and fetch everything again. Pending entries stay and are pushed. Returns true when it reset.
+ * A phone that never stored a view held everything visible, so "no view yet" counts as all visible.
+ */
+async function applyView(view: SyncView | undefined): Promise<boolean> {
+  if (!view) return false;
+  const prev = (await metaGet<SyncView>(VIEW_KEY)) ?? { seePrices: true };
+  await metaSet(VIEW_KEY, view);
+  if (sameView(prev, view)) return false;
+  setState({ resyncing: true });
+  const keep = await db.records.where('sync').equals('pending').primaryKeys();
+  const keepSet = new Set(keep);
+  const drop = (await db.records.toCollection().primaryKeys()).filter((id) => !keepSet.has(id));
+  await db.records.bulkDelete(drop);
+  await metaSet('cursor', 0);
+  return true;
+}
+
 // ---------------- pull ----------------
 async function applyPulled(data: SyncResponse): Promise<void> {
   for (const incoming of data.records) {
@@ -438,6 +464,7 @@ async function drainPull(
     if (res.status === 401) await throwFor401(res);
     if (!res.ok) break;
     const data = (await res.json()) as SyncResponse;
+    if (await applyView(data.view)) { more = true; continue; } // view changed mid-drain: start again from 0
     await applyPulled(data);
     // Short page → caught up. Full page → there may be more.
     more = data.records.length >= PULL_LIMIT;
@@ -502,7 +529,9 @@ async function syncCycle(): Promise<void> {
     // user's records are pushed (see pushPending).
     const authorId = auth?.userId;
     let data = await pushPending(creds, token, authorId);
-    if (data) await applyPulled(data);
+    // SPEC-M13: a changed view resets the local data first; the pull below then starts from 0.
+    const reset = data ? await applyView(data.view) : false;
+    if (data && !reset) await applyPulled(data);
 
     // If a full batch went out there may be more: keep going until a short batch.
     let guard = 0;
@@ -520,7 +549,7 @@ async function syncCycle(): Promise<void> {
     await pushPendingPhotos(creds, token);
 
     backoff = BACKOFF_BASE_MS;
-    setState({ online: true, authState: 'ok', error: null, lastSyncAt: new Date().toISOString() });
+    setState({ online: true, authState: 'ok', error: null, lastSyncAt: new Date().toISOString(), resyncing: false });
   } catch (err) {
     if (err instanceof NeedsLoginError) {
       // Stale/absent token: drop it and ask the user to log in again when online.

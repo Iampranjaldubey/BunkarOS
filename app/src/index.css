@@ -134,7 +134,15 @@
   .no-print { display: none !important; }
   body { background: #fff; color: #000; font-size: 12pt; }
   main { max-width: none !important; padding: 0 !important; }
+  /* D-003: a page with a slip prints only the slip, on one A4 page. */
+  body:has(.print-slip) main > *:not(.print-slip) { display: none !important; }
+  .print-slip { display: block !important; page: slip; }
 }
+.print-slip { display: none; }
+@page { size: A4; margin: 12mm; }
+@page slip { size: A4; margin: 0; }
+.slip-paper { width: 210mm; min-height: 297mm; box-sizing: border-box; }
+@media print { .slip-paper { height: 297mm; min-height: 0; overflow: hidden; break-inside: avoid; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

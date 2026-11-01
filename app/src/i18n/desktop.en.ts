@@ -1,5 +1,6 @@
 // SPEC-M12 desktop-first UI strings (English).
 const desktopEn: Record<string, string> = {
+  'log.lockedMonth': 'Month is locked — unlock it first', 
   'nav.newEntry': 'New entry', 'nav.collapse': 'Collapse menu', 'nav.expand': 'Expand menu', 'nav.quickTitle': 'What do you want to enter?',
   'att.prevDay': 'Previous day', 'att.nextDay': 'Next day', 'att.onlyUnmarked': 'Only unmarked', 'att.allMarked': 'Everyone is marked',
   'att.keyHint': 'Keyboard: P present · H half day · A absent (then next worker) · + / − overtime · ↑ ↓ move',

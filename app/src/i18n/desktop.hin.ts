@@ -1,5 +1,6 @@
 // SPEC-M12 desktop-first UI strings (Hinglish).
 const desktopHin: Record<string, string> = {
+  'log.lockedMonth': 'Mahina lock hai — pehle kholein', 
   'nav.newEntry': 'Nayi entry', 'nav.collapse': 'Menu chhota karein', 'nav.expand': 'Menu bada karein', 'nav.quickTitle': 'Kya bharna hai?',
   'att.prevDay': 'Pichhla din', 'att.nextDay': 'Agla din', 'att.onlyUnmarked': 'Sirf baaki', 'att.allMarked': 'Sabki haaziri lag gayi',
   'att.keyHint': 'Keyboard: P haazir · H aadha din · A gair-haazir (phir agla kaarigar) · + / − overtime · ↑ ↓ upar-neeche',

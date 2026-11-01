@@ -44,6 +44,7 @@ Status legend: Draft | Approved | Built.
 | SPEC-M13 | Unit rules as settings (overtime, off-day policy, slip sections) + operator permissions | Approved (owner 2026-11-01/02). Stage 1: see prices (server-side) now; "see wages" is a later stage |
 | SPEC-M14 | Owner override on any wage line before payment, with a reason; logged correction of a paid month | Approved (owner 2026-11-01/02) |
 | SPEC-M15 | Finished carpet catalogue: photos, design, size, piece tag or quantity, prices, reserve, deliver, sell directly, write off | Approved (owner 2026-11-01/02) |
+| SPEC-M16 | Server integrity (locked-month reversals, wage amounts, stock below zero, same-day undo, photo ids) + paid month from the saved payment | Approved (user goal 2026-11-02) |
 
 ---
 
@@ -309,6 +310,42 @@ Status legend: Draft | Approved | Built.
     - it keeps its balance and history;
     - it can still be delivered against an order.
 - **Out:** custom fields, WhatsApp cards, barcodes or QR codes, per-carpet production tracking, price lists, sale amounts or buyers for direct sales.
+
+### SPEC-M16 — Server integrity and paid-month display
+- **Goal** (user goal 2026-11-02; audit §16 P1–P5 and DM-002, DM-003): the server refuses records that would break locked months, wage arithmetic, stock or photo ownership, and a paid month always shows what was saved.
+- **1. A paid month comes from the saved payment.**
+  - New payments store a fuller `snapshot`: `workingDays`, `perDayPaise`, `absentDeductPaise`, `halfDeductPaise`, `otRatePaise`, `advanceOutstandingPaise` (balance before this payment), next to the existing counts, pay type and rate.
+  - A pure `paidView(payment)` builds the counts and every line only from the payment record. It is used by:
+    - the pay screen (header counts, lines, paid amount, balance after);
+    - the WhatsApp slip text;
+    - the worker's own page (this month and pay history);
+    - the paid rows of the wage sheet, month report and Excel export.
+  - Older payments without the new fields show the base salary and one combined attendance deduction (rate − gross), both taken from the stored record. Nothing is recomputed from current rates or attendance.
+- **2. Locked months cannot be changed by a reversal.**
+  - A `reversal` is refused (`period_locked`) for everyone, including the owner, when its target is an attendance, piece, advance, payment, stock or delivery record dated in a locked month. A payment also counts as locked when its `payload.month` is locked.
+  - The lock's own reversal (unlock) stays allowed; the owner unlocks first. In one push, an accepted unlock reopens the month for the records after it.
+  - The entry log shows no undo button for those entries, only a lock mark.
+- **3. Wage payment amounts.**
+  - The server refuses a `wage_payment` with `netPaise < 0` (`negative_net`), `|roundingPaise| > 50` (`invalid_rounding`) or `paidPaise < 0` (`negative_paid`), besides the existing arithmetic check.
+  - The pay screen refuses to confirm a payment whose net is below zero and says why.
+- **4. Stock cannot go below zero on the server.**
+  - The server keeps each item's balance: stock in + finished in − stock out ± adjustments − deliveries taken from that finished item. Reversed records do not count; records earlier in the same push count in order.
+  - A `stock_out`, a negative `stock_adjust` or a `delivery` from a finished item that would take the balance below zero is refused (`insufficient_stock`). The exception is a record by the owner that carries `allowNegative: true` and a non-empty `overrideReason`.
+  - App: an operator is blocked as today. The owner sees a required "माइनस में जाने की वजह" field and the record carries the flag and reason, so the override is in the history.
+- **5. Same-day undo uses the server's date.** A staff reversal is accepted only for the staff member's own record whose `day` equals the server's IST date when the reversal is received. The reversal's own `day` is ignored, so back-dating an undo is refused.
+- **6. Photo ids belong to one unit.**
+  - The first unit to store a photo id owns it.
+  - Another unit uploading the same id is refused with 409 `photo_id_taken`, and nothing changes.
+  - The owning unit re-sending the same bytes gets 200 (a retry). Different bytes get 409 `photo_exists`.
+  - A photo can only be read by its own unit.
+  - The app marks a photo refused with 409 as rejected and stops retrying it.
+- **Acceptance:**
+  - AC1 the SPEC-M02 AC1 worker is paid ₹10,020, then the owner changes the salary to ₹15,000. The pay screen still shows base ₹12,000, absence ₹923.08 and paid ₹10,020, the slip text is unchanged, and the worker's page shows the same paid amount and lines (e2e 03, 07; unit test with a rate change and a later attendance mark).
+  - AC2 with the month locked, the owner's and the staff's reversals of an attendance mark, an advance and the payment in that month are refused (`period_locked`). The unlock is accepted, and after it the owner's reversal is accepted (server test). The entry log shows no undo button for the locked month's entries (e2e 03).
+  - AC3 server tests: net −30 with rounding +30 → `negative_net`; rounding +99 or −60 → `invalid_rounding`; net 20 with rounding −40 (paid −20) → `negative_paid`. A correct payment with rounding +50 is accepted.
+  - AC4 server tests: stock out with zero stock by staff → `insufficient_stock`; by the owner without the flag → `insufficient_stock`; by the owner with flag and reason → accepted; by staff with the flag → `insufficient_stock`. In one push, in 5 kg then out 3 kg then out 3 kg → the second out is refused. Negative adjustments and deliveries from finished stock follow the same rule. e2e 04: the owner over-issues only after giving a reason.
+  - AC5 server test: staff reverses their own record dated today → accepted. Their own record dated yesterday, with the reversal also dated yesterday → `forbidden_reversal`. Another user's record from today → `forbidden_reversal`.
+  - AC6 server test: unit A stores photo X; unit B uploads X → 409 `photo_id_taken`; A still reads its original bytes; B reads X → 404; A re-sends the same bytes → 200; A sends other bytes → 409 `photo_exists` and the original stays. Unit test: the sync client marks a 409 photo rejected.
 
 ## Scope — Out (all modules)
 Custom fields and WhatsApp cards (not yet, D15), GST/invoicing, payment gateway, subscription billing, multi-branch, AI/voice, push notifications, barcodes/QR, supplier ledger, per-carpet loom tracking, thekedar chain, tauli, exporter links, Tally export, IVR.

@@ -21,6 +21,18 @@ export async function sync(base, unitId, unitKey, records, since = 0, token) {
   return { status: res.status, body: await res.json() };
 }
 export const UNIT_KEY = 'k'.repeat(43);
+/** Business day in Asia/Kolkata, optionally shifted by whole days (−1 = yesterday). Same clock as the server. */
+export function istToday(offsetDays = 0) {
+  return new Date(Date.now() + 5.5 * 3600 * 1000 + offsetDays * 86_400_000).toISOString().slice(0, 10);
+}
+/** Add a staff login to a bootstrapped unit and return its token. */
+export async function addStaff(base, unitId, ownerId, ownerToken, staffId = 'u-staff-' + randomBytes(3).toString('hex')) {
+  const staff = makeRec('user', { entityId: staffId, name: 'Munshi', phone: '', role: 'staff', pinHash: PIN.hash, pinSalt: PIN.salt, active: true }, { unitId, by: ownerId });
+  const r = await sync(base, unitId, UNIT_KEY, [staff], 0, ownerToken);
+  if (r.body.rejected.length) throw new Error('staff rejected');
+  const tok = await fetch(`${base}/api/auth/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unitId, unitKey: UNIT_KEY, userId: staffId, pin: '1234' }) });
+  return { staffId, staffToken: (await tok.json()).token };
+}
 /** Create unit + owner user + setting; return {unitId, ownerId, token}. */
 export async function bootstrapUnit(base, { pinHash, pinSalt } = {}) {
   const unitId = 'unit-' + randomBytes(4).toString('hex');

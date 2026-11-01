@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Undo2 } from 'lucide-react';
+import { Lock, Undo2 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -13,6 +13,7 @@ import { reverse } from '../../db/repo';
 import type { Rec, RecordType, ReversalP } from '../../db/types';
 import { nameMaps } from '../../domain/masters';
 import { can } from '../../domain/permissions';
+import { isRecordLocked, lockedMonths } from '../../domain/locks';
 import { formatDay, formatTime } from '../../domain/dates';
 import { istDay, todayIST } from '../../domain/ids';
 import { useSession } from '../../app/session';
@@ -45,9 +46,12 @@ export default function LogPage() {
     return [...list].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 300);
   }, [listed, filterUser, filterType]);
 
+  const locked = useMemo(() => lockedMonths(recs), [recs]);
+  const isLocked = (r: Rec) => isRecordLocked(locked, r);
   const canReverse = (r: Rec) => {
     if (!role) return false;
     if (reversedBy.has(r.id) || r.type === 'period_lock') return false;
+    if (isLocked(r)) return false; // SPEC-M16 §2: unlock the month first (owner, on the wage sheet)
     if (can(role, 'record.reverse.any')) return true;
     return can(role, 'record.reverse.ownToday') && r.by === user?.id && r.day === todayIST();
   };
@@ -81,6 +85,11 @@ export default function LogPage() {
       </>
     );
   };
+  const lockMark = (r: Rec) => !reversedBy.has(r.id) && isLocked(r) && (
+    <span className="inline-flex h-11 w-11 items-center justify-center text-muted" title={t('log.lockedMonth')} data-testid="log-locked">
+      <Lock aria-hidden="true" size={18} /><span className="visually-hidden">{t('log.lockedMonth')}</span>
+    </span>
+  );
   const undoBtn = (r: Rec) => canReverse(r) && (
     <button type="button" onClick={() => setTarget(r)} aria-label={t('log.reverse')} title={t('log.reverse')} className="tap-48 inline-flex items-center justify-center rounded-xl text-muted hover:bg-surface-2 hover:text-given lg:h-11 lg:min-h-0 lg:w-11 lg:min-w-0"><Undo2 aria-hidden="true" /></button>
   );
@@ -119,7 +128,7 @@ export default function LogPage() {
                       {r.rejectReason && <p className="mt-1 text-sm text-given">{r.rejectReason}</p>}
                     </td>
                     <td className="border-b border-line px-4 py-2.5 text-sm text-ink">{byName(r.by)}</td>
-                    <td className="border-b border-line px-2 py-1.5 text-right">{undoBtn(r)}</td>
+                    <td className="border-b border-line px-2 py-1.5 text-right">{undoBtn(r) || lockMark(r)}</td>
                   </tr>
                 );
               })}
@@ -147,7 +156,7 @@ export default function LogPage() {
                     {rev && <p className="mt-1 text-sm text-given">{t('log.reason')}: {rev.payload.reason} — {t('common.by', { name: byName(rev.by) })}</p>}
                     {r.rejectReason && <p className="mt-1 text-sm text-given">{r.rejectReason}</p>}
                   </div>
-                  <div className="self-start">{undoBtn(r)}</div>
+                  <div className="self-start">{undoBtn(r) || lockMark(r)}</div>
                 </Card>
               </li>
             );

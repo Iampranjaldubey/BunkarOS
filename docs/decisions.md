@@ -220,7 +220,11 @@ The brief says the code is authoritative about the data model, so record the dif
 - **Options:** (a) accept it, and document in `docs/DEPLOY.md` that schema changes apply on deploy; (b) move schema changes into a separate migration command that a person runs.
 
 ### DM-002 The photo store overwrites an existing photo id
-- **Status:** needs confirmation.
+- **Status:** resolved 2026-11-02 by SPEC-M16 §6 (user goal), option (a).
+  - The first unit to store an id owns it.
+  - Another unit's upload of that id → 409 `photo_id_taken`, and nothing changes.
+  - The same unit re-sending the same bytes → 200; different bytes → 409 `photo_exists`.
+  - The app marks a 409 photo rejected and stops retrying (`server/db.mjs` `putPhoto`, `server/test/integrity.test.mjs` AC6).
 - **Brief §6.2:** "Nothing is silently changed."
 - **Code:** `putPhoto` is `INSERT … ON CONFLICT (id) DO UPDATE SET unit_id, mime, bytes` (`server/db.mjs:187`).
   - Uploading an existing id again replaces the photo's bytes.
@@ -228,7 +232,11 @@ The brief says the code is authoritative about the data model, so record the dif
 - **Options:** (a) refuse a second upload of an id with different bytes, and never change `unit_id`; (b) keep it as is. This is fix-list item P1 7a in the audit. It matters more once each catalogue carpet can have four photos.
 
 ### DM-003 The stored `wage_payment.snapshot` is not used for a paid month's lines
-- **Status:** needs confirmation.
+- **Status:** resolved 2026-11-02 by SPEC-M16 §1 (user goal), option (a).
+  - New payments save `workingDays`, `perDayPaise`, `absentDeductPaise`, `halfDeductPaise`, `otRatePaise` and `advanceOutstandingPaise` in the snapshot.
+  - `paidView()` (`app/src/domain/wage.ts`) builds every paid-month view from the payment alone: pay screen, WhatsApp slip text, worker page, and the wage sheet and export rows.
+  - Payments made before this change show base salary and one combined attendance deduction, taken from the stored record.
+  - The description below is the state before the fix.
 - **Brief 8.4:** "Paid history comes from the stored wage_payment snapshot. Never recompute a paid month from current rates."
 - **Code:**
   - The totals of a paid month come from the stored payment.

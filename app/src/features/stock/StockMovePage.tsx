@@ -49,6 +49,7 @@ export default function StockMovePage() {
   const [purpose, setPurpose] = useState<StockOutPurpose>('production'); const [workerId, setWorkerId] = useState(''); const [orderId, setOrderId] = useState('');
   const [reason, setReason] = useState<AdjustReason>('wastage'); const [note, setNote] = useState(''); const [day, setDay] = useState(todayIST());
   const [photoId, setPhotoId] = useState<string | undefined>(); const [errors, setErrors] = useState<Record<string, string>>({}); const [busy, setBusy] = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
   const item = items.find((i) => i.entityId === itemId);
   const balance = itemId ? stockBalance(recs, itemId) : 0;
   const parsed = qty.trim() ? parseQty(qty.replace(/^[−-]/, '')) : null;
@@ -58,6 +59,10 @@ export default function StockMovePage() {
   const ratePaise = rupeesToPaise(Number(rate) || 0);
   const totalPaise = parsed ? Math.round((parsed / 1000) * ratePaise) : 0;
   const canOverride = role ? can(role, 'record.reverse.any') : false; // owner
+  const takesOut = kind === 'out' || (kind === 'adjust' && negative);
+  // SPEC-M16 §4: the server refuses going below zero unless the owner says so explicitly, with a reason.
+  const needsOverride = takesOut && parsed !== null && after < 0 && canOverride;
+  const override = needsOverride ? { allowNegative: true as const, overrideReason: overrideReason.trim() } : {};
   const photoAlways = kind === 'adjust' && reason === 'wastage';
   const needPhoto = photoAlways || (kind === 'in' && totalPaise > (settings?.photoRequiredAbovePaise ?? 200_000));
   const title = kind === 'in' ? t('stock.in') : kind === 'out' ? t('stock.out') : kind === 'adjust' ? t('stock.adjust') : t('stock.finishedIn');
@@ -66,7 +71,8 @@ export default function StockMovePage() {
     const e: Record<string, string> = {};
     if (!itemId) e.item = t('valid.required');
     if (parsed === null || parsed <= 0) e.qty = t('valid.positive');
-    if ((kind === 'out' || (kind === 'adjust' && negative)) && after < 0 && !canOverride) e.qty = t('stock.overIssue', { bal: item ? formatQty(balance, item.unit) : '0' });
+    if (takesOut && after < 0 && !canOverride) e.qty = t('stock.overIssue', { bal: item ? formatQty(balance, item.unit) : '0' });
+    if (needsOverride && !overrideReason.trim()) e.override = t('valid.required');
     if (kind === 'adjust' && !note.trim()) e.note = t('valid.required');
     if (needPhoto && !photoId) e.photo = t('valid.photoRequired');
     if (isDayLocked(recs, day)) e.day = t('valid.locked');
@@ -75,8 +81,8 @@ export default function StockMovePage() {
     const opts = { day, photoIds: photoId ? [photoId] : undefined };
     try {
       if (kind === 'in') await addRecord<StockInP>('stock_in', { itemId, qty: parsed!, ratePaise: ratePaise || undefined, supplier: supplier.trim() || undefined, note: note.trim() || undefined }, opts);
-      else if (kind === 'out') await addRecord<StockOutP>('stock_out', { itemId, qty: parsed!, purpose, workerId: workerId || undefined, orderId: orderId || undefined, note: note.trim() || undefined }, opts);
-      else if (kind === 'adjust') await addRecord<StockAdjustP>('stock_adjust', { itemId, qtyDelta: signed, reason, note: note.trim() }, opts);
+      else if (kind === 'out') await addRecord<StockOutP>('stock_out', { itemId, qty: parsed!, purpose, workerId: workerId || undefined, orderId: orderId || undefined, note: note.trim() || undefined, ...override }, opts);
+      else if (kind === 'adjust') await addRecord<StockAdjustP>('stock_adjust', { itemId, qtyDelta: signed, reason, note: note.trim(), ...override }, opts);
       else await addRecord<FinishedInP>('finished_in', { itemId, qty: parsed!, orderId: orderId || undefined }, opts);
       toast.show(t('stock.saved'), 'success');
       navigate(`/stock/${itemId}`, { replace: true });
@@ -130,6 +136,11 @@ export default function StockMovePage() {
             {kind === 'out' && <Field label={t('stock.worker')}>{({ id }) => <Select id={id} value={workerId} onChange={(e) => setWorkerId(e.target.value)}><option value="">—</option>{workers.map((w) => <option key={w.entityId} value={w.entityId}>{w.name}</option>)}</Select>}</Field>}
             {(kind === 'out' || kind === 'finished') && <Field label={t('stock.order')}>{({ id }) => <Select id={id} value={orderId} onChange={(e) => setOrderId(e.target.value)}><option value="">{t('stock.noOrder')}</option>{orders.map((o) => <option key={o.entityId} value={o.entityId}>{o.orderNo} · {o.design} {o.size}</option>)}</Select>}</Field>}
             {kind === 'adjust' && <Field label={t('stock.reason')}>{({ id }) => <Select id={id} value={reason} onChange={(e) => setReason(e.target.value as AdjustReason)}>{REASONS.map((r) => <option key={r} value={r}>{t(`stock.reason.${r}`)}</option>)}</Select>}</Field>}
+            {needsOverride && (
+              <Field label={t('stock.overrideReason')} required error={errors.override} hint={t('stock.overrideHint')} className="lg:col-span-2">
+                {({ id, describedBy, invalid }) => <Input id={id} value={overrideReason} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setOverrideReason(e.target.value)} data-testid="override-reason" />}
+              </Field>
+            )}
             <DateField value={day} onChange={setDay} error={errors.day} />
             <Field label={t('common.note')} required={kind === 'adjust'} error={errors.note} className="lg:col-span-2">{({ id, describedBy, invalid }) => <Textarea id={id} rows={2} value={note} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setNote(e.target.value)} />}</Field>
             <div className="lg:col-span-2"><PhotoCapture label={t('common.photo')} required={needPhoto} value={photoId} onChange={setPhotoId} error={errors.photo} /></div>

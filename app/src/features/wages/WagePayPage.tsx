@@ -18,7 +18,8 @@ import { useRecords } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
 import type { DeductionLine, PayMode, WagePaymentP } from '../../db/types';
 import { listWorkers, getSettings } from '../../domain/masters';
-import { wageInputsFor, computeGross, settle } from '../../domain/wage';
+import { wageInputsFor, computeGross, settle, paidView, liveView, buildSnapshot } from '../../domain/wage';
+import { wageLineText, wageLineTone, signedINR } from './lines';
 import { advanceBalance } from '../../domain/advances';
 import { monthAttendance } from '../../domain/attendance';
 import { lockedMonths } from '../../domain/locks';
@@ -49,13 +50,15 @@ export default function WagePayPage() {
   if (!worker) return <EmptyState title={t('common.empty')} />;
   const inputs = wageInputsFor(recs, worker, month, settings);
   const breakdown = computeGross(inputs);
-  const outstanding = advanceBalance(recs, workerId) + (payment?.payload.advanceRecoveredPaise ?? 0);
-  const s = payment
-    ? settle({ ...breakdown, grossPaise: payment.payload.grossPaise, otPaise: payment.payload.otPaise }, payment.payload.deductions, outstanding, payment.payload.advanceRecoveredPaise)
-    : settle(breakdown, deductions, outstanding, recover === null ? undefined : rupeesToPaise(Number(recover) || 0));
+  const outstanding = advanceBalance(recs, workerId); // nothing paid yet for this month when the form is used
+  const live = settle(breakdown, deductions, outstanding, recover === null ? undefined : rupeesToPaise(Number(recover) || 0));
+  // SPEC-M16 §1: a paid month is shown only from what was saved with the payment.
+  const view = payment ? paidView(payment.payload) : liveView(inputs, breakdown, live);
+  const balanceAfter = view.balanceAfterPaise ?? advanceBalance(recs, workerId);
+  const negativeNet = !payment && live.netPaise < 0;
   const unmarked = monthAttendance(recs, workerId, month, monthDays(month).at(-1)! <= todayIST() ? monthDays(month).at(-1)! : todayIST(), settings).unmarked;
   const limit = settings?.photoRequiredAbovePaise ?? 200_000;
-  const needPhoto = !payment && s.paidPaise > limit;
+  const needPhoto = !payment && live.paidPaise > limit;
 
   const addDeduction = () => {
     const p = rupeesToPaise(Number(dAmount) || 0);
@@ -66,49 +69,44 @@ export default function WagePayPage() {
   const pay = async () => {
     setErr('');
     if (locked) { setErr(t('valid.locked')); return; }
+    if (negativeNet) { setErr(t('wages.negativeNet')); return; }
     if (needPhoto && !photoId) { setErr(t('valid.photoRequired')); return; }
     setBusy(true);
     try {
+      const s = live;
       await addRecord<WagePaymentP>('wage_payment', {
         workerId, month, grossPaise: s.grossPaise, otPaise: s.otPaise, deductions: s.deductions, advanceRecoveredPaise: s.advanceRecoveredPaise,
         netPaise: s.netPaise, paidPaise: s.paidPaise, roundingPaise: s.roundingPaise, mode,
-        snapshot: { present: inputs.present, half: inputs.half, absent: inputs.absent, otHours: inputs.otHours, pieces: inputs.pieces, payType: inputs.payType, ratePaise: inputs.ratePaise },
+        snapshot: buildSnapshot(inputs, breakdown, outstanding),
       }, { day, photoIds: photoId ? [photoId] : undefined });
       toast.show(t('action.done'), 'success');
     } finally { setBusy(false); }
   };
 
-  const lines: [string, number, 'given' | 'received' | 'neutral'][] = [];
-  if (inputs.payType === 'monthly') { lines.push([t('wages.base'), inputs.ratePaise, 'neutral']); if (breakdown.absentDeductPaise) lines.push([t('wages.absentDeduct', { n: inputs.absent }), -breakdown.absentDeductPaise, 'given']); if (breakdown.halfDeductPaise) lines.push([t('wages.halfDeduct', { n: inputs.half }), -breakdown.halfDeductPaise, 'given']); }
-  else if (inputs.payType === 'daily') lines.push([`${t('wages.daysWorked')}: ${inputs.present}${inputs.half ? ` + ${inputs.half}×½` : ''} × ${formatINR(inputs.ratePaise)}`, s.grossPaise, 'neutral']);
-  else lines.push([`${t('wages.pieces')}: ${inputs.pieces}`, s.grossPaise, 'neutral']);
-  if (s.otPaise) lines.push([`${t('wages.ot')}: ${inputs.otHours}h × ${formatINR(inputs.otRatePaise)}`, s.otPaise, 'received']);
-  for (const d of s.deductions) lines.push([d.label, -d.amountPaise, 'given']);
-  if (s.advanceRecoveredPaise) lines.push([t('wages.advances'), -s.advanceRecoveredPaise, 'given']);
-  if (s.roundingPaise) lines.push([t('wages.rounding'), s.roundingPaise, 'neutral']);
-
+  const lines = view.lines.map((l) => [wageLineText(l, t), l.amountPaise, wageLineTone(l)] as const);
   const slipText = t('slip.text', {
     unit: settings?.unitName ?? '', month: formatMonth(month, lang), name: worker.name,
-    lines: lines.map(([l, v]) => `${l}: ${v < 0 ? '−' : ''}${formatINR(Math.abs(v), { paise: v % 100 !== 0 })}`).join('\n'),
-    paid: formatINR(s.paidPaise), mode: t(`common.${payment?.payload.mode ?? mode}`), balance: formatINR(Math.max(0, outstanding - s.advanceRecoveredPaise)),
+    lines: lines.map(([l, v]) => `${l}: ${signedINR(v)}`).join('\n'),
+    paid: formatINR(view.paidPaise), mode: t(`common.${payment?.payload.mode ?? mode}`), balance: formatINR(balanceAfter),
   });
 
   const breakdownCard = (
     <Card className="print:border-0 print:shadow-none" data-testid="wage-breakdown">
       <div className="mb-3 flex items-center gap-3 border-b border-line pb-3">
         <Avatar name={worker.name} size={48} photoId={worker.photoId} />
-        <div className="flex-1"><p className="text-lg font-medium text-ink">{worker.name}</p><p className="text-sm text-muted">{formatMonth(month, lang)} · {t(`worker.payType.${inputs.payType}`)}</p></div>
+        <div className="flex-1"><p className="text-lg font-medium text-ink">{worker.name}</p><p className="text-sm text-muted">{formatMonth(month, lang)} · {t(`worker.payType.${view.payType}`)}</p></div>
         {payment ? <Badge tone="received">{t('wages.paidOn', { date: formatDay(payment.day, lang, 'short') })}</Badge> : locked ? <Badge tone="warn">{t('wages.locked')}</Badge> : null}
       </div>
-      <p className="num mb-2 text-sm text-muted">P {inputs.present} · H {inputs.half} · A {inputs.absent} · OT {inputs.otHours}h{inputs.payType === 'monthly' ? ` · ${t('wages.perDay')} ${formatINR(breakdown.perDayPaise)}` : ''}</p>
+      <p className="num mb-2 text-sm text-muted" data-testid="wage-counts">P {view.present} · H {view.half} · A {view.absent} · OT {view.otHours}h{view.payType === 'monthly' && view.perDayPaise ? ` · ${t('wages.perDay')} ${formatINR(view.perDayPaise)}` : ''}</p>
       {!payment && unmarked > 0 && <p className="mb-2 rounded-lg bg-warn-soft px-3 py-1.5 text-sm text-warn">{t('wages.unmarkedWarn', { n: unmarked })}</p>}
-      <dl className="divide-y divide-line">
+      <dl className="divide-y divide-line" data-testid="wage-lines">
         {lines.map(([l, v, tone], i) => (
-          <div key={i} className="flex items-center justify-between py-2"><dt className="text-ink">{l}</dt><dd className={`num font-medium ${tone === 'given' ? 'text-given' : tone === 'received' ? 'text-received' : 'text-ink'}`}>{v < 0 ? '−' : ''}{formatINR(Math.abs(v), { paise: v % 100 !== 0 })}</dd></div>
+          <div key={i} className="flex items-center justify-between py-2"><dt className="text-ink">{l}</dt><dd className={`num font-medium ${tone === 'given' ? 'text-given' : tone === 'received' ? 'text-received' : 'text-ink'}`}>{signedINR(v)}</dd></div>
         ))}
-        <div className="flex items-center justify-between py-3"><dt className="text-lg font-medium text-ink">{payment ? t('wages.paid') : t('wages.net')}</dt><dd className="num text-3xl font-bold text-ink" data-testid="wage-paid">{formatINR(s.paidPaise)}</dd></div>
+        <div className="flex items-center justify-between py-3"><dt className="text-lg font-medium text-ink">{payment ? t('wages.paid') : t('wages.net')}</dt><dd className="num text-3xl font-bold text-ink" data-testid="wage-paid">{formatINR(view.paidPaise)}</dd></div>
       </dl>
-      <p className="text-sm text-muted">{t('wages.afterRecover')}: <span className="num font-medium text-ink">{formatINR(Math.max(0, outstanding - s.advanceRecoveredPaise))}</span></p>
+      {negativeNet && <p role="alert" className="mb-2 rounded-lg bg-given-soft px-3 py-1.5 text-sm font-medium text-given" data-testid="negative-net">{t('wages.negativeNet')} ({signedINR(live.netPaise)})</p>}
+      <p className="text-sm text-muted">{t('wages.afterRecover')}: <span className="num font-medium text-ink" data-testid="wage-balance-after">{formatINR(balanceAfter)}</span></p>
     </Card>
   );
 
@@ -133,14 +131,14 @@ export default function WagePayPage() {
           </div>
           <hr className="my-4 border-line" />
           <Field label={`${t('wages.recover')} — ${t('wages.outstanding')}: ${formatINR(outstanding)}`}>
-            {({ id }) => <Input id={id} inputMode="decimal" value={recover ?? String(s.advanceRecoveredPaise / 100)} disabled={outstanding === 0} onChange={(e) => setRecover(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}
+            {({ id }) => <Input id={id} inputMode="decimal" value={recover ?? String(live.advanceRecoveredPaise / 100)} disabled={outstanding === 0} onChange={(e) => setRecover(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}
           </Field>
           <div className="mb-4"><p className="mb-1.5 text-sm font-medium text-muted">{t('wages.mode')}</p>
             <SegmentedControl<PayMode> label={t('wages.mode')} value={mode} onChange={setMode} options={[{ value: 'cash', label: t('common.cash') }, { value: 'upi', label: t('common.upi') }]} /></div>
           <DateField value={day} onChange={setDay} />
           <PhotoCapture label={needPhoto ? `${t('common.photo')} — ${t('wages.photoHint')}` : t('common.photo')} required={needPhoto} value={photoId} onChange={setPhotoId} />
           {err && <p role="alert" className="mb-2 text-sm font-medium text-given">{err}</p>}
-          <Button block size="xl" disabled={busy || locked} onClick={() => void pay()}>{t('wages.confirm')} · {formatINR(s.paidPaise)}</Button>
+          <Button block size="xl" disabled={busy || locked || negativeNet} onClick={() => void pay()}>{t('wages.confirm')} · {formatINR(live.paidPaise)}</Button>
         </Card>
       )} />
       {worker.phone && <PreviewShareSheet open={share} onClose={() => setShare(false)} recipientName={worker.name} phone={worker.phone} text={slipText} />}

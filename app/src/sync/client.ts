@@ -319,7 +319,9 @@ async function pushPendingPhotos(creds: { unitId: string; unitKey: string }, tok
       body: photo.blob,
     });
     if (res.ok) await db.photos.update(photo.id, { sync: 'synced' });
-    else if (res.status === 413 || res.status === 415) await db.photos.update(photo.id, { sync: 'rejected' });
+    // 413 too large / 415 wrong type / 409 id owned by another unit or already stored with other bytes (SPEC-M16 §6):
+    // the server will never accept this upload, so stop retrying it.
+    else if (res.status === 409 || res.status === 413 || res.status === 415) await db.photos.update(photo.id, { sync: 'rejected' });
   }
 }
 

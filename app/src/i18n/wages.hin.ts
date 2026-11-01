@@ -1,4 +1,5 @@
 const d = {
+  'wages.negativeNet': 'Katauti kamaai se zyada hai — itna bhugtaan nahi ho sakta', 'wages.attendanceDeduct': 'Haaziri ki katauti',
   'wages.title': 'Pagaar', 'wages.sheet': 'Pagaar sheet', 'wages.gross': 'Kul kamaai', 'wages.ot': 'Overtime', 'wages.deductions': 'Katauti',
   'wages.advances': 'Advance kaata', 'wages.net': 'Dene hain', 'wages.paid': 'De diya', 'wages.pending': 'Baaki', 'wages.pay': 'Pagaar dein',
   'wages.paidOn': '{date} ko diya', 'wages.lock': 'Mahina lock karein', 'wages.unlock': 'Mahina kholein', 'wages.locked': 'Mahina lock hai',

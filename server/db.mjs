@@ -176,6 +176,21 @@ export async function lockedMonths(db, unitId) {
   for (const row of await recordsOfType(db, unitId, 'period_lock')) if (!reversed.has(row.id) && row.rec?.payload?.month) out.add(row.rec.payload.month);
   return out;
 }
+/**
+ * SPEC-M16 §4: current balance per item (thousandths) from the stored records, reversed ones excluded.
+ * Same sum as the app's stockBalance(): in + finished in − out ± adjust − deliveries from a finished item.
+ */
+export async function stockBalances(db, unitId, moveOf) {
+  const reversed = await reversedTargetIds(db, unitId);
+  const r = await q(db, "SELECT id, json FROM records WHERE unit_id = $1 AND type IN ('stock_in','stock_out','stock_adjust','finished_in','delivery')", [unitId]);
+  const out = new Map();
+  for (const row of r.rows) {
+    if (reversed.has(row.id)) continue;
+    const m = moveOf(row.json);
+    if (m && typeof m.itemId === 'string') out.set(m.itemId, (out.get(m.itemId) ?? 0) + m.delta);
+  }
+  return out;
+}
 /** Active wage_payment (worker, month) pairs. */
 export async function paidPairs(db, unitId) {
   const reversed = await reversedTargetIds(db, unitId);
@@ -183,8 +198,19 @@ export async function paidPairs(db, unitId) {
   for (const row of await recordsOfType(db, unitId, 'wage_payment')) if (!reversed.has(row.id) && row.rec?.payload) out.add(`${row.rec.payload.workerId}|${row.rec.payload.month}`);
   return out;
 }
+/**
+ * SPEC-M16 §6: a photo id belongs to the first unit that stores it and is never overwritten.
+ * Returns 'stored' (new), 'same' (this unit re-sent identical bytes: a retry), 'exists' (this unit, other bytes)
+ * or 'taken' (another unit owns the id). Only 'stored' writes anything.
+ */
 export async function putPhoto(db, { id, unitId, mime, bytes }) {
-  await q(db, 'INSERT INTO photos (id, unit_id, mime, bytes) VALUES ($1,$2,$3,$4) ON CONFLICT (id) DO UPDATE SET unit_id = EXCLUDED.unit_id, mime = EXCLUDED.mime, bytes = EXCLUDED.bytes', [id, unitId, mime, bytes]);
+  const ins = await q(db, 'INSERT INTO photos (id, unit_id, mime, bytes) VALUES ($1,$2,$3,$4) ON CONFLICT (id) DO NOTHING RETURNING id', [id, unitId, mime, bytes]);
+  if (ins.rowCount === 1) return 'stored';
+  const r = await q(db, 'SELECT unit_id, mime, bytes FROM photos WHERE id = $1', [id]);
+  const row = r.rows[0];
+  if (!row) return 'stored'; // vanished between the two queries; nothing to protect
+  if (row.unit_id !== unitId) return 'taken';
+  return Buffer.from(row.bytes).equals(Buffer.from(bytes)) && row.mime === mime ? 'same' : 'exists';
 }
 export async function getPhoto(db, unitId, id) {
   const r = await q(db, 'SELECT mime, bytes FROM photos WHERE id = $1 AND unit_id = $2', [id, unitId]); return r.rows[0];

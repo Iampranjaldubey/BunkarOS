@@ -1,4 +1,5 @@
 const d = {
+  'stock.overrideReason': 'Reason for going below zero', 'stock.overrideHint': 'Stock will go below zero. Give a reason — it is written to the history.',
   'stock.title': 'Stock', 'stock.raw': 'Raw materials', 'stock.finished': 'Finished carpets', 'stock.newItem': 'New item', 'stock.editItem': 'Edit item',
   'stock.name': 'Name', 'stock.kind': 'Kind', 'stock.kind.raw': 'Raw material (wool, yarn, dye)', 'stock.kind.finished': 'Finished carpet (design + size)',
   'stock.unit': 'Unit', 'stock.unit.kg': 'kg', 'stock.unit.pcs': 'pcs', 'stock.unit.litre': 'litre', 'stock.unit.metre': 'metre',

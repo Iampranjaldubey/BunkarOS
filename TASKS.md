@@ -44,6 +44,7 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 25 | M15 | Finished carpet catalogue incl. sold directly and written off; finished kind hidden; legacy label | TODO | spec ready (SPECS M15 AC1–AC15); DM-004 decided |
 | 26 | — | Owner answers 2026-11-02 → docs/decisions.md (D-004, D-005, D-006, DM-004), SPECS M13–M15, brief; docs/wage-examples.md | DONE | docs only, no code; every example value recomputed by script |
 | 27 | M13 stage 2 | "See wages" toggle together with server-side wage redaction and forced resync | LATER | not before stage 1 is built; no toggle shown until then |
+| 28 | M16 | Server integrity (locked-month reversals, wage net/rounding/paid limits, stock below zero only with owner override, same-day undo by server date, photo ids per unit) + paid month from the saved snapshot | DONE | server 30/30 (integrity.test 4 new) · vitest 40/40 (paidview 6, photo 409) · e2e 27/27 ×3 · tsc 0 · lint 0 errors / 53 warnings · build OK · seed 34 accepted / 0 rejected; docs/run-summary.md |
 
 ## Blocked
 - Push to GitHub: needs the user's "yes" and ShubhamKang write access on Pranjal's repo (Git Credential Manager will prompt in the browser).

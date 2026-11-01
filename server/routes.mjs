@@ -2,10 +2,10 @@
 import { getUnit, insertUnit, getRecordById, insertRecord, recordsSince, userRecordsSince, putPhoto, getPhoto,
   userRecordCount, latestUser, userRole, lockedMonths, paidPairs, recordsOfType,
   getUnitByShortCode, ensureShortCode, latestWorker, activeWorkers, workerRecords,
-  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords, publicRec } from './db.mjs';
+  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords, publicRec, stockBalances } from './db.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { hashUnitKey, verifyUnitKey } from './auth.mjs';
-import { evaluate } from './rules.mjs';
+import { evaluate, stockMove } from './rules.mjs';
 import { signToken, verifyToken, verifyPinServer, signAdminToken, verifyAdminToken } from './token.mjs';
 import { serveStatic } from './static.mjs';
 
@@ -185,7 +185,12 @@ async function handleSync(db, req, res) {
     paid: await paidPairs(db, unitId),
     batch: { ids: new Set(), paid: new Set() },
     targets: null, prevWorker: null,
+    serverDay: istDay(new Date()), // SPEC-M16 §5: "today" for staff undo is the server's IST date at receive time
+    stock: null,
   };
+  // SPEC-M16 §4: item balances, only when this push moves stock (or may reverse a move).
+  const STOCK_TYPES = new Set(['stock_in', 'stock_out', 'stock_adjust', 'finished_in', 'delivery', 'reversal']);
+  if (incoming.some((r) => STOCK_TYPES.has(r?.type))) ctx.stock = await stockBalances(db, unitId, stockMove);
   // Lazy helpers for rules that need other records.
   if (incoming.some((r) => r?.type === 'reversal')) {
     ctx.targets = new Map();
@@ -227,6 +232,15 @@ async function handleSync(db, req, res) {
     await insertRecord(db, { id: rec.id, unitId, type: rec.type, rec: stored });
     accepted.push(rec.id); ctx.batch.ids.add(rec.id);
     if (rec.type === 'period_lock') ctx.locked.add(rec.payload.month);
+    // Keep the batch view current: later records in the same push see this one.
+    const move = ctx.stock ? stockMove(rec) : null;
+    if (move) ctx.stock.set(move.itemId, (ctx.stock.get(move.itemId) ?? 0) + move.delta);
+    if (rec.type === 'reversal') {
+      const target = ctx.targets?.get(rec.payload.targetId);
+      if (target?.type === 'period_lock' && target.payload?.month) ctx.locked.delete(target.payload.month); // unlock reopens the month
+      const undone = ctx.stock && target ? stockMove(target) : null;
+      if (undone) ctx.stock.set(undone.itemId, (ctx.stock.get(undone.itemId) ?? 0) - undone.delta);
+    }
     if (rec.type === 'user') batchUsers.set(toCheck.payload.entityId, toCheck.payload);
   }
 
@@ -251,7 +265,10 @@ async function handlePutPhoto(db, req, res, id) {
   const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
   if (!PHOTO_MIME_ALLOW.has(mime)) { await readBody(req, PHOTO_LIMIT).catch(() => undefined); return sendError(res, 415, 'unsupported_media_type', req); }
   const buf = await readBody(req, PHOTO_LIMIT);
-  await putPhoto(db, { id, unitId: unit.unit_id, mime, bytes: buf });
+  // SPEC-M16 §6: never overwrite a photo, never move it between units.
+  const result = await putPhoto(db, { id, unitId: unit.unit_id, mime, bytes: buf });
+  if (result === 'taken') return sendError(res, 409, 'photo_id_taken', req);
+  if (result === 'exists') return sendError(res, 409, 'photo_exists', req);
   return sendJson(res, 200, { ok: true, id }, req);
 }
 async function handleGetPhoto(db, req, res, id) {

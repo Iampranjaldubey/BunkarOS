@@ -98,16 +98,25 @@ export interface WagePaymentP {
   netPaise: number; paidPaise: number; roundingPaise: number;
   mode: PayMode; note?: string;
   // snapshot of the inputs for the slip (so a later attendance edit does not rewrite history)
-  snapshot: { present: number; half: number; absent: number; otHours: number; pieces: number; payType: PayType; ratePaise: number };
+  snapshot: WageSnapshot;
+}
+/**
+ * What the payment was computed from, saved with it. A paid month is shown only from this and the
+ * payment's own totals (SPEC-M16 §1). Fields after `ratePaise` were added 2026-11-02; older payments lack them.
+ */
+export interface WageSnapshot {
+  present: number; half: number; absent: number; otHours: number; pieces: number; payType: PayType; ratePaise: number;
+  workingDays?: number; perDayPaise?: number; absentDeductPaise?: number; halfDeductPaise?: number;
+  otRatePaise?: number; advanceOutstandingPaise?: number;
 }
 export interface PeriodLockP { month: string; }
 
 // ---------- inventory ----------
 export interface StockInP { itemId: string; qty: number; ratePaise?: number; supplier?: string; note?: string; }
 export type StockOutPurpose = 'production' | 'sale' | 'other';
-export interface StockOutP { itemId: string; qty: number; purpose: StockOutPurpose; workerId?: string; orderId?: string; note?: string; }
+export interface StockOutP { itemId: string; qty: number; purpose: StockOutPurpose; workerId?: string; orderId?: string; note?: string; allowNegative?: true; overrideReason?: string; }
 export type AdjustReason = 'wastage' | 'count_correction' | 'damage' | 'other';
-export interface StockAdjustP { itemId: string; qtyDelta: number; reason: AdjustReason; note: string; }
+export interface StockAdjustP { itemId: string; qtyDelta: number; reason: AdjustReason; note: string; allowNegative?: true; overrideReason?: string; }
 export interface FinishedInP { itemId: string; qty: number; orderId?: string; }
 
 // ---------- orders ----------

@@ -1,5 +1,6 @@
 // SPEC-M12 desktop-first UI strings (Hindi, default).
 const desktopHi: Record<string, string> = {
+  'log.lockedMonth': 'महीना लॉक है — पहले खोलें', 
   'nav.newEntry': 'नई एंट्री', 'nav.collapse': 'मेनू छोटा करें', 'nav.expand': 'मेनू बड़ा करें', 'nav.quickTitle': 'क्या भरना है?',
   'att.prevDay': 'पिछला दिन', 'att.nextDay': 'अगला दिन', 'att.onlyUnmarked': 'सिर्फ़ बाकी', 'att.allMarked': 'सबकी हाज़िरी लग गई',
   'att.keyHint': 'कीबोर्ड: P हाज़िर · H आधा दिन · A ग़ैरहाज़िर (फिर अगला कारीगर) · + / − ओवरटाइम · ↑ ↓ ऊपर-नीचे',

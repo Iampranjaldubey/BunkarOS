@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAndLogin, istToday, attRow, markRadio } from './fixtures';
+import { setupAndLogin, istToday, attRow, markRadio, setSalary } from './fixtures';
 
 /** SPEC-M07: owner sends a link → worker's phone opens it once and keeps it; shop-code fallback; cancel → closed. */
 test('worker page via link, via shop code, stays after reload, revoked after cancel', async ({ page, browser }) => {
@@ -78,6 +78,19 @@ test('worker page via link, via shop code, stays after reload, revoked after can
   await expect(wp.getByTestId(`year-total-${y}`)).toHaveText(paidText);
   await wp.getByRole('button', { name: /को मिला/ }).first().click();
   await expect(wp.getByText(/एडवांस काटा/)).toBeVisible();
+  const slipLinesBefore = await wp.getByTestId('wp-slip-line').allTextContents();
+  expect(slipLinesBefore.join(' ')).toContain('₹12,000');
+
+  // SPEC-M16 AC1: the owner changes the salary afterwards → the worker's page still shows what was paid.
+  await setSalary(page, 'Rafiq', 15000);
+  await expect(page.getByText('सिंक हो गया')).toBeVisible({ timeout: 20_000 });
+  await wp.reload();
+  await expect(wp.getByTestId('wp-estimate')).toHaveText(paidText); // this month (paid) tab
+  await wp.getByRole('tab', { name: /^पगार$/ }).click();
+  await expect(wp.getByTestId(`year-total-${y}`)).toHaveText(paidText);
+  await wp.getByRole('button', { name: /को मिला/ }).first().click();
+  await expect(wp.getByTestId('wp-slip-line')).toHaveText(slipLinesBefore);
+  await expect(wp.getByText('₹15,000')).toHaveCount(0);
 
   // Owner cancels the link → phone #1 sees the closed message on next load.
   await page.goto('/workers'); await page.getByText('Rafiq').first().click();

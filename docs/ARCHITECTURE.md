@@ -133,12 +133,17 @@ On every pushed record (`server/rules.mjs` + `handleSync`):
 1. Shape: id 8–64 chars, known type, matching unit, payload object, valid `at` and `day`, no duplicate id in the batch. A known id is accepted again without a second insert.
 2. Author: once the unit has users, a token is required and `by` must equal the token's user (`forged_author`). Before that, only `setting` and `user` are accepted (`bootstrap_only`).
 3. Owner-only types: `setting`, `user`, `period_lock` (`forbidden_role`).
-4. Staff reversals: only their own records from the same day (`forbidden_reversal`).
+4. Staff reversals: only their own records whose day is the **server's IST date** when the reversal arrives; the reversal's own `day` is ignored (`forbidden_reversal`, SPEC-M16 §5).
 5. Staff worker edits: pay type and rates must not change (`forbidden_rate_change`).
-6. Locked months: attendance, pieces, advances, payments, stock moves and deliveries dated in a locked month are refused (`period_locked`).
-7. Wage payment: `gross + ot − deductions − advanceRecovered = net`, `net + rounding = paid`, all integers; one payment per worker and month (`duplicate_payment`).
-8. Field checks: attendance status and OT steps, positive integer amounts and quantities, non-zero stock adjustments with a note, orders with qty and number.
-9. PIN fields (SPEC-M11): a `user` record without `pinHash`/`pinSalt` is an edit and keeps the stored values; a new user without them, or with empty values, is refused (`invalid_user`).
+6. Locked months: attendance, pieces, advances, payments, stock moves and deliveries dated in a locked month are refused (`period_locked`). A **reversal** of such an entry is refused too, for everyone including the owner; only the lock's own reversal (unlock) is allowed, and within one push it reopens the month for the records after it (SPEC-M16 §2).
+7. Wage payment:
+   - `gross + ot − deductions − advanceRecovered = net` and `net + rounding = paid`, all integers;
+   - `net < 0` → `negative_net`; `|rounding| > 50` paise → `invalid_rounding`; `paid < 0` → `negative_paid` (SPEC-M16 §3);
+   - one payment per worker and month (`duplicate_payment`).
+8. Stock (SPEC-M16 §4): the server keeps each item's balance (stock in + finished in − out ± adjust − deliveries from that finished item, reversed records excluded, records earlier in the same push counted). A stock out, a negative adjustment or a finished-stock delivery that would go below zero is refused (`insufficient_stock`), unless the record is by the owner with `allowNegative: true` and a non-empty `overrideReason`.
+9. Field checks: attendance status and OT steps, positive integer amounts and quantities, non-zero stock adjustments with a note, orders with qty and number.
+10. PIN fields (SPEC-M11): a `user` record without `pinHash`/`pinSalt` is an edit and keeps the stored values; a new user without them, or with empty values, is refused (`invalid_user`).
+11. Photos (SPEC-M16 §6): the first unit to store an id owns it and it is never overwritten. Another unit gets 409 `photo_id_taken`; the same unit with other bytes gets 409 `photo_exists`; the same bytes again → 200.
 
 What a client receives:
 

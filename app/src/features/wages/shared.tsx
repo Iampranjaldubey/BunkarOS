@@ -3,6 +3,7 @@ import { formatMonth } from '../../domain/dates';
 import { monthOf, prevMonth, nextMonth, todayIST } from '../../domain/ids';
 import { useT } from '../../i18n';
 
+
 /** ‹ अक्टूबर 2026 › month stepper (next disabled beyond the current month). */
 export function MonthPicker({ month, onChange, lang: forceLang }: { month: string; onChange: (m: string) => void; lang?: 'hi' | 'hin' | 'en' }) {
   const { t, lang: uiLang } = useT();

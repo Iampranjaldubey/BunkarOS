@@ -49,3 +49,15 @@ export async function logout(page: Page) {
   else { await page.goto('/more'); await page.getByRole('button', { name: /लॉग आउट/ }).click(); }
   await expect(page).toHaveURL(/\/login/);
 }
+
+/** Owner changes a monthly worker's salary from the worker page (SPEC-M16 AC1: a paid month must not move). */
+export async function setSalary(page: Page, name: string, rupees: number) {
+  await page.goto('/workers');
+  await page.getByText(name).first().click();
+  await expect(page).toHaveURL(/\/workers\/[^/]+$/);
+  await page.getByRole('button', { name: /बदलें/ }).click();
+  await expect(page).toHaveURL(/\/edit$/);
+  await page.getByLabel(/महीने की तनख्वाह/).fill(String(rupees));
+  await page.getByRole('button', { name: 'सेव करें', exact: true }).click();
+  await expect(page).toHaveURL(/\/workers\/[^/]+$/);
+}

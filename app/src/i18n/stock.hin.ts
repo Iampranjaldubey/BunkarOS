@@ -1,4 +1,5 @@
 const d = {
+  'stock.overrideReason': 'Minus mein jaane ki vajah', 'stock.overrideHint': 'Stock minus mein jaayega. Vajah likhein — yeh history mein darj hogi.',
   'stock.title': 'Stock', 'stock.raw': 'Kachcha maal', 'stock.finished': 'Taiyaar carpet', 'stock.newItem': 'Naya item', 'stock.editItem': 'Item badlein',
   'stock.name': 'Naam', 'stock.kind': 'Kis tarah ka', 'stock.kind.raw': 'Kachcha maal (oon, dhaaga, rang)', 'stock.kind.finished': 'Taiyaar carpet (design + size)',
   'stock.unit': 'Unit', 'stock.unit.kg': 'Kilo', 'stock.unit.pcs': 'Nag', 'stock.unit.litre': 'Litre', 'stock.unit.metre': 'Metre',

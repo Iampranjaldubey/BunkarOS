@@ -1,4 +1,5 @@
 const d = {
+  'wages.negativeNet': 'कटौती कमाई से ज़्यादा है — इतना भुगतान नहीं हो सकता', 'wages.attendanceDeduct': 'हाज़िरी की कटौती',
   'wages.title': 'पगार', 'wages.sheet': 'पगार शीट', 'wages.gross': 'कुल कमाई', 'wages.ot': 'ओवरटाइम', 'wages.deductions': 'कटौती',
   'wages.advances': 'एडवांस काटा', 'wages.net': 'देने हैं', 'wages.paid': 'दे दिया', 'wages.pending': 'बाकी', 'wages.pay': 'पगार दें',
   'wages.paidOn': '{date} को दिया', 'wages.lock': 'महीना लॉक करें', 'wages.unlock': 'महीना खोलें', 'wages.locked': 'महीना लॉक है',

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { setupAndLogin, istPrevMonth, attRow, attList, markRadio } from './fixtures';
+import { setupAndLogin, istPrevMonth, attRow, attList, markRadio, setSalary } from './fixtures';
 
 /**
  * SPEC-M02 AC1 on the real screens: ₹12,000, 2 absent, 1 half, 3h OT @ ₹58, ₹1,000 advance → paid ₹10,020.
@@ -56,6 +56,23 @@ test('advance → attendance → wage sheet → pay → slip → lock month', as
   // Slip preview text lists the lines; share goes through preview-and-confirm.
   await page.getByRole('button', { name: /पर्ची/ }).first().click();
   await expect(page.getByRole('dialog')).toContainText('दिया: ₹10,020');
+  const slipBefore = (await page.getByRole('dialog').textContent())!;
+  await page.keyboard.press('Escape');
+  const linesBefore = (await page.getByTestId('wage-lines').textContent())!;
+  expect(linesBefore).toContain('₹12,000');
+  expect(linesBefore).toMatch(/ग़ैरहाज़िरी \(2 दिन\).*−₹923\.08/);
+
+  // SPEC-M16 AC1: the owner raises the salary afterwards → the paid month still shows what was paid.
+  await setSalary(page, 'Rafiq', 15000);
+  await page.goto('/wages');
+  await goPrevMonth(page);
+  await page.getByText('Rafiq').first().click();
+  await expect(page.getByTestId('wage-paid')).toHaveText('₹10,020');
+  await expect(page.getByTestId('wage-lines')).toHaveText(linesBefore);
+  await expect(page.getByTestId('wage-lines')).not.toContainText('₹15,000');
+  await expect(page.getByTestId('wage-counts')).toContainText('P 1 · H 1 · A 2 · OT 3h');
+  await page.getByRole('button', { name: /पर्ची/ }).first().click();
+  await expect(page.getByRole('dialog')).toHaveText(slipBefore);
   await page.keyboard.press('Escape');
 
   // Second payment impossible (page now shows paid state); balance is 0.
@@ -73,4 +90,13 @@ test('advance → attendance → wage sheet → pay → slip → lock month', as
   await page.getByLabel('तारीख').fill(d(5));
   await expect(page.getByRole('alert')).toContainText('लॉक');
   await expect(attList(page).getByRole('radio').first()).toBeDisabled();
+
+  // SPEC-M16 AC2: the owner cannot undo the locked month's entries from the log either — only a lock mark shows.
+  await page.goto('/log');
+  await page.getByLabel('एंट्री की तरह').selectOption({ label: 'हाज़िरी' });
+  await expect(page.getByTestId('log-locked')).toHaveCount(4);
+  await expect(page.getByRole('button', { name: 'एंट्री वापस लें' })).toHaveCount(0);
+  await page.getByLabel('एंट्री की तरह').selectOption({ label: 'पगार भुगतान' });
+  await expect(page.getByTestId('log-locked')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'एंट्री वापस लें' })).toHaveCount(0);
 });

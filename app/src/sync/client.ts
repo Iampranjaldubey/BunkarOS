@@ -38,10 +38,11 @@ interface AuthMeta {
   userId: string;
 }
 
-/** Result of a token request. `reason` disambiguates a failure for the UI. */
+/** Result of a token request. `reason` disambiguates a failure for the UI (SPEC-M11). */
 export interface TokenResult {
   ok: boolean;
-  reason?: 'needs_login';
+  /** wrong_pin = server said 401; rate_limited = 429; network = no answer; needs_login = no unit key / bad reply. */
+  reason?: 'wrong_pin' | 'rate_limited' | 'network' | 'needs_login';
 }
 
 /**
@@ -162,6 +163,8 @@ export async function requestToken(unitId: string, userId: string, pin: string):
     });
     if (!res.ok) {
       setState({ authState: 'needs_login' });
+      if (res.status === 401) return { ok: false, reason: 'wrong_pin' };
+      if (res.status === 429) return { ok: false, reason: 'rate_limited' };
       return { ok: false, reason: 'needs_login' };
     }
     const data = (await res.json()) as { token?: string; exp?: number };
@@ -173,9 +176,9 @@ export async function requestToken(unitId: string, userId: string, pin: string):
     setState({ authState: 'ok', error: null });
     return { ok: true };
   } catch {
-    // Offline / network error: local login proceeds; sync flags needs_login.
+    // Offline / network error: the caller may fall back to this phone's own PIN check.
     setState({ authState: 'needs_login' });
-    return { ok: false, reason: 'needs_login' };
+    return { ok: false, reason: 'network' };
   }
 }
 
@@ -304,13 +307,15 @@ async function throwFor401(_res: Response): Promise<never> {
  * Network errors propagate (syncNow backs off and retries); a photo the server can never
  * accept (413 too large / 415 wrong type) is marked 'rejected' instead of retried forever.
  */
-async function pushPendingPhotos(creds: { unitId: string; unitKey: string }): Promise<void> {
+async function pushPendingPhotos(creds: { unitId: string; unitKey: string }, token?: string): Promise<void> {
   const pending: PhotoRow[] = await db.photos.where('sync').equals('pending').toArray();
   for (const photo of pending) {
     if (photo.unitId && photo.unitId !== creds.unitId) continue;
+    const headers: Record<string, string> = { 'x-unit-id': creds.unitId, 'x-unit-key': creds.unitKey, 'Content-Type': photo.mime };
+    if (token) headers['Authorization'] = `Bearer ${token}`; // SPEC-M11: photos need a user login
     const res = await fetch(`/api/photos/${encodeURIComponent(photo.id)}`, {
       method: 'PUT',
-      headers: { 'x-unit-id': creds.unitId, 'x-unit-key': creds.unitKey, 'Content-Type': photo.mime },
+      headers,
       body: photo.blob,
     });
     if (res.ok) await db.photos.update(photo.id, { sync: 'synced' });
@@ -347,12 +352,42 @@ async function pushPending(
   for (const r of data.records) if (typeof r.serverSeq === 'number') seqById.set(r.id, r.serverSeq);
   for (const id of data.accepted) {
     await db.records.update(id, { sync: 'synced', serverSeq: seqById.get(id) });
+    await stripPinLocal(id);
   }
   // Apply rejected: mark rejected + reason.
   for (const { id, reason } of data.rejected) {
     await db.records.update(id, { sync: 'rejected', rejectReason: reason });
   }
   return data;
+}
+
+// ---------------- PIN hashes (SPEC-M11) ----------------
+/** Remove pinHash/pinSalt from one local `user` record once the server holds it. */
+async function stripPinLocal(id: string): Promise<void> {
+  const r = await db.records.get(id);
+  if (!r || r.type !== 'user') return;
+  const p = r.payload as Record<string, unknown>;
+  if (!('pinHash' in p) && !('pinSalt' in p)) return;
+  const { pinHash: _h, pinSalt: _s, ...rest } = p;
+  await db.records.update(id, { payload: rest });
+}
+const SCRUB_KEY = 'scrub.pin.v1';
+/**
+ * One-time clean-up for phones that pulled PIN hashes before SPEC-M11: strip them from every
+ * synced `user` record. Pending ones keep them (the server still needs them). Returns how many changed.
+ */
+export async function scrubPinHashes(): Promise<number> {
+  if (await metaGet<boolean>(SCRUB_KEY)) return 0;
+  const users = await db.records.where('type').equals('user').toArray();
+  let n = 0;
+  for (const r of users) {
+    if (r.sync === 'pending') continue;
+    const p = r.payload as Record<string, unknown>;
+    if (!('pinHash' in p) && !('pinSalt' in p)) continue;
+    await stripPinLocal(r.id); n += 1;
+  }
+  await metaSet(SCRUB_KEY, true);
+  return n;
 }
 
 // ---------------- pull ----------------
@@ -374,6 +409,7 @@ async function applyPulled(data: SyncResponse): Promise<void> {
       serverSeq: incoming.serverSeq,
       rejectReason: undefined,
     });
+    if (incoming.type === 'user') await stripPinLocal(incoming.id);
   }
   if (typeof data.cursor === 'number') await metaSet('cursor', data.cursor);
 }
@@ -479,7 +515,7 @@ async function syncCycle(): Promise<void> {
 
     // Photos last: small, critical records (money, wool) never wait behind photo
     // uploads on a slow connection; every still-pending photo is (re)tried each cycle.
-    await pushPendingPhotos(creds);
+    await pushPendingPhotos(creds, token);
 
     backoff = BACKOFF_BASE_MS;
     setState({ online: true, authState: 'ok', error: null, lastSyncAt: new Date().toISOString() });

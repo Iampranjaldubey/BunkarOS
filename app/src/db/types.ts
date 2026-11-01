@@ -42,7 +42,8 @@ export interface Rec<P = unknown> {
 // ---------- masters ----------
 export interface UserP {
   entityId: string; name: string; phone: string; role: Role;
-  pinHash: string; pinSalt: string; active: boolean;
+  /** Only on a phone's own pending record (the server needs them once). Never pulled from the server (SPEC-M11). */
+  pinHash?: string; pinSalt?: string; active: boolean;
 }
 export interface SettingP {
   entityId: 'unit';

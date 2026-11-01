@@ -40,6 +40,19 @@ export async function exportMonthXlsx(r: MonthReport, unitName: string, lang: La
   head(st, [{ header: t('stock.item'), key: 'name', width: 24 }, { header: t('stock.unit'), key: 'unit', width: 8 }, { header: t('stock.opening'), key: 'o', width: 12 }, { header: t('stock.totalIn'), key: 'i', width: 12 }, { header: t('stock.totalOut'), key: 'x', width: 12 }, { header: t('stock.adjust'), key: 'adj', width: 12 }, { header: t('stock.closing'), key: 'c', width: 12 }]);
   for (const { item, ledger } of r.stock) st.addRow({ name: item.name, unit: item.unit, o: Number(formatQty(ledger.opening, item.unit)), i: Number(formatQty(ledger.in, item.unit)), x: Number(formatQty(ledger.out, item.unit)), adj: Number(formatQty(ledger.adjust, item.unit)), c: Number(formatQty(ledger.closing, item.unit)) });
 
+  // SPEC-M10: orders sheet (5th).
+  const os = wb.addWorksheet(t('month.sheet.orders'));
+  head(os, [{ header: t('order.orderNo'), key: 'no', width: 12 }, { header: t('order.buyer'), key: 'buyer', width: 20 }, { header: t('order.design'), key: 'design', width: 16 }, { header: t('order.size'), key: 'size', width: 8 },
+    { header: t('order.qty'), key: 'qty', width: 8 }, { header: t('order.delivered'), key: 'del', width: 10 }, { header: t('order.pending'), key: 'pend', width: 10 }, { header: t('order.dueDate'), key: 'due', width: 12 },
+    { header: t('order.status'), key: 'st', width: 14 }, { header: t('order.overdue'), key: 'late', width: 10 }, { header: t('month.amountPending'), key: 'amt', width: 14 }]);
+  const tot = { qty: 0, del: 0, pend: 0, amt: 0 };
+  for (const o of r.orderList) {
+    os.addRow({ no: o.orderNo, buyer: o.buyerName, design: o.design, size: o.size, qty: o.qty, del: o.delivered, pend: o.pending, due: o.dueDate,
+      st: t(`order.status.${o.status}`), late: o.overdue ? t('order.overdue') : '', amt: o.amountPendingPaise !== undefined ? rupees(o.amountPendingPaise) : '' });
+    tot.qty += o.qty; tot.del += o.delivered; tot.pend += o.pending; tot.amt += o.amountPendingPaise ?? 0;
+  }
+  os.addRow({ no: t('common.total'), qty: tot.qty, del: tot.del, pend: tot.pend, amt: rupees(tot.amt) }).font = { bold: true };
+
   const buf = await wb.xlsx.writeBuffer();
   return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }

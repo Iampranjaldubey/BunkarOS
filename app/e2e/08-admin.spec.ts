@@ -23,7 +23,11 @@ test('admin login → units table → unit page with workers, wage sheet and ent
   await expect(row).toContainText('Shubham');
   await row.getByRole('link', { name: 'Ideal Carpet' }).click();
   await expect(a.getByRole('heading', { name: 'Ideal Carpet' })).toBeVisible();
-  await expect(a.getByTestId('admin-workers')).toContainText('1');
+  // The admin page loads once; the owner's phone pushes the worker ~1 s after saving. Reload until it is there.
+  await expect(async () => {
+    await a.reload();
+    await expect(a.getByTestId('admin-workers')).toContainText('1', { timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
   await expect(a.getByTestId('admin-workers-table')).toContainText('Rafiq');
   await expect(a.getByTestId('admin-wages')).toContainText('₹12,000');
   await expect(a.getByTestId('admin-log')).toContainText('Rafiq');

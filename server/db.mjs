@@ -227,12 +227,16 @@ async function latestOf(db, unitId, type) {
   }
   return [...latest.values()].map((v) => v.p);
 }
+/** SPEC-M11: a record as a client may see it — `user` records never carry PIN hash/salt. */
+export function publicRec(rec) {
+  if (rec?.type === 'user' && rec.payload && ('pinHash' in rec.payload || 'pinSalt' in rec.payload)) {
+    const { pinHash: _h, pinSalt: _s, ...rest } = rec.payload;
+    return { ...rec, payload: rest };
+  }
+  return rec;
+}
 /** All records of a unit with secrets stripped (PIN hashes). */
 export async function adminUnitRecords(db, unitId) {
   const r = await q(db, 'SELECT json FROM records WHERE unit_id = $1 ORDER BY seq ASC', [unitId]);
-  return r.rows.map((row) => {
-    const rec = row.json;
-    if (rec.type === 'user' && rec.payload) { const { pinHash: _h, pinSalt: _s, ...rest } = rec.payload; return { ...rec, payload: rest }; }
-    return rec;
-  });
+  return r.rows.map((row) => publicRec(row.json));
 }

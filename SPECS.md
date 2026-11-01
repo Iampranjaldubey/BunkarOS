@@ -37,6 +37,9 @@ Status legend: Draft | Approved | Built.
 | SPEC-M07 | Worker page: WhatsApp link + shop-code fallback, stays signed in | Built |
 | SPEC-M08 | UI polish pass + one-year logins | Built |
 | SPEC-M09 | Platform admin: founders see every unit, its users, workers and details (read-only) | Approved (user 2026-10-23) |
+| SPEC-M10 | Gaps: holidays editor, orders sheet in the Excel export, TASKS status | Approved (user goal 2026-11-01) |
+| SPEC-M11 | Security: PIN hashes never leave the server; photos need a user login | Approved (user goal 2026-11-01) |
+| SPEC-M12 | Desktop-first UI/UX (phone keeps working) | Approved (user goal 2026-11-01) |
 
 ---
 
@@ -116,6 +119,42 @@ Status legend: Draft | Approved | Built.
 - **API**: `GET /api/admin/units` → per unit: id, name, shortCode, createdAt, ownerName/phone, counts (users, workers, records), entries this month, days with entries this month, last activity. `GET /api/admin/units/:unitId` → unit + all records (pinHash/pinSalt stripped) so the browser reuses the domain projections.
 - **App**: `/admin` (login when no token; else units table sorted by last activity, search, totals), `/admin/units/:unitId` (overview tiles, users, workers table incl. worker code, month: attendance summary + wage sheet, stock balances, orders, usage per user, last 50 log entries; month picker). Logout button (admins can handle it).
 - **Acceptance**: AC1 wrong key → 401; no env → 403. AC2 units list shows a unit created a minute ago with its owner and worker counts. AC3 unit page shows the worker, today's entries and the month's wage sheet with the same numbers as the owner sees. AC4 an admin token cannot call `/api/sync` or `/api/worker-links`.
+
+### SPEC-M10 — Gaps found in the 2026-11-01 analysis
+- **Goal**: close three gaps between SPECS and the code.
+- **Holidays editor** (`/settings`, owner only; staff sees the list read-only): card "छुट्टियाँ" under the unit card. Date input (any date, no max) + "छुट्टी जोड़ें" adds the day to `setting.holidays` (sorted, unique) by writing a new `setting` version; each holiday is a chip with the formatted date and a remove button (`aria-label` "{day} हटाएँ") that writes a new version without it. Empty state "अभी कोई छुट्टी नहीं". Hint: Sundays are always off; holidays are not counted as unmarked days and do not change the divisor W. `data-testid="holidays-card"`, chips `data-testid="holiday-<YYYY-MM-DD>"`. The attendance page already shows `att.holiday` when the picked day is a holiday (keep/verify).
+- **Orders sheet**: `MonthReport.orderList` = orders with `receivedOn <= last day of month` that were not fully delivered before the month started (latest delivery day < month start and pending 0 ⇒ excluded); fields orderNo, buyer name, design, size, qty, delivered (all time up to month end), pending, dueDate, status, overdue, amountPendingPaise. Excel gets a 5th sheet `month.sheet.orders` with those columns + a bold total row (qty, delivered, pending, amount pending ₹). Sheet order: summary, attendance, wages, stock, orders.
+- **TASKS.md**: M03 row → DONE with its evidence.
+- **Acceptance**: AC1 owner adds 2026-11-14 → chip appears, a reload keeps it, attendance on that day shows the holiday note; remove → gone. Staff sees no add/remove buttons. AC2 export workbook has 5 sheets; the orders sheet row 2 = the order (orderNo, buyer, qty, delivered, pending) and totals match `MonthReport.orders.amountPendingPaise`. AC3 unit test for `orderList` inclusion rule (open order, delivered-this-month order included; delivered-last-month order excluded).
+
+### SPEC-M11 — Security: PIN hashes stay on the server; photos need a user login
+- **Problem** (found 2026-11-01): every `/api/sync` pull, including the token-less bootstrap pull, returns `user` records with `pinHash`/`pinSalt`. Anyone holding the unit key (any staff phone) can brute-force a 4-digit PIN offline in minutes (10 000 × PBKDF2-100k), including the owner's PIN, and then sign as the owner. Photos (`PUT/GET /api/photos/:id`) need only the unit key.
+- **Server**:
+  - Pull (`/api/sync` records, both bootstrap and authenticated) strips `payload.pinHash` and `payload.pinSalt` from `user` records. Admin already strips (keep).
+  - Push: a `user` record without `pinHash`/`pinSalt` is an edit of an existing user: the server copies both from that user's latest stored version before inserting. A `user` record for an unknown `entityId` without both fields → rejected `invalid_user`. When present they must be non-empty strings.
+  - Photos: once the unit has users, `PUT` and `GET /api/photos/:id` need the unit key **and** a valid user token for that unit (`Authorization: Bearer`), else 401 `needs_login`. Bootstrap (no users yet) keeps unit-key-only.
+- **App**:
+  - After the server accepts a `user` record, the phone removes `pinHash`/`pinSalt` from its local copy. On start, a one-time scrub removes them from every local `synced` `user` record (`meta 'scrub.pin.v1'`). Pending user records keep them until accepted (the server needs them).
+  - Login: online → the server checks the PIN (`/api/auth/token`). 200 → session + store a **device verifier** for that user only (`meta 'bunkar.pin.<userId>'` = fresh-salt PBKDF2 of the PIN). 401 → wrong PIN (counts toward the existing lockout). 429 → "बहुत ज़्यादा कोशिशें". Network failure or offline → verify against the device verifier; none → "इस फ़ोन पर पहली बार लॉगिन के लिए इंटरनेट चाहिए" (`login.needsInternet`). Unit creation stores the owner's verifier (first login works offline on the setup phone).
+  - `requestToken` returns `{ok:false, reason:'wrong_pin'|'rate_limited'|'network'|'needs_login'}`.
+  - Photo upload/download sends the Bearer token (records pushed by another user on a shared phone are unaffected — photos are unit-scoped).
+  - `UserP.pinHash` / `pinSalt` become optional in the type.
+- **Acceptance**: AC1 server test: bootstrap pull and authenticated pull return user records with no `pinHash`/`pinSalt`; `/api/auth/token` still works afterwards; a `user` edit without hash keeps login working; unknown user without hash → `invalid_user`. AC2 server test: photo GET/PUT without a token → 401 `needs_login`; with token → 200. AC3 unit test: after an accepted push the local user record has no hash; the start-up scrub removes hashes from synced user records and keeps them on pending ones. AC4 unit test: login online wrong PIN → `wrong_pin`; offline with no verifier → `needs_internet`; offline with verifier → ok. AC5 e2e 01 (setup → staff login on a second context) and the full suite stay green.
+
+### SPEC-M12 — Desktop-first UI/UX (phone keeps working)
+- **Goal** (user goal 2026-11-01): the owner and munshi mostly work on a laptop or desktop; design for that first, while phones keep today's layout and pass the same tests. Found in the 2026-11-01 screenshot review (`docs/screenshots/m12/before/`): desktop is the phone layout stretched — attendance is 3 cards per row with no keyboard, the log is 300 tall cards, home leaves half the screen empty, the top bar only shows the user's name, the side menu has no logout or quick entry and cannot collapse.
+- **Layout contract** (breakpoint `lg` = 1024 px, `useIsDesktop()`; below it the phone/tablet markup is unchanged):
+  - Shell ≥ lg: left side menu 256 px (collapsible to a 76 px icon rail; choice remembered in `localStorage 'bunkar.nav.collapsed'`), top bar with today's IST date on the left and sync badge + language on the right, content up to 1408 px wide (`max-w-[88rem]`, 32 px side padding). Forms keep their own narrow width.
+  - Side menu: brand block (logo + unit name + role), a **"नई एंट्री"** button that opens a menu of quick entries filtered by `can()` (attendance, advance, stock in, stock out, new order, new worker), the existing two groups of links, and a footer with the user's name, role and **logout**. Collapsed: icons only, every link keeps an accessible name and a tooltip (`title`).
+  - Below lg: bottom bar + "More" page exactly as today.
+- **Screens (≥ lg)**:
+  - **Attendance**: a roll-call table (`data-testid="attendance-table"`): worker (photo, name, job), P / H / A as one radio group with full labels, OT stepper, pieces (piece-rate workers), status chip. Toolbar: previous / next day, date input, "आज", filter "सिर्फ़ बाकी" (unmarked only), "सब हाज़िर". **Keyboard**: each row is focusable; `P`/`H`/`A` (or `1`/`2`/`3`) mark, `+`/`−` change OT by 0.5 h, `↑`/`↓` move between rows; a hint line explains it. Phones keep the cards; every P/H/A radio gets the full word as its accessible name (today phones announce "P").
+  - **Entry log**: a table (when, type, what, by, undo) with filters by user and by type; reversed rows struck through with the reason under them. Phones keep the cards and get the same two filters.
+  - **Home**: under the tiles, two panels — "देने वाले ऑर्डर" (overdue first, then due within 7 days; up to 6, each opens the order) and "कम स्टॉक" (item, balance, low level; each opens the item).
+  - **Forms with context**: advance form shows the picked worker's balance and last 5 advances on the right; stock in/out/adjust shows the picked item's balance and last 5 moves on the right. Phones show nothing extra.
+- **Quality bar**: no horizontal overflow at 1024 / 1280 / 1440 / 1920 or at 390 / 768 in all three languages; visible focus on every control; 44 px minimum targets on desktop, 48 px on phones; no new page errors; dark theme keeps working.
+- **Tests**: the functional e2e specs (01–09) run in **both** projects (mobile 390×844 and desktop 1440×900); new `e2e/22-desktop-ux.spec.ts` covers keyboard attendance, the log table + type filter, quick entry menu, collapse remembered after reload, logout from the side menu, and home panels; the desktop sweep covers 1024 and 1920 too. Screenshots after the change at 390 / 768 / 1280 / 1440 in `docs/screenshots/m12/after/`.
+- **Out**: command palette, global search, drag-and-drop, multi-select bulk edit, printing changes.
 
 ## Scope — Out (all modules)
 GST/invoicing, payment gateway, subscription billing, multi-branch, AI/voice, push notifications, barcodes/QR, supplier ledger, per-carpet loom tracking, thekedar chain, tauli, exporter links, Tally export, IVR.

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAndLogin } from './fixtures';
+import { setupAndLogin, istToday, attRow, markRadio } from './fixtures';
 
 /** SPEC-M07: owner sends a link → worker's phone opens it once and keeps it; shop-code fallback; cancel → closed. */
 test('worker page via link, via shop code, stays after reload, revoked after cancel', async ({ page, browser }) => {
@@ -7,14 +7,14 @@ test('worker page via link, via shop code, stays after reload, revoked after can
   await page.goto('/workers/new');
   await page.getByLabel(/^नाम/).fill('Rafiq'); await page.getByLabel(/^फ़ोन/).fill('9876501234');
   await page.getByLabel(/महीने की तनख्वाह/).fill('12000');
-  const y = new Date().getFullYear(); const m = String(new Date().getMonth() + 1).padStart(2, '0');
-  await page.getByLabel(/कब से काम पर/).fill(`${y}-${m}-01`);
+  const y = istToday().slice(0, 4);
+  await page.getByLabel(/कब से काम पर/).fill(`${istToday().slice(0, 7)}-01`);
   await page.getByRole('button', { name: 'सेव करें', exact: true }).click(); await expect(page).toHaveURL(/\/workers$/);
   // One absent day and an advance so the worker page has something to show.
   await page.goto('/attendance');
-  const row = page.getByTestId('attendance-list').locator('li').filter({ hasText: 'Rafiq' });
-  await row.getByRole('radio', { name: /^A$/ }).click();
-  await expect(row.getByRole('radio', { name: /^A$/ })).toHaveAttribute('aria-checked', 'true');
+  const row = attRow(page, 'Rafiq');
+  await markRadio(row, 'A').click();
+  await expect(markRadio(row, 'A')).toHaveAttribute('aria-checked', 'true');
   await page.goto('/advances/new');
   await page.getByLabel(/किसको/).selectOption({ label: 'Rafiq' }); await page.getByLabel(/रकम/).fill('500');
   await page.getByRole('button', { name: 'सेव करें', exact: true }).click();

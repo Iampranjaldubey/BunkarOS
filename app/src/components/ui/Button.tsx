@@ -10,11 +10,11 @@ const button = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-white hover:bg-primary-dark shadow-card',
+        primary: 'bg-primary text-on-fill hover:bg-primary-dark shadow-card',
         secondary: 'bg-surface text-ink border border-line hover:bg-bg',
         ghost: 'bg-transparent text-primary hover:bg-primary/10',
-        danger: 'bg-given text-white hover:brightness-95 shadow-card',
-        success: 'bg-ok text-white hover:brightness-95 shadow-card',
+        danger: 'bg-given text-on-fill hover:brightness-95 shadow-card',
+        success: 'bg-ok text-on-fill hover:brightness-95 shadow-card',
       },
       size: {
         md: 'min-h-12 px-4 text-base',

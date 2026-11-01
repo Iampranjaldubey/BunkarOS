@@ -82,13 +82,14 @@ test('staff cannot change a worker\'s pay fields; owner can', async () => {
   assert.equal(r.body.rejected.length, 0);
 });
 
-test('photos: PUT/GET round trip, wrong mime 415', async () => {
+test('photos: PUT/GET round trip with a login, wrong mime 415', async () => {
   const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
-  let r = await fetch(`${srv.base}/api/photos/p1`, { method: 'PUT', headers: { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY, 'Content-Type': 'image/jpeg' }, body: bytes });
+  const h = { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY, Authorization: `Bearer ${token}` };
+  let r = await fetch(`${srv.base}/api/photos/p1`, { method: 'PUT', headers: { ...h, 'Content-Type': 'image/jpeg' }, body: bytes });
   assert.equal(r.status, 200);
-  r = await fetch(`${srv.base}/api/photos/p1`, { headers: { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY } });
+  r = await fetch(`${srv.base}/api/photos/p1`, { headers: h });
   assert.equal(r.status, 200); assert.equal(r.headers.get('content-type'), 'image/jpeg');
   assert.equal(Buffer.from(await r.arrayBuffer()).length, bytes.length);
-  r = await fetch(`${srv.base}/api/photos/p2`, { method: 'PUT', headers: { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY, 'Content-Type': 'text/html' }, body: 'x' });
+  r = await fetch(`${srv.base}/api/photos/p2`, { method: 'PUT', headers: { ...h, 'Content-Type': 'text/html' }, body: 'x' });
   assert.equal(r.status, 415);
 });

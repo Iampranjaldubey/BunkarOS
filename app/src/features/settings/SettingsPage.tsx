@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Copy, LogOut, UserPlus } from 'lucide-react';
+import { CalendarPlus, Copy, LogOut, UserPlus, X } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -16,6 +16,7 @@ import type { Role, SettingP, UserP } from '../../db/types';
 import { getSettings, listUsers } from '../../domain/masters';
 import { can } from '../../domain/permissions';
 import { uuid } from '../../domain/ids';
+import { formatDay } from '../../domain/dates';
 import { hashPin } from '../../lib/pin';
 import { getUnitMeta, useSession } from '../../app/session';
 import { authedFetch } from '../../sync';
@@ -30,7 +31,7 @@ export function applyTheme(th: Theme) {
 }
 
 export default function SettingsPage() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { role, logout } = useSession();
   const toast = useToast();
   const recs = useRecords();
@@ -80,6 +81,20 @@ export default function SettingsPage() {
 
   const toggleUser = async (u: UserP) => { await addRecord<UserP>('user', { ...u, active: !u.active }); };
 
+  // SPEC-M10: holidays are part of the unit setting (sorted, unique; a new version per change).
+  const holidays = useMemo(() => [...new Set(settings?.holidays ?? [])].sort(), [settings]);
+  const [holidayDay, setHolidayDay] = useState('');
+  const writeHolidays = async (next: string[]) => {
+    if (!settings) return;
+    await addRecord<SettingP>('setting', { ...settings, holidays: [...new Set(next)].sort() });
+  };
+  const addHoliday = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(holidayDay)) return;
+    if (!holidays.includes(holidayDay)) await writeHolidays([...holidays, holidayDay]);
+    setHolidayDay(''); toast.show(t('settings.saved'), 'success');
+  };
+  const removeHoliday = async (d: string) => { await writeHolidays(holidays.filter((x) => x !== d)); toast.show(t('settings.saved'), 'success'); };
+
   const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); toast.show(t('settings.copied'), 'success'); } catch { /* ignore */ } };
 
   return (
@@ -102,6 +117,31 @@ export default function SettingsPage() {
         </Field>
         <Field label={t('settings.photoAbove')}>{({ id }) => <Input id={id} inputMode="numeric" value={photoAbove} disabled={!isOwner} onChange={(e) => setPhotoAbove(e.target.value.replace(/[^\d]/g, ''))} className="num" />}</Field>
         {isOwner && <Button block onClick={() => void saveSettings()}>{t('action.save')}</Button>}
+      </Card>
+
+      <Card className="mb-4 lg:mb-0" data-testid="holidays-card">
+        <CardTitle>{t('settings.holidays')}</CardTitle>
+        <p className="mb-3 text-sm text-muted">{t('settings.holidaysHint')}</p>
+        {isOwner && (
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <Field label={t('settings.holidayDate')} className="mb-0 min-w-44 flex-1">
+              {({ id }) => <Input id={id} type="date" value={holidayDay} onChange={(e) => setHolidayDay(e.target.value)} className="num" />}
+            </Field>
+            <Button variant="secondary" onClick={() => void addHoliday()} disabled={!holidayDay}><CalendarPlus aria-hidden="true" size={18} />{t('settings.holidayAdd')}</Button>
+          </div>
+        )}
+        {holidays.length === 0 ? <p className="text-sm text-muted">{t('settings.holidaysEmpty')}</p> : (
+          <ul className="flex flex-wrap gap-2">
+            {holidays.map((d) => (
+              <li key={d} data-testid={`holiday-${d}`} className="flex items-center gap-1 rounded-full border border-line bg-surface-2 py-1 pl-3 pr-1 text-sm text-ink">
+                <span className="num">{formatDay(d, lang, 'medium')}</span>
+                {isOwner ? (
+                  <button type="button" onClick={() => void removeHoliday(d)} aria-label={t('settings.holidayRemove', { day: formatDay(d, lang, 'medium') })} className="tap-48 -my-2 rounded-full text-muted hover:bg-surface hover:text-given"><X aria-hidden="true" size={16} /></button>
+                ) : <span className="pr-2" />}
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <Card className="mb-4 lg:mb-0">

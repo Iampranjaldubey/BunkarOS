@@ -3,7 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { FormActions } from '../../components/ui/FormActions';
 
-import { Card } from '../../components/ui/Card';
+import { Card, CardTitle } from '../../components/ui/Card';
+import { FormWithContext } from '../../components/ui/FormWithContext';
+import { Qty } from './shared';
+import { formatDay } from '../../domain/dates';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { Input, Select, Textarea } from '../../components/ui/Input';
@@ -15,7 +18,7 @@ import { useRecords } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
 import type { AdjustReason, FinishedInP, StockAdjustP, StockInP, StockOutP, StockOutPurpose } from '../../db/types';
 import { listItems, listWorkers, listOrders, getSettings } from '../../domain/masters';
-import { stockBalance } from '../../domain/stock';
+import { stockBalance, movesFor, type Move } from '../../domain/stock';
 import { parseQty, formatQty } from '../../domain/qty';
 import { formatINR, rupeesToPaise } from '../../domain/money';
 import { isDayLocked } from '../../domain/locks';
@@ -30,7 +33,7 @@ const PURPOSES: StockOutPurpose[] = ['production', 'sale', 'other'];
 
 /** One screen for stock in / out / adjust / finished-in, chosen by the route. */
 export default function StockMovePage() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { kind = 'in' } = useParams<{ kind: Kind }>();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -80,8 +83,37 @@ export default function StockMovePage() {
     } finally { setBusy(false); }
   };
 
+  const recentMoves = useMemo(() => (itemId ? movesFor(recs, itemId).slice(-5).reverse() : []), [recs, itemId]);
+  const moveLabel = (k: Move['kind']) => (k === 'in' ? t('stock.in') : k === 'out' ? t('stock.out') : k === 'adjust' ? t('stock.adjust') : k === 'finished' ? t('stock.finishedIn') : t('stock.kindBadge.delivery'));
+  const context = (
+    <Card>
+      <CardTitle>{t('ctx.item')}</CardTitle>
+      {!item ? <p className="text-sm text-muted">{t('ctx.pickItem')}</p> : (
+        <>
+          <p className="font-medium text-ink">{item.name}</p>
+          <div className="my-3 rounded-xl bg-surface-2 p-3">
+            <p className="text-sm text-muted">{t('ctx.stockNow')}</p>
+            <p className="text-2xl font-bold" data-testid="ctx-stock"><Qty q={balance} item={item} className={item.lowStockQty > 0 && balance <= item.lowStockQty ? 'text-given' : 'text-ink'} /></p>
+            {item.lowStockQty > 0 && <p className="mt-1 text-xs text-muted">{t('home.lowLevel')}: {formatQty(item.lowStockQty, item.unit)}</p>}
+          </div>
+          <p className="mb-1 text-sm font-medium text-muted">{t('ctx.lastMoves')}</p>
+          {recentMoves.length === 0 ? <p className="text-sm text-muted">{t('ctx.none')}</p> : (
+            <ul className="divide-y divide-line text-sm">
+              {recentMoves.map((m) => (
+                <li key={m.recId} className="flex items-center justify-between gap-2 py-2">
+                  <span className="min-w-0 truncate text-muted">{formatDay(m.day, lang, 'short')} · {moveLabel(m.kind)}</span>
+                  <span className={`num shrink-0 font-medium ${m.qty < 0 ? 'text-given' : 'text-received'}`}>{m.qty > 0 ? '+' : ''}{formatQty(m.qty, item.unit)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </Card>
+  );
+
   return (
-    <section className="mx-auto max-w-2xl">
+    <FormWithContext context={context}>
       <PageHeader title={title} back />
       <Card className="md:p-6">
         <form onSubmit={(e) => { e.preventDefault(); void save(); }}>
@@ -105,6 +137,6 @@ export default function StockMovePage() {
           <FormActions><Button type="submit" size="xl" disabled={busy} variant={kind === 'out' ? 'danger' : kind === 'adjust' ? 'primary' : 'success'}>{t('action.save')}</Button></FormActions>
         </form>
       </Card>
-    </section>
+    </FormWithContext>
   );
 }

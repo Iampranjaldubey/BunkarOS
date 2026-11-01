@@ -103,7 +103,7 @@ export default function WorkerHomePage() {
       <p className="mb-3 text-xs text-muted">{state === 'stale' ? t('wp.offline') + ' · ' : ''}{t('wp.updated', { time: formatTime(data.fetchedAt, lang) })}</p>
       <div className="mb-4 grid grid-cols-4 gap-1 rounded-2xl border border-line bg-surface p-1" role="tablist" aria-label={t('wp.title')}>
         {TABS.map((x) => (
-          <button key={x.v} role="tab" aria-selected={tab === x.v} onClick={() => setTab(x.v)} className={cn('flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-medium', tab === x.v ? 'bg-primary text-white' : 'text-muted hover:bg-surface-2')}>{x.icon}<span>{t(x.key)}</span></button>
+          <button key={x.v} role="tab" aria-selected={tab === x.v} onClick={() => setTab(x.v)} className={cn('flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-medium', tab === x.v ? 'bg-primary text-on-fill' : 'text-muted hover:bg-surface-2')}>{x.icon}<span>{t(x.key)}</span></button>
         ))}
       </div>
 
@@ -181,7 +181,7 @@ export default function WorkerHomePage() {
               ))}
             </dl>
           </Card>
-          {data.ownerPhone && <a href={waMeLink(data.ownerPhone, t('wp.askText', { name: worker.name }))} target="_blank" rel="noreferrer" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-received px-5 text-lg font-medium text-white shadow-card"><MessageCircle aria-hidden="true" />{t('wp.ask')}</a>}
+          {data.ownerPhone && <a href={waMeLink(data.ownerPhone, t('wp.askText', { name: worker.name }))} target="_blank" rel="noreferrer" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-received px-5 text-lg font-medium text-on-fill shadow-card"><MessageCircle aria-hidden="true" />{t('wp.ask')}</a>}
           <button type="button" onClick={() => setConfirmForget(true)} className="text-sm text-muted underline">{t('wp.notMyPhone')}</button>
           <ConfirmSheet open={confirmForget} onClose={() => setConfirmForget(false)} onConfirm={() => { forgetWorker(); navigate('/w/join', { replace: true }); }} title={t('wp.notMyPhone')} message={t('wp.notMyPhoneHint')} />
         </div>

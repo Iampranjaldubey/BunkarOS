@@ -19,7 +19,7 @@ export function AdminLoginPage({ onDone }: { onDone: () => void }) {
   };
   return (
     <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-5 px-5">
-      <div className="text-center"><span className="inline-block rounded-2xl bg-primary p-3 text-white"><ShieldCheck aria-hidden="true" size={28} /></span><h1 className="mt-3 text-3xl">Bunkar Admin</h1><p className="text-muted">Platform view for the founders</p></div>
+      <div className="text-center"><span className="inline-block rounded-2xl bg-primary p-3 text-on-fill"><ShieldCheck aria-hidden="true" size={28} /></span><h1 className="mt-3 text-3xl">Bunkar Admin</h1><p className="text-muted">Platform view for the founders</p></div>
       <Card>
         <form onSubmit={(e) => { e.preventDefault(); void submit(); }}>
           <Field label="Name" required>{({ id }) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" autoFocus />}</Field>

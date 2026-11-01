@@ -7,23 +7,27 @@ import { Button } from '../../components/ui/Button';
 import { Select, Textarea } from '../../components/ui/Input';
 import { Sheet } from '../../components/ui/Sheet';
 import { EmptyState } from '../../components/ui/Feedback';
+import { useIsDesktop } from '../../components/ui/useIsDesktop';
 import { useRecords } from '../../db/hooks';
 import { reverse } from '../../db/repo';
-import type { Rec, ReversalP } from '../../db/types';
+import type { Rec, RecordType, ReversalP } from '../../db/types';
 import { nameMaps } from '../../domain/masters';
 import { can } from '../../domain/permissions';
 import { formatDay, formatTime } from '../../domain/dates';
-import { todayIST } from '../../domain/ids';
+import { istDay, todayIST } from '../../domain/ids';
 import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
+import { cn } from '../../lib/utils';
 import { describeRecord } from './describe';
 
-/** Entry log: every record, newest first, with author, time, reversals and edits. */
+/** Entry log: every record, newest first, with author, time, reversals and edits. Filter by user and type; a table on desktop. */
 export default function LogPage() {
   const { t, lang } = useT();
   const { role, user } = useSession();
   const recs = useRecords();
+  const isDesktop = useIsDesktop();
   const [filterUser, setFilterUser] = useState('');
+  const [filterType, setFilterType] = useState<RecordType | ''>('');
   const [target, setTarget] = useState<Rec | null>(null);
   const [reason, setReason] = useState('');
   const names = useMemo(() => nameMaps(recs), [recs]);
@@ -34,10 +38,12 @@ export default function LogPage() {
     return m;
   }, [recs]);
 
+  const listed = useMemo(() => recs.filter((r) => r.type !== 'usage' && r.type !== 'reversal'), [recs]);
+  const types = useMemo(() => [...new Set(listed.map((r) => r.type))].sort((a, b) => t(`rec.${a}`).localeCompare(t(`rec.${b}`))), [listed, t]);
   const rows = useMemo(() => {
-    const list = recs.filter((r) => r.type !== 'usage' && r.type !== 'reversal' && (!filterUser || r.by === filterUser));
+    const list = listed.filter((r) => (!filterUser || r.by === filterUser) && (!filterType || r.type === filterType));
     return [...list].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 300);
-  }, [recs, filterUser]);
+  }, [listed, filterUser, filterType]);
 
   const canReverse = (r: Rec) => {
     if (!role) return false;
@@ -52,15 +58,75 @@ export default function LogPage() {
     setTarget(null); setReason('');
   };
 
+  const filters = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Select aria-label={t('log.filterType')} value={filterType} onChange={(e) => setFilterType(e.target.value as RecordType | '')} className="min-h-11 w-auto py-1 text-sm" data-testid="log-filter-type">
+        <option value="">{t('log.allTypes')}</option>
+        {types.map((ty) => <option key={ty} value={ty}>{t(`rec.${ty}`)}</option>)}
+      </Select>
+      <Select aria-label={t('log.filterUser')} value={filterUser} onChange={(e) => setFilterUser(e.target.value)} className="min-h-11 w-auto py-1 text-sm">
+        <option value="">{t('common.all')}</option>
+        {[...names.users].map(([id, n]) => <option key={id} value={id}>{n}</option>)}
+      </Select>
+    </div>
+  );
+  const byName = (id: string) => names.users.get(id) ?? id.slice(0, 8);
+  const badges = (r: Rec) => {
+    const rev = reversedBy.get(r.id);
+    return (
+      <>
+        {r.replaces && <Badge tone="info">{t('common.edited')}</Badge>}
+        {rev && <Badge tone="danger">{t('common.reversed')}</Badge>}
+        {r.sync === 'rejected' && <Badge tone="danger">{t('common.rejected')}</Badge>}
+      </>
+    );
+  };
+  const undoBtn = (r: Rec) => canReverse(r) && (
+    <button type="button" onClick={() => setTarget(r)} aria-label={t('log.reverse')} title={t('log.reverse')} className="tap-48 inline-flex items-center justify-center rounded-xl text-muted hover:bg-surface-2 hover:text-given lg:h-11 lg:min-h-0 lg:w-11 lg:min-w-0"><Undo2 aria-hidden="true" /></button>
+  );
+
   return (
     <section>
-      <PageHeader title={t('log.title')} right={
-        <Select aria-label={t('log.filterUser')} value={filterUser} onChange={(e) => setFilterUser(e.target.value)} className="min-h-10 py-1 text-sm">
-          <option value="">{t('common.all')}</option>
-          {[...names.users].map(([id, n]) => <option key={id} value={id}>{n}</option>)}
-        </Select>
-      } />
-      {rows.length === 0 ? <EmptyState title={t('log.empty')} /> : (
+      <PageHeader title={t('log.title')} right={isDesktop ? <><span className="num text-sm text-muted">{t('log.shown', { n: rows.length })}</span>{filters}</> : undefined} />
+      {!isDesktop && <div className="mb-3">{filters}</div>}
+      {rows.length === 0 ? <EmptyState title={t('log.empty')} /> : isDesktop ? (
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-card">
+          <table className="w-full border-collapse text-base" data-testid="log-table">
+            <thead>
+              <tr className="text-left text-sm text-muted">
+                <th scope="col" className="w-44 border-b border-line px-4 py-3 font-medium">{t('log.colWhen')}</th>
+                <th scope="col" className="w-40 border-b border-line px-4 py-3 font-medium">{t('log.colType')}</th>
+                <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('log.colWhat')}</th>
+                <th scope="col" className="w-44 border-b border-line px-4 py-3 font-medium">{t('log.colBy')}</th>
+                <th scope="col" className="w-16 border-b border-line px-2 py-3"><span className="visually-hidden">{t('log.reverse')}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const rev = reversedBy.get(r.id);
+                const d = describeRecord(r, names, t, lang);
+                return (
+                  <tr key={r.id} className={cn('align-top even:bg-bg/60', rev && 'text-muted')} data-testid="log-row">
+                    <td className="border-b border-line px-4 py-2.5 text-sm">
+                      <span className="num block text-ink">{formatDay(r.day, lang, 'short')}</span>
+                      <span className="num block text-muted">{formatTime(r.at, lang)}{r.day !== istDay(r.at) ? ` · ${t('log.enteredOn', { day: formatDay(istDay(r.at), lang, 'short') })}` : ''}</span>
+                    </td>
+                    <td className="border-b border-line px-4 py-2.5"><Badge tone={d.tone}>{t(`rec.${r.type}`)}</Badge></td>
+                    <td className="border-b border-line px-4 py-2.5">
+                      <p className={cn('text-ink', rev && 'text-muted line-through')}>{d.text}</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">{badges(r)}</div>
+                      {rev && <p className="mt-1 text-sm text-given">{t('log.reason')}: {rev.payload.reason} — {t('common.by', { name: byName(rev.by) })}</p>}
+                      {r.rejectReason && <p className="mt-1 text-sm text-given">{r.rejectReason}</p>}
+                    </td>
+                    <td className="border-b border-line px-4 py-2.5 text-sm text-ink">{byName(r.by)}</td>
+                    <td className="border-b border-line px-2 py-1.5 text-right">{undoBtn(r)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
         <ol className="flex flex-col gap-2">
           {rows.map((r) => {
             const rev = reversedBy.get(r.id);
@@ -71,21 +137,17 @@ export default function LogPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={d.tone}>{t(`rec.${r.type}`)}</Badge>
-                      {r.replaces && <Badge tone="info">{t('common.edited')}</Badge>}
-                      {rev && <Badge tone="danger">{t('common.reversed')}</Badge>}
-                      {r.sync === 'rejected' && <Badge tone="danger">{t('common.rejected')}</Badge>}
+                      {badges(r)}
                     </div>
                     <p className={`mt-1 text-base text-ink ${rev ? 'line-through' : ''}`}>{d.text}</p>
                     <p className="mt-0.5 text-sm text-muted">
-                      {t('common.by', { name: names.users.get(r.by) ?? r.by.slice(0, 8) })} · {formatDay(r.day, lang, 'short')} · {formatTime(r.at, lang)}
-                      {r.day !== r.at.slice(0, 10) && ` (${t('log.day')}: ${formatDay(r.day, lang, 'short')})`}
+                      {t('common.by', { name: byName(r.by) })} · {formatDay(r.day, lang, 'short')} · {formatTime(r.at, lang)}
+                      {r.day !== istDay(r.at) && ` (${t('log.day')}: ${formatDay(r.day, lang, 'short')})`}
                     </p>
-                    {rev && <p className="mt-1 text-sm text-given">{t('log.reason')}: {rev.payload.reason} — {t('common.by', { name: names.users.get(rev.by) ?? '' })}</p>}
+                    {rev && <p className="mt-1 text-sm text-given">{t('log.reason')}: {rev.payload.reason} — {t('common.by', { name: byName(rev.by) })}</p>}
                     {r.rejectReason && <p className="mt-1 text-sm text-given">{r.rejectReason}</p>}
                   </div>
-                  {canReverse(r) && (
-                    <button type="button" onClick={() => setTarget(r)} aria-label={t('log.reverse')} className="tap-48 self-start rounded-xl text-muted hover:bg-surface-2 hover:text-given"><Undo2 aria-hidden="true" /></button>
-                  )}
+                  <div className="self-start">{undoBtn(r)}</div>
                 </Card>
               </li>
             );

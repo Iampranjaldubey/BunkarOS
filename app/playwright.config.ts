@@ -12,8 +12,10 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   use: { trace: 'on-first-retry', actionTimeout: 15_000, baseURL: 'http://localhost:5174' },
   projects: [
+    // Phone 390×844: functional specs 01–09 + the phone sweep (21).
     { name: 'mobile', testIgnore: /desktop/, use: mobile },
-    { name: 'desktop', testMatch: /desktop/, use: { browserName: 'chromium', viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 } },
+    // Desktop 1440×900 (SPEC-M12, desktop-first): the same functional specs 01–09 + desktop-only specs (20, 22).
+    { name: 'desktop', testMatch: /(\/0\d-[^/]+|desktop[^/]*)\.spec\.ts$/, use: { browserName: 'chromium', viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 } },
   ],
   webServer: [
     { command: 'node ../server/index.mjs', url: 'http://localhost:8795/api/health', reuseExistingServer: false, timeout: 30_000,

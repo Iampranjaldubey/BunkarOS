@@ -2,7 +2,7 @@
 import { getUnit, insertUnit, getRecordById, insertRecord, recordsSince, userRecordsSince, putPhoto, getPhoto,
   userRecordCount, latestUser, userRole, lockedMonths, paidPairs, recordsOfType,
   getUnitByShortCode, ensureShortCode, latestWorker, activeWorkers, workerRecords,
-  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords } from './db.mjs';
+  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords, publicRec } from './db.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { hashUnitKey, verifyUnitKey } from './auth.mjs';
 import { evaluate } from './rules.mjs';
@@ -172,12 +172,13 @@ async function handleSync(db, req, res) {
     if (!token || token.unitId !== unitId) {
       if (incoming.length > 0) return sendError(res, 401, 'needs_login', req);
       const rows = await userRecordsSince(db, unitId, since, limit);
-      return sendJson(res, 200, { accepted: [], rejected: [], records: rows.map((r) => r.rec), cursor: since }, req);
+      return sendJson(res, 200, { accepted: [], rejected: [], records: rows.map((r) => publicRec(r.rec)), cursor: since }, req);
     }
     auth = { userId: token.userId, role: await userRole(db, unitId, token.userId) };
   }
 
   const accepted = []; const rejected = [];
+  const batchUsers = new Map(); // entityId → payload accepted earlier in this batch (owner + edit in one push)
   const ctx = {
     unitId, auth, hasUsers,
     locked: await lockedMonths(db, unitId),
@@ -206,22 +207,47 @@ async function handleSync(db, req, res) {
       const existing = await getRecordById(db, rec.id);
       if (existing) { accepted.push(rec.id); ctx.batch.ids.add(rec.id); continue; }
     }
-    const verdict = evaluate(rec, ctx);
+    // SPEC-M11: phones no longer hold PIN hashes. A `user` record without them is an edit:
+    // keep the stored hash/salt. A brand-new user must bring both.
+    let toCheck = rec;
+    if (rec?.type === 'user' && rec.payload && typeof rec.payload === 'object') {
+      const p = rec.payload;
+      const hasHash = p.pinHash !== undefined || p.pinSalt !== undefined;
+      if (hasHash) {
+        if (typeof p.pinHash !== 'string' || !p.pinHash || typeof p.pinSalt !== 'string' || !p.pinSalt) { rejected.push({ id: rec.id, reason: 'invalid_user' }); continue; }
+      } else {
+        const prev = batchUsers.get(p.entityId) ?? (await latestUser(db, unitId, p.entityId));
+        if (!prev?.pinHash || !prev?.pinSalt) { rejected.push({ id: rec.id, reason: 'invalid_user' }); continue; }
+        toCheck = { ...rec, payload: { ...p, pinHash: prev.pinHash, pinSalt: prev.pinSalt } };
+      }
+    }
+    const verdict = evaluate(toCheck, ctx);
     if (!verdict.ok) { rejected.push({ id: rec?.id, reason: verdict.reason }); continue; }
-    const stored = { ...rec, sync: 'synced' }; delete stored.rejectReason;
+    const stored = { ...toCheck, sync: 'synced' }; delete stored.rejectReason;
     await insertRecord(db, { id: rec.id, unitId, type: rec.type, rec: stored });
     accepted.push(rec.id); ctx.batch.ids.add(rec.id);
     if (rec.type === 'period_lock') ctx.locked.add(rec.payload.month);
+    if (rec.type === 'user') batchUsers.set(toCheck.payload.entityId, toCheck.payload);
   }
 
   const pulled = await recordsSince(db, unitId, since, limit);
   const cursor = pulled.length ? pulled[pulled.length - 1].seq : since;
-  return sendJson(res, 200, { accepted, rejected, records: pulled.map((r) => r.rec), cursor }, req);
+  return sendJson(res, 200, { accepted, rejected, records: pulled.map((r) => publicRec(r.rec)), cursor }, req);
 }
 
-async function handlePutPhoto(db, req, res, id) {
+/** SPEC-M11: photos need the unit key and, once the unit has users, a valid user token for that unit. */
+async function photoAuth(db, req, res) {
   const unit = await authUnit(db, req);
-  if (!unit) return sendError(res, 401, 'unauthorized', req);
+  if (!unit) { sendError(res, 401, 'unauthorized', req); return null; }
+  if ((await userRecordCount(db, unit.unit_id)) > 0) {
+    const token = await bearerAuth(db, req);
+    if (!token || token.unitId !== unit.unit_id) { sendError(res, 401, 'needs_login', req); return null; }
+  }
+  return unit;
+}
+async function handlePutPhoto(db, req, res, id) {
+  const unit = await photoAuth(db, req, res);
+  if (!unit) { await readBody(req, PHOTO_LIMIT).catch(() => undefined); return undefined; }
   const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
   if (!PHOTO_MIME_ALLOW.has(mime)) { await readBody(req, PHOTO_LIMIT).catch(() => undefined); return sendError(res, 415, 'unsupported_media_type', req); }
   const buf = await readBody(req, PHOTO_LIMIT);
@@ -229,8 +255,8 @@ async function handlePutPhoto(db, req, res, id) {
   return sendJson(res, 200, { ok: true, id }, req);
 }
 async function handleGetPhoto(db, req, res, id) {
-  const unit = await authUnit(db, req);
-  if (!unit) return sendError(res, 401, 'unauthorized', req);
+  const unit = await photoAuth(db, req, res);
+  if (!unit) return undefined;
   const row = await getPhoto(db, unit.unit_id, id);
   if (!row) return sendError(res, 404, 'not_found', req);
   const mime = PHOTO_MIME_ALLOW.has(row.mime) ? row.mime : 'application/octet-stream';

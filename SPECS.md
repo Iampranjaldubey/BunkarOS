@@ -10,7 +10,7 @@ Status legend: Draft | Approved | Built.
 | # | Topic | Decision |
 |---|---|---|
 | D1 | Start point | Fresh codebase beside BunkarOS. Copy by hand only: PIN hashing, session store, unit/auth/token server modules, sync client pattern, i18n loader, UI kit primitives, index.css. Nothing about looms, thekedars, pieces, tauli, voice, exporter. |
-| D2 | Pay types | Weavers are mostly **monthly salaried**. Worker pay type ∈ {monthly, daily, piece}. Monthly: salary − (absent days × salary ÷ working days) − (half days × ½ that). Daily: (present days + paid off days) × rate (+ ½ rate for a half day). **Paid off days** = each Sunday and each listed holiday on or after the joining date, unless the worker is marked Absent that day (**provisional** business rule, owner 2026-11-01, `docs/decisions.md` D-002). Piece: Σ piece entries × rate; nothing for off days. Overtime is added to any pay type only when the unit turns it on (D12). ("Mixed" is out.) |
+| D2 | Pay types | Weavers are mostly **monthly salaried**. Worker pay type ∈ {monthly, daily, piece}. Monthly: salary − (absent days × salary ÷ working days) − (half days × ½ that). Daily: (present days + paid off days) × rate (+ ½ rate for a half day). **Paid off days** follow the unit's **off-day policy** setting (`none`, `sundays`, or `sundays_and_holidays`, default `sundays_and_holidays`, a **provisional** default; owner 2026-11-01, `docs/decisions.md` D-002, SPEC-M13): each chosen day on or after the joining date, unless the worker is marked Absent that day. Piece: Σ piece entries × rate; nothing for off days. Overtime is added to any pay type only when the unit turns it on (D12). Every calculated line is a suggestion the owner can override with a reason (D15, SPEC-M14). ("Mixed" is out.) |
 | D3 | Pay cycle | Monthly settlement per calendar month. Advances (kharcha/peshgi) recorded any day, deducted at settlement; balance carries forward. A paid month is **locked**. |
 | D4 | Connectivity | **Offline-first PWA** (IndexedDB queue + service worker), sync when online. Server wins. |
 | D5 | Hosting | Render (or Railway): one Node web service + managed Postgres. Local dev + tests on Docker Postgres. |
@@ -23,13 +23,14 @@ Status legend: Draft | Approved | Built.
 | D12 | Working days, overtime | Owner setting `workingDaysPerMonth` (default 26) drives per-day deduction. **Overtime is optional** (owner 2026-11-01, `docs/decisions.md` D-001): owner-only setting `overtimeEnabled`, default **off**. When on, overtime is entered in **hours** and each worker has an `otRatePaise` per hour (default salary ÷ working days ÷ 8; daily rate ÷ 8). When off, overtime is hidden on every screen (worker form, attendance, wage sheet, pay page, slip, month report, Excel export, worker page), new workers get `otRatePaise` 0, and recorded overtime is not added to new payments (assumed, needs confirmation); the code and stored hours stay. Every other mention of overtime in these specs (M01, M02, M05, M07, M12) applies only while it is on. |
 | D14 | UI quality (user, 2026-10-23) | "One of the best UI": a fresh palette (deep teal primary, warm off-white background, amber accent, coral = given out, green = received), 8-pt spacing, big tabular numerals, status always colour + icon + label, warm empty states, skeleton loading, 48 px tap targets, visible focus, AA contrast verified by script. **Responsive from day one**: phone (360–430), tablet (768+, two-column forms), desktop (1024+, side navigation, real tables, sticky summaries). No separate desktop pass later. |
 | D13 | Usage evidence | Pilot pass thresholds need "entries per working day" and "owner opened the log". Entries/day are computed from records; owner opens of `/log` and `/` are stored as `usage` records (excluded from all business projections, visible to the team only). |
+| D15 | Product direction (owner, 2026-11-01) | A **digital register** for carpet units: attendance, workers, wages, orders and inventory, including a finished carpet catalogue. The **owner sees and edits everything**. The unit decides who operates it: the owner alone, or one or more **operators** (the `staff` role in the code, usually the munshi) whose permissions the owner sets (SPEC-M13). **Calculations are suggestions**: the owner can override any wage line with a reason that is written to the history (SPEC-M14). **Rules are per-unit settings with sensible defaults**, not hard-coded decisions: overtime (D12), off-day policy (D2), slip sections (SPEC-M02), operator permissions (SPEC-M13). Not yet: custom fields, WhatsApp cards. Details: `docs/decisions.md` P-000, D-001…D-006. |
 
 ## Index
 | ID | Title | Status |
 |---|---|---|
 | SPEC-M00 | Foundation: shell, login, roles, entry log, offline sync, photos, i18n | Built |
 | SPEC-M01 | Workers + attendance | Built |
-| SPEC-M02 | Wages: advances, monthly settlement, slip, lock | Built |
+| SPEC-M02 | Wages: advances, monthly settlement, slip, lock | Built; AC5–AC7 (2026-11-01) not built |
 | SPEC-M03 | Inventory: items, in/out/adjust, finished carpets | Built |
 | SPEC-M04 | Orders: buyers, orders, status, deliveries | Built |
 | SPEC-M05 | Owner dashboard + monthly analysis + Excel export | Built |
@@ -40,6 +41,9 @@ Status legend: Draft | Approved | Built.
 | SPEC-M10 | Gaps: holidays editor, orders sheet in the Excel export, TASKS status | Approved (user goal 2026-11-01) |
 | SPEC-M11 | Security: PIN hashes never leave the server; photos need a user login | Approved (user goal 2026-11-01) |
 | SPEC-M12 | Desktop-first UI/UX (phone keeps working) | Approved (user goal 2026-11-01) |
+| SPEC-M13 | Unit rules as settings (overtime, off-day policy, slip sections) + operator permissions | Approved (owner direction 2026-11-01); assumptions in docs/decisions.md need confirmation |
+| SPEC-M14 | Owner override on any wage line, with a reason, in the history | Approved (owner direction 2026-11-01); assumptions in docs/decisions.md need confirmation |
+| SPEC-M15 | Finished carpet catalogue: photos, design, size, piece tag or quantity, prices, reserve and deliver | Approved (owner direction 2026-11-01); assumptions in docs/decisions.md need confirmation |
 
 ---
 
@@ -50,7 +54,7 @@ Status legend: Draft | Approved | Built.
   - `user` {entityId, name, phone, role owner|staff, pinHash, pinSalt, active}
   - `setting` {entityId:'unit', unitName, ownerPhone, lang, workingDaysPerMonth=26, photoRequiredAbovePaise=200000, currency 'INR'}
   - `usage` {screen, at} (D13)
-- **Roles** (`can(role, action)`): staff can create everything and reverse own records of the same day; only owner edits settings, users, pay rates, locks a month, reverses anything, views `/log` filter by user, exports.
+- **Roles** (`can(role, action)`): staff can create everything and reverse own records of the same day; only owner edits settings, users, pay rates, locks a month, reverses anything, views `/log` filter by user, exports. Since D15 staff are called **operators**; what they may do is set by the owner's toggles (SPEC-M13), whose defaults are exactly these limits.
 - **Offline**: Dexie tables `records`, `photos`, `meta`; `addRecord` stamps author/device/day; sync client pushes pending every 30 s + on online, pulls by cursor, marks rejected with reason; header badge pending/synced/offline.
 - **Server** (`server/`, Node 24 + `pg`): `POST /api/units` (create/join by unitId + key), `POST /api/auth/token` (PIN verify, HMAC token 30 d), `POST /api/sync`, `PUT/GET /api/photos/:id` (≤ 300 KB JPEG, bytea), `GET /api/health`. Rules: records immutable + idempotent by id; `setting`/`user`/`worker` pay fields/`period_lock` only from owner; second `wage_payment` for the same worker+month rejected; any record dated inside a locked month rejected (`period_locked`).
 - **Backdating**: every entry screen has a date field defaulting to today; staff may pick any unlocked past date (D-plan "backdated entries"). `day` = chosen date; `at` = real time (the log shows both).
@@ -65,27 +69,28 @@ Status legend: Draft | Approved | Built.
 
 ### SPEC-M02 — Wages
 - **Goal**: compute each worker's month from attendance/pieces, net advances, pay, slip, lock.
-- **Data**: `advance` {workerId, day, amountPaise, mode cash|upi, note?, photoIds?}. `wage_payment` {workerId, month 'YYYY-MM', grossPaise, otPaise, deductionLines[{label, amountPaise}], advanceRecoveredPaise, netPaise, paidPaise, mode, day, note?, photoIds?}. `period_lock` {month, lockedAt, by}. `setting.overtimeEnabled` (boolean, default false, owner only; D12).
+- **Data**: `advance` {workerId, day, amountPaise, mode cash|upi, note?, photoIds?}. `wage_payment` {workerId, month 'YYYY-MM', grossPaise, otPaise, deductionLines[{label, amountPaise}], advanceRecoveredPaise, netPaise, paidPaise, mode, day, note?, photoIds?}. `period_lock` {month, lockedAt, by}. Unit settings used here (owner only, SPEC-M13): `overtimeEnabled` (default false; D12), `offDayPolicy` (default `sundays_and_holidays`; D2), `slipSections` (default below). Owner overrides: SPEC-M14.
 - **Formulas** (`domain/wage.ts`, integer paise):
   - working days W = settings.workingDaysPerMonth (holidays do not reduce W; W is the divisor only).
   - monthly: perDay = round(salary ÷ W); gross = salary − absent×perDay − half×round(perDay÷2). Sundays and holidays change nothing.
-  - daily: offDays = Sundays + listed holidays in the month, on or after joinedOn, minus those marked absent. A holiday on a Sunday counts once; a present or half mark on an off day is not counted again (assumed, needs confirmation). gross = (present + offDays)×rate + half×round(rate÷2). **Provisional** (D2; `docs/decisions.md` D-002).
+  - daily: offDays = the days chosen by `offDayPolicy` (`none` → no days; `sundays` → Sundays; `sundays_and_holidays` → Sundays + listed holidays) in the month, on or after joinedOn, minus those marked absent. A holiday on a Sunday counts once; a present or half mark on an off day is not counted again (assumed, needs confirmation). gross = (present + offDays)×rate + half×round(rate÷2). Default policy is **provisional** (D2; `docs/decisions.md` D-002).
   - piece: gross = Σ count×pieceRate (nothing for off days).
   - ot = round(otHours × otRate) when `overtimeEnabled`, else 0. net = gross + ot − Σ deductions − advanceRecovered. paid = net rounded to ₹1 (half-up; rounding shown on the pay screen).
   - advanceRecovered default = min(outstanding advances, max(0, gross+ot−deductions)); staff may lower it; balance carries.
-- **Screens**: `/advances/new` (worker, amount, mode, photo if > limit); `/wages` (month picker; table: worker, P/½/A, OT (only when overtime is on), gross, advances, net, paid/pending; totals; "Lock month" owner-only when all paid or explicitly); `/wages/:month/:workerId` (detailed breakdown, including paid off days for daily workers, editable deduction lines, recovery amount, pay → `wage_payment`, then **preview-and-confirm** WhatsApp slip text via wa.me). **Printed slip** (paid months only, `docs/decisions.md` D-003): one A4 page showing only business name, worker name, month, gross (also for monthly workers), advance recovered, deductions, net pay and a signature line, built from the stored `wage_payment`. The detailed breakdown stays on the pay screen and the worker page.
+- **Screens**: `/advances/new` (worker, amount, mode, photo if > limit); `/wages` (month picker; table: worker, P/½/A, OT (only when overtime is on), gross, advances, net, paid/pending; totals; "Lock month" owner-only when all paid or explicitly); `/wages/:month/:workerId` (detailed breakdown, including paid off days for daily workers, editable deduction lines, recovery amount, pay → `wage_payment`, then **preview-and-confirm** WhatsApp slip text via wa.me). **Printed slip** (paid months only, `docs/decisions.md` D-003): one A4 page built from the stored `wage_payment`, showing the sections switched on in `slipSections`. Fixed list of sections: business name, worker name, month, gross (gross pay + overtime, also for monthly workers), advance recovered, deductions, net pay, signature line (these 8 on by default) and attendance summary, paid off days, pieces, overtime (only while overtime is on), rate, rounding, owner changes, advance balance, payment date and mode (off by default). Business name, worker name, month and net pay cannot be switched off (assumed). The WhatsApp slip text uses the same sections (assumed). The detailed breakdown stays on the pay screen and the worker page.
 - **Rules**: one payment per worker+month (server rejects duplicates); any attendance/advance/payment dated in a locked month is rejected client + server; unlock = owner-only reversal of the lock, logged.
-- **Acceptance**: AC1 (overtime on) salary ₹12,000, W=26, 2 absent, 1 half, 3 h OT at ₹58/h → gross 12,000−923−231=10,846; ot 174; net 11,020 with ₹1,000 advance → 10,020 paid. AC2 second payment same month rejected. AC3 locked month refuses new attendance with a Hindi message. AC4 WhatsApp slip text lists every line of the breakdown; share only after preview. AC5 overtime off (the default): worker form, attendance, wage sheet, pay page, slip, month report, export and worker page show no overtime; a new worker's `otRatePaise` is 0; the AC1 worker without the OT line → paid ₹9,846. AC6 daily ₹400, month 2026-11 (Sundays 1, 8, 15, 22, 29), holiday 2026-11-09, joined 2026-11-05, 18 present, 1 half, marked absent on 22 Nov → paid off days 8, 9, 15, 29 = 4 → gross (18 + 4) × 400 + 200 = ₹9,000; the same marks add nothing for a piece-rate worker; a monthly worker's pay is unchanged. AC7 the printed slip fits one A4 page with exactly the D-003 fields and a signature line; a monthly worker's slip shows a gross line; no attendance, piece or overtime lines.
+- **Acceptance**: AC1 (overtime on) salary ₹12,000, W=26, 2 absent, 1 half, 3 h OT at ₹58/h → gross 12,000−923−231=10,846; ot 174; net 11,020 with ₹1,000 advance → 10,020 paid. AC2 second payment same month rejected. AC3 locked month refuses new attendance with a Hindi message. AC4 WhatsApp slip text shows the switched-on slip sections; share only after preview. AC5 overtime off (the default): worker form, attendance, wage sheet, pay page, slip, month report, export and worker page show no overtime; a new worker's `otRatePaise` is 0; the AC1 worker without the OT line → paid ₹9,846. AC6 daily ₹400, month 2026-11 (Sundays 1, 8, 15, 22, 29), holiday 2026-11-09, joined 2026-11-05, 18 present, 1 half, marked absent on 22 Nov → paid off days 8, 9, 15, 29 = 4 → gross (18 + 4) × 400 + 200 = ₹9,000; the same marks add nothing for a piece-rate worker; a monthly worker's pay is unchanged. AC7 with default `slipSections` the printed slip fits one A4 page with exactly business name, worker name, month, gross, advance recovered, deductions, net pay and a signature line; a monthly worker's slip shows a gross line; no attendance, piece or overtime lines. AC8 `offDayPolicy` with the AC6 marks: `none` → gross ₹7,400; `sundays` → off days 8, 15, 29 → ₹8,600; `sundays_and_holidays` → ₹9,000. AC9 the owner switches on "attendance summary" and switches off "signature line" → the next printed slip shows the summary and no signature line; the setting change is in the entry log.
 
 ### SPEC-M03 — Inventory
 - **Data**: `item` {entityId, name, kind raw|finished, unit kg|pcs|litre|metre, lowStockQty, active}. Quantities in **integer thousandths** (grams for kg; pcs×1000) to avoid float. `stock_in` {itemId, day, qty, ratePaise?, supplier?, note?, photoIds?}. `stock_out` {itemId, day, qty, purpose production|sale|other, workerId?, orderId?, note?}. `stock_adjust` {itemId, day, qtyDelta (±), reason wastage|count_correction|damage|other, note, photoIds?}. `finished_in` {itemId (kind finished), day, qty, orderId?}.
 - **Projections**: `stockBalance(recs, itemId, asOfDay)`; `stockLedger(item, month)` opening/in/out/adjust/closing; `lowStock(recs)`; `finishedStock(recs)` by design+size with order link.
 - **Screens**: `/stock` (items with balance, low-stock badge, finished section), `/stock/new` (item), `/stock/:itemId` (ledger), `/stock/in`, `/stock/out`, `/stock/adjust` (reason required, photo required for adjustments above limit value or always for wastage — owner setting).
 - **Rules**: out/adjust that would take balance below 0 is blocked inline (owner may override with reason, logged). Finished carpets decrease on `delivery` (M04).
+- **Finished carpets** (D15): the catalogue (SPEC-M15) becomes the place for finished carpets. Existing `kind: finished` items and their history keep working and can still be delivered from; nothing is migrated automatically (`docs/decisions.md` DM-004).
 - **Acceptance**: AC1 in 25.000 kg, out 12.500, adjust −0.250 wastage → balance 12.250, ledger matches. AC2 low-stock at ≤ lowStockQty appears on dashboard. AC3 over-issue blocked.
 
 ### SPEC-M04 — Orders
-- **Data**: `buyer` {entityId, name, phone?, city?, active}. `order` {entityId, buyerId, orderNo (auto `ORD-001`…, editable), design, size (free text e.g. 8x10), qty, dueDate, pricePaise?, notes?, receivedOn}. `order_status` {orderId, status new|in_production|finished|delivered, day, note?}. `delivery` {orderId, day, qty, note?, finishedItemId?} (reduces finished stock when linked). `order_note` {orderId, text, photoIds?}.
+- **Data**: `buyer` {entityId, name, phone?, city?, active}. `order` {entityId, buyerId, orderNo (auto `ORD-001`…, editable), design, size (free text e.g. 8x10), qty, dueDate, pricePaise?, notes?, receivedOn}. `order_status` {orderId, status new|in_production|finished|delivered, day, note?}. `delivery` {orderId, day, qty, note?, finishedItemId?, carpetId?} (reduces finished stock or the catalogue carpet when linked; SPEC-M15). `order_note` {orderId, text, photoIds?}.
 - **Projections**: `orderView` (latest status, deliveredQty, pendingQty, overdue = dueDate < today and pending>0, dueSoon ≤ 7 days, amountPending = price×pending if price). Status auto-moves to `delivered` when deliveredQty ≥ qty.
 - **Screens**: `/orders` (filter by status; overdue first), `/orders/new`, `/orders/:id` (timeline of status/notes/deliveries; buttons: start production, finished, deliver qty; WhatsApp status text with preview-and-confirm), `/buyers`.
 - **Acceptance**: AC1 order 20 pcs, deliver 12 → pending 8, status stays; deliver 8 → delivered. AC2 due 3 days ago with pending → overdue on list + dashboard. AC3 status share text in Hindi via preview.
@@ -156,8 +161,92 @@ Status legend: Draft | Approved | Built.
 - **Tests**: the functional e2e specs (01–09) run in **both** projects (mobile 390×844 and desktop 1440×900); new `e2e/22-desktop-ux.spec.ts` covers keyboard attendance, the log table + type filter, quick entry menu, collapse remembered after reload, logout from the side menu, and home panels; the desktop sweep covers 1024 and 1920 too. Screenshots after the change at 390 / 768 / 1280 / 1440 in `docs/screenshots/m12/after/`.
 - **Out**: command palette, global search, drag-and-drop, multi-select bulk edit, printing changes.
 
+### SPEC-M13 — Unit rules as settings + operator permissions
+- **Goal** (owner direction 2026-11-01, D15): rules that differ between units become owner settings with sensible defaults; the owner decides what operators may do. Details and assumptions: `docs/decisions.md` D-001, D-002, D-003, D-005.
+- **Data** (new fields on the `setting` record; a missing field means its default, so older units keep working):
+  - `overtimeEnabled`: boolean, default `false` (D12).
+  - `offDayPolicy`: `none` | `sundays` | `sundays_and_holidays`, default `sundays_and_holidays` (D2).
+  - `slipSections`: map of section → on/off, defaults in SPEC-M02 (D-003).
+  - `operatorPerms`: `{ addEntries: true, editPast: false, seeWages: true, seePrices: true, export: false }` (D-005). "Operator" = the `staff` role.
+- **Screens** (`/settings`, owner edits, operators see read-only):
+  - "पगार के नियम" card: overtime on/off, off-day policy (3 choices with a one-line example each), slip sections checklist with a live preview of the A4 slip.
+  - "ऑपरेटर क्या कर सकते हैं" card: the 5 toggles, each with a one-line explanation.
+  - With overtime off, every overtime field, column, line and keyboard key listed in D12 is not rendered.
+- **Rules:**
+  - Permission checks use the unit's `operatorPerms` in the app (`can(role, action, perms)`) and on the server.
+  - **Add entries off:** the server refuses every operator write (`forbidden_permission`).
+  - **Edit past entries on:** operators may reverse any record from an earlier day of an unlocked month, with a reason. **Off:** only their own records from today, where "today" is the server's IST date, not the reversal's `day` (fixes audit §16 P2).
+  - **See wages off / see prices off:** the server leaves the hidden values out of everything it sends to an operator, as for PIN hashes (SPEC-M11). An operator edit without those values gets the stored values copied by the server. The app drops hidden values it already holds on the next sync. Wage and advance screens are hidden from the operator; attendance and piece counts stay.
+  - **Export off:** export button hidden for operators.
+  - Settings, logins, pay rates, month lock and wage overrides stay owner-only, with no toggle.
+- **Acceptance:**
+  - AC1 a new unit has overtime off, policy `sundays_and_holidays`, the 8 default slip sections and the default operator toggles; an operator can do exactly what staff can do today, except that nobody sees overtime.
+  - AC2 the owner turns overtime on → OT stepper, columns and lines appear; off → they disappear; recorded hours stay in the entry log.
+  - AC3 add entries off → the operator's attendance toggles and entry buttons are disabled; a pushed operator record is refused with `forbidden_permission`.
+  - AC4 edit past entries on → the operator reverses another user's entry from yesterday with a reason → accepted. Off → refused (`forbidden_reversal`), including a reversal back-dated to the target's day.
+  - AC5 see wages off → the operator's pull has no `wage_payment` or `advance` amounts and no worker pay fields; the wages menu is hidden; the operator can still mark attendance; an operator edit of a worker keeps the stored salary.
+  - AC6 see prices off → the operator's pull has no order price, stock-in rate or catalogue cost and price; no price column or field is shown; the owner still sees them.
+  - AC7 export off (default) → no export button for operators; on → the operator can export.
+  - AC8 every settings change is a new `setting` version shown in the entry log with author and time.
+
+### SPEC-M14 — Owner override on a wage line
+- **Goal** (D15): calculations are suggestions. The owner can change any calculated wage line before paying, with a reason that is written to the history. Details and assumptions: `docs/decisions.md` D-004.
+- **Data:** `wage_payment.overrides?: [{ line, computedPaise, finalPaise, reason }]`, with `line` ∈ `base`, `absent_deduct`, `half_deduct`, `days`, `off_days`, `pieces`, `overtime`, `advance_recovered`, `rounding`. The payment's totals are the final amounts; `snapshot` keeps the computed inputs.
+- **Formulas:** each overridden line uses `finalPaise`; gross, net and paid follow SPEC-M02 with the final values. Net may never be negative.
+- **Screens:**
+  - Pay page (owner only): each calculated line has "बदलें". It opens a sheet with the computed amount, the new amount and a required reason. An overridden line shows the new amount, the computed amount struck through, and the reason.
+  - Entry log: shows each override with the line, both amounts, the reason, who and when.
+  - Worker's own page: marks overridden lines "मालिक ने बदला".
+- **Rules:**
+  - The server refuses a payment with overrides that is not from the owner (`forbidden_override`), has an empty reason, names an unknown line, or would make net negative (`invalid_amounts`).
+  - The server checks the arithmetic on the final amounts.
+  - Overrides never change the worker's rates.
+  - A paid month is changed by reversing the payment with a reason and paying again.
+- **Acceptance:**
+  - AC1 the SPEC-M02 AC5 worker (overtime off, ₹1,000 advance) has a computed absence deduction of ₹923.08. The owner sets it to ₹500 with reason "एक दिन की छुट्टी दी थी" → gross ₹11,269.23, paid ₹10,269. The stored payment has `overrides: [{ line: 'absent_deduct', computedPaise: 92308, finalPaise: 50000, reason }]`.
+  - AC2 without a reason the override cannot be saved.
+  - AC3 an operator sees no "बदलें"; an operator payment carrying overrides is refused with `forbidden_override`.
+  - AC4 an override that would make net negative is refused in the app and by the server.
+  - AC5 the entry log shows the override with ₹923.08 → ₹500 and the reason; the worker's page marks the line "मालिक ने बदला".
+  - AC6 after the payment, the worker's salary is still ₹12,000.
+
+### SPEC-M15 — Finished carpet catalogue
+- **Goal** (D15): one place for finished carpets, with photos, design and size, that the owner and operators can search, reserve for an order and deliver from. Details and assumptions: `docs/decisions.md` D-006, DM-004.
+- **Data:**
+  - `carpet` (master, versioned by `entityId`): `design` (name or code), `lengthMilli`, `widthMilli`, `sizeUnit` `ft` | `m` | `cm`, `mode` `piece` | `quantity`, `tag?` (piece mode, unique in the unit), `materialNotes?`, `costPaise?`, `pricePaise?`, `notes?`, `photoIds` (0–4), `active`.
+  - `carpet_in` {carpetId, qty}: carpets added (piece mode: exactly one, qty 1).
+  - `carpet_reserve` {carpetId, orderId, qty}: carpets set aside for an order. A release is a `reversal` with a reason.
+  - `delivery` (SPEC-M04) gets `carpetId?`. A delivery against an order uses that order's reservation of the carpet first.
+- **Projections** (pure, tested): per carpet `added`, `reserved` (open reservations − deliveries from them), `delivered`, `inStock = added − reserved − delivered`; piece status = delivered / reserved / in stock; per order, reserved and delivered from the catalogue.
+- **Screens:**
+  - `/catalogue`: photo grid (cover = first photo), design, size, status chip with counts, selling price if allowed; search by design, tag or notes; filters by status, size and design; delivered carpets hidden unless the status filter includes them. Desktop: 4–6 cards per row with a filter panel. Phone: 2 per row with a filter sheet.
+  - `/catalogue/new` and `/catalogue/:id/edit`: up to 4 photos, design, length × width + unit, piece tag or quantity, material notes, cost, selling price, notes, "save and add another".
+  - `/catalogue/:id`: photos, details, counts, history, "ऑर्डर के लिए रखें" (order + qty), "डिलीवर करें" (order + qty), release a reservation (reason required).
+  - Order detail: "कैटलॉग से रखें" and "कैटलॉग से डिलीवर करें".
+  - The stock screen's finished-carpet section links to the catalogue.
+- **Rules** (app and server):
+  - Piece tags are unique among the unit's active carpets (`duplicate_tag`).
+  - At most 4 photos (`too_many_photos`).
+  - A reservation is ≤ in stock and ≤ what the order still needs after its other reservations.
+  - A delivery is ≤ in stock + reserved for that order, and ≤ the order's pending quantity.
+  - Sizes and quantities are positive; a piece is added once.
+  - Prices follow "See prices" (SPEC-M13).
+  - Edits are new versions; nothing is deleted. Locked months refuse catalogue movements dated inside them.
+- **Acceptance:**
+  - AC1 the owner adds quantity entry "Kashan 101", 8 × 10 ft, qty 5, 3 photos → the grid shows the cover photo and "5 in stock".
+  - AC2 a fifth photo cannot be added.
+  - AC3 piece tag "BH-0042" exists → a second carpet with the same tag is refused in the app and by the server.
+  - AC4 order ORD-001 for 4 → reserve 3 from Kashan 101 → in stock 2, reserved 3. Reserving 2 more is refused (the order needs only 1 more).
+  - AC5 deliver 2 from the reservation → reserved 1, delivered 2, order 2/4 delivered, pending 2, status unchanged. Delivering 3 more is refused (pending is 2).
+  - AC6 piece "BH-0042" reserved, then delivered → status delivered; hidden from the default grid; shown when the status filter includes delivered.
+  - AC7 search "kashan" and the size filter 8 × 10 find it; the "reserved" filter shows only carpets with a reservation.
+  - AC8 "See prices" off → an operator sees no cost or price in the grid or detail, and their pull has no `costPaise` or `pricePaise`; the owner still sees them.
+  - AC9 photos are JPEG, longest edge ≤ 1280 px, ≤ 300 KB; adding a carpet works offline and syncs later.
+  - AC10 releasing a reservation with a reason puts the carpets back in stock, and the log shows it.
+- **Out:** custom fields, WhatsApp cards, barcodes or QR codes, per-carpet production tracking, price lists.
+
 ## Scope — Out (all modules)
-GST/invoicing, payment gateway, subscription billing, multi-branch, AI/voice, push notifications, barcodes/QR, supplier ledger, per-carpet loom tracking, thekedar chain, tauli, exporter links, Tally export, IVR.
+Custom fields and WhatsApp cards (not yet, D15), GST/invoicing, payment gateway, subscription billing, multi-branch, AI/voice, push notifications, barcodes/QR, supplier ledger, per-carpet loom tracking, thekedar chain, tauli, exporter links, Tally export, IVR.
 
 ## Open assumptions to confirm (non-blocking; defaults applied)
-A1 Overtime in hours with per-worker ₹/hour (D12). A2 Half day = ½ deduction / ½ rate. A3 Finished carpets as `item` kind=finished named "<design> <size>". A4 Order numbers auto `ORD-nnn`. A5 Photos capped 300 KB, stored in Postgres. A6 Staff can see wage amounts (they compute payday today); only owner can change rates.
+A1 Overtime in hours with per-worker ₹/hour (D12). A2 Half day = ½ deduction / ½ rate. A3 ~~Finished carpets as `item` kind=finished named "<design> <size>".~~ Superseded by the catalogue (SPEC-M15). A4 Order numbers auto `ORD-nnn`. A5 Photos capped 300 KB, stored in Postgres. A6 Staff can see wage amounts by default ("See wages" toggle, SPEC-M13); only owner can change rates.

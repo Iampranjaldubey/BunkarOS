@@ -1,5 +1,25 @@
 # CarpetOps: complete product brief
 
+## Product direction [Decided by owner 2026-11-01]
+**A digital register for carpet units.** It records attendance, workers, wages, orders and inventory, including a catalogue of finished carpets.
+
+- **The owner sees and edits everything.**
+- **The unit decides who operates it:** the owner alone, or one or more operators (usually the munshi; the `staff` role in the code). The owner sets what operators may do.
+- **Calculations are suggestions.** The owner can override any calculated wage line with a reason, and the override is written to the history.
+- **Rules are per-business settings with sensible defaults, not hard-coded decisions.** When a partner works differently, add or extend a setting. Do not change the rule for every unit.
+- **Not yet:** custom fields, WhatsApp cards.
+
+| Setting (owner only) | Choices | Default | Details |
+|---|---|---|---|
+| Overtime enabled | on / off | off | 8.2, docs/decisions.md D-001 |
+| Off-day policy | none / Sundays / Sundays and listed holidays | Sundays and listed holidays [Provisional] | 8.3, D-002 |
+| Slip sections | a fixed list of sections, each on or off | business name, worker name, month, gross, advance recovered, deductions, net pay, signature line | 8.4, D-003 |
+| Operator permissions | add entries, edit past entries, see wages, see prices, export | on, off, on, on, off (= today's staff limits) | section 5, D-005 |
+
+Wage overrides: section 8.4 and D-004. Finished carpet catalogue: section 8.10 and D-006. Specs: SPECS.md D15, SPEC-M13 to SPEC-M15.
+
+---
+
 Purpose of this file: the single source of truth for what we are building and why. Read it fully before any task. It combines the product idea, the confirmed decisions from partner answers, the current build status and the roadmap.
 
 How to read the tags:
@@ -13,7 +33,7 @@ Precedence for facts about the existing system: the code, tests, database constr
 ---
 
 ## 1. One-line summary
-A Hindi-first, offline-capable app that lets small and mid-sized carpet manufacturing units in the Bhadohi region run attendance, monthly wages, advances, raw material stock, finished carpets and buyer orders in one place, replacing paper registers and Excel. Modules: workers and attendance, wages and advances, inventory management (raw materials and finished carpets), buyers and orders, plus a home dashboard, monthly report and entry log.
+A Hindi-first, offline-capable app that lets small and mid-sized carpet manufacturing units in the Bhadohi region run attendance, monthly wages, advances, raw material stock, finished carpets and buyer orders in one place, replacing paper registers and Excel. Modules: workers and attendance, wages and advances, inventory management (raw materials), a finished carpet catalogue, buyers and orders, plus a home dashboard, monthly report and entry log.
 
 Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for example the BUNKAR_SECRET variable). [Open] Pick one name before partners and faculty see the product, and use it everywhere.
 
@@ -41,8 +61,8 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
 ## 5. Users and roles
 | Role | Access | Status |
 |---|---|---|
-| Owner | Everything: settings, users, pay rates, locking months, export, undo any entry | Built |
-| Staff (munshi) | Add entries (attendance, advances, stock, orders). Cannot change settings, users or pay rates, lock a month or export. Can undo only their own entries from the same day | Built |
+| Owner | Sees and edits everything: settings, users, pay rates, locking months, export, undo any entry, override any wage line with a reason | Built, except wage overrides (Planned, D-004) |
+| Operator (staff, munshi) | What the owner allows with five toggles. Defaults = today's limits: add entries (attendance, advances, stock, orders); cannot edit past entries except own entries from the same day; sees wages and prices; cannot export. Never: settings, users, pay rates, month lock, wage overrides | Built with today's fixed limits; toggles Planned (D-005) |
 | Worker | Own read-only page by WhatsApp link or by shop code, name and 4-digit worker code. No login | Built |
 | Founders' admin | Read-only view of all units, only when ADMIN_KEYS is set | Built |
 | Faculty or demo viewer | A read-only way to see the product | Gap. Use a demo unit with fake data for now |
@@ -55,6 +75,8 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
 5. **Simple for the munshi.** Few taps, big targets, no jargon.
 6. **PC is a first-class device.** Owners work on PCs. Wage sheets, reports and printing must work well on a desktop browser.
 7. **Do not build beyond the MVP list.** Depth and reliability beat breadth.
+8. **Calculations are suggestions.** Show how each figure was worked out; the owner can override it with a reason, and the history keeps both.
+9. **Rules are settings.** A rule that differs between units is an owner setting with a sensible default.
 
 ## 7. Architecture (as built)
 - **App:** offline-first PWA in React and TypeScript (about 8,000 lines in app/src, excluding tests). Desktop-first layout from 1024 px: collapsible side menu with quick entry and logout, real tables, keyboard attendance; bottom bar on phones. Languages: Hindi (default), Hinglish, English. Light, dark or automatic theme, both checked for AA contrast.
@@ -84,8 +106,8 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
 - **[Confirmed]** Partners pay Sundays and holidays.
 - Holiday list: owner-only Settings screen to add and remove holidays; staff see it read-only; the attendance screen notes when the picked day is a holiday or Sunday. Sundays are the default weekly off. **Built**.
 - Current pay: monthly-salary workers lose pay only for marked absences. Daily-rate workers are paid present days times rate, so unmarked Sundays and holidays are not paid. **Gap**.
-- **Rule [Decided by owner 2026-11-01, Provisional business rule, docs/decisions.md D-002]:**
-  - A daily-rate worker gets one paid day for each Sunday and each listed holiday on or after their joining date, unless they were explicitly marked Absent that day.
+- **Rule [Decided by owner 2026-11-01, docs/decisions.md D-002]:** an owner setting "Off-day policy" with three choices: none, Sundays, or Sundays and listed holidays. Default: **Sundays and listed holidays** (**Provisional** business rule; confirm with design partners before they rely on it).
+  - A daily-rate worker gets one paid day for each day the policy chooses that falls on or after their joining date, unless they were explicitly marked Absent that day.
   - Piece-rate workers get nothing for off days. Monthly workers are unaffected.
   - Mid-month joiners count from their joining date; absences around an off day do not remove it.
   - Show paid off days distinctly in the month grid and in the wage sheet and pay-screen breakdown.
@@ -110,7 +132,8 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
 - **[Open]** Whether net pay may go negative. Never store a negative net. The server already checks arithmetic.
 - **[Open]** Whether a half day is always half a day.
 - **[Open]** Whether piece rates vary by design or size. The rate is stored on each piece entry, so this already works if entered per entry.
-- **Wage slip [Decided by owner 2026-11-01, docs/decisions.md D-003]:** the printed slip is a real A4 page showing only business name, worker name, month, gross wage (also for monthly workers), advance recovered, deductions, net pay and a signature line. No attendance, piece or overtime details on the slip. The detailed breakdown stays on the pay screen and the worker's own page. A4 print is the main route; WhatsApp share is secondary. Status: **Gap** (today the slip lists the breakdown lines, monthly workers get no gross line, there is no signature line, and printing prints the screen).
+- **Wage slip [Decided by owner 2026-11-01, docs/decisions.md D-003]:** the printed slip is a real A4 page made of a fixed list of sections that the owner switches on or off (setting "Slip sections"). Default: business name, worker name, month, gross wage (also for monthly workers), advance recovered, deductions, net pay and a signature line. Off by default: attendance summary, paid off days, pieces, overtime, rate, rounding, owner changes, advance balance, payment date and mode. The detailed breakdown stays on the pay screen and the worker's own page. A4 print is the main route; WhatsApp share is secondary. Status: **Gap** (today the slip lists the breakdown lines, monthly workers get no gross line, there is no signature line, and printing prints the screen).
+- **Owner override [Decided by owner 2026-11-01, docs/decisions.md D-004]:** before paying, the owner can change the amount of any calculated wage line. A reason is required. The computed amount, new amount, reason, who and when go to the history; the worker's page marks the line as changed by the owner. Net pay can never go negative. Overrides never change the worker's rates. Status: **Gap**.
 
 ### 8.5 Inventory management (raw materials, finished carpets and stock ledger)
 Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adjust and finished_in records). This is the inventory module.
@@ -138,9 +161,9 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
 **Link to orders:** a delivery can take from finished-carpet stock and cannot take more than is on hand (see 8.6). **Built**.
 
 **Gaps and open items**
-- Finished carpets by design and size: **Partial**. They are items, so name them like "Design A 5x8". No separate design and size fields yet (backlog P2).
+- Finished carpets by design and size: **Planned** as the finished carpet catalogue (section 8.10). Today they are items named like "Design A 5x8"; those items keep working (docs/decisions.md DM-004).
 - Units per raw material: **[Open]** confirm with partners.
-- Carpets made for stock without an order: **[Open]** how they are recorded.
+- Carpets made for stock without an order: recorded in the catalogue (section 8.10).
 - Import of opening stock from Excel or CSV: **Planned** (backlog P2).
 - Not in scope for now: supplier management, barcodes, purchase orders, per-loom wool issue and return reconciliation (see section 11).
 
@@ -163,11 +186,31 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
 ### 8.9 Founders' admin
 - Read-only English view of every unit: owner, shop code, logins, workers, entries this month, last activity; unit page with users, workers, wage sheet, stock, orders, usage and last 50 entries. Only active when ADMIN_KEYS is set. **Built**. This is the source of usage evidence for design-partner confirmations.
 
+### 8.10 Finished carpet catalogue [Decided by owner 2026-11-01, docs/decisions.md D-006, SPEC-M15]
+- **Each carpet:**
+  - up to 4 photos, compressed like other photos
+  - design name or code
+  - size (length, width and unit)
+  - either a quantity, or a unique piece tag for a single carpet
+  - material notes
+  - optional cost and selling price
+  - status: in stock, reserved or delivered
+  - notes
+- **Screens:**
+  - Photo grid with search (design, tag, notes) and filters (status, size, design). Delivered carpets are hidden unless the filter asks for them.
+  - Reserve carpets for an order, deliver from the reservation, and release a reservation with a reason.
+  - A delivery updates the order's delivered quantity and status as today.
+- **Limits:** a reservation or delivery can never exceed what is in stock or what the order still needs. Piece tags are unique in the unit.
+- **Prices:** the owner can hide cost and selling price from operators (operator permission "See prices").
+- **Works offline;** entries sync like everything else.
+- **Not yet:** custom fields, WhatsApp cards, barcodes.
+- **Status: Planned.**
+
 ## 9. Gaps and backlog (in priority order)
 **P0 (before partners rely on it)**
-1. Paid Sundays and holidays for daily workers (section 8.3, decided D-002).
+1. Paid Sundays and holidays for daily workers, as the owner setting "Off-day policy" (section 8.3, decided D-002).
 2. Owner setting "Overtime enabled", default off; hide overtime when off; default overtime rate zero (section 8.2, decided D-001).
-3. Printed A4 wage slip with exactly the decided content and a signature line (section 8.4, decided D-003).
+3. Printed A4 wage slip built from the owner setting "Slip sections", default = the decided content with a signature line (section 8.4, decided D-003).
 4. Rerun all tests (server, Vitest, Playwright) on the deploy machine.
 5. Deploy with HTTPS, backups and the environment variables set, then test on a real phone and a real PC.
 6. Demo unit with fake data for faculty.
@@ -175,12 +218,15 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
 **P1**
 7. (Done 2026-11-01: PIN hashes stay on the server, photos need a login.) Remaining hardening found in docs/audit.md §16: photo ids must not be overwritten, staff same-day undo must use the server's date, and stock balances must be checked on the server.
 8. Test offline sync with two phones and rejected-record cases (locked month, second payment).
-9. A read-only viewer role for faculty.
+9. A read-only viewer role for faculty (can be an operator with "Add entries" off, D-005).
 10. (Done 2026-11-01: TASKS.md updated.)
+10a. Owner override on any wage line with a reason, written to the history (section 8.4, D-004, SPEC-M14).
+10b. Operator permission toggles: add entries, edit past entries, see wages, see prices, export (section 5, D-005, SPEC-M13).
+10c. Finished carpet catalogue (section 8.10, D-006, SPEC-M15).
 
 **P2**
 11. CSV export, pending-delivery quantity tile. (The Orders sheet in the Excel export is done.)
-12. Design and size fields for finished carpets.
+12. (Moved to P1 10c: design and size fields for finished carpets are part of the catalogue.)
 13. Excel or CSV import for workers, items and opening stock.
 14. Editable whole-shop month attendance grid, if missing.
 
@@ -189,7 +235,7 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
 16. Sync performance as data grows (the server re-reads records of a type on each sync).
 
 ## 10. Out of scope (do not build)
-Invoicing and GST, order payment tracking, payment gateway, subscription billing, multi-branch, AI features, barcodes, supplier management, native apps, anything not listed above.
+Invoicing and GST, order payment tracking, payment gateway, subscription billing, multi-branch, AI features, barcodes, supplier management, native apps, custom fields and WhatsApp cards (not yet), anything not listed above.
 
 ## 11. Later ideas (unvalidated, not now)
 These came from early research and have not been confirmed by partners. Do not build them. They are only here so they are not lost: contractor (thekedar) hierarchy and wage flows, wool issued versus carpet returned per loom with variance, loom progress check-ins by photo, an exporter-facing order tracking link, voice wage slips for weavers, buyer or compliance records. Validate with partners first.

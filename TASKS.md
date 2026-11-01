@@ -38,6 +38,10 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 19 | — | docs/audit.md: code vs product brief, fix list in §9 order | DONE | 367 lines; probe of 5 server gaps; checks in audit §17 |
 | 20 | — | Owner decisions D-001 overtime setting, D-002 paid off days (provisional), D-003 A4 slip → docs/decisions.md + SPECS D2/D12/M02 + brief updated; DM-001..003 recorded as needs confirmation | DONE | docs only, no code; AC5/AC6 numbers checked by script (₹9,846; off days 8, 9, 15, 29 → ₹9,000) |
 | 21 | M02 | Implement D-001, D-002, D-003 | TODO | needs a plan; specs are now in SPECS.md M02 |
+| 22 | — | Product direction (D15): brief "Product direction" section; decisions P-000, D-001…D-006, DM-004; SPECS D2, M00, M02, M03, M04, M13, M14, M15 | DONE | docs only, no code; override and off-day example amounts checked by script |
+| 23 | M13 | Unit settings (overtime, off-day policy, slip sections) + operator permission toggles | TODO | needs a plan; replaces row 21's setting work |
+| 24 | M14 | Owner override on any wage line, with a reason | TODO | needs a plan |
+| 25 | M15 | Finished carpet catalogue | TODO | needs a plan; decide DM-004 first |
 
 ## Blocked
 - Push to GitHub: needs the user's "yes" and ShubhamKang write access on Pranjal's repo (Git Credential Manager will prompt in the browser).

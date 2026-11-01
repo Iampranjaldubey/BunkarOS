@@ -35,6 +35,9 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 16 | — | docs/ARCHITECTURE.md (features, schema, API, rules) | DONE | 213 lines; versions, routes, rules and formulas checked against package.json, routes.mjs, rules.mjs, domain/* |
 | 17 | M12 | Desktop-first UI/UX, phone keeps working | DONE | tsc 0 · build OK · vitest 9 files / 33 (incl. contrast AA both themes) · server 26/26 · e2e 27/27 twice (12 mobile + 15 desktop; 01–09 in both projects, new 22-desktop-ux, sweeps 1024/1440/1920 + 390/768 × 3 languages, 44 px target audit) · screenshots docs/screenshots/m12/after (4 widths × 19 routes, 0 overflow, 0 page errors) |
 | 18 | — | Commit branch `desktop-first` | DONE | commit fcacb46 on desktop-first (190 files, +2974/−233); push waits for the user (agent config denies `git push`) |
+| 19 | — | docs/audit.md: code vs product brief, fix list in §9 order | DONE | 367 lines; probe of 5 server gaps; checks in audit §17 |
+| 20 | — | Owner decisions D-001 overtime setting, D-002 paid off days (provisional), D-003 A4 slip → docs/decisions.md + SPECS D2/D12/M02 + brief updated; DM-001..003 recorded as needs confirmation | DONE | docs only, no code; AC5/AC6 numbers checked by script (₹9,846; off days 8, 9, 15, 29 → ₹9,000) |
+| 21 | M02 | Implement D-001, D-002, D-003 | TODO | needs a plan; specs are now in SPECS.md M02 |
 
 ## Blocked
 - Push to GitHub: needs the user's "yes" and ShubhamKang write access on Pranjal's repo (Git Credential Manager will prompt in the browser).

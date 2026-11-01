@@ -101,3 +101,22 @@
 - Why: user said "commit and push everything to the branch".
 - Evidence: `git log --oneline -1` → fcacb46; `git status -sb` → `## desktop-first`, clean; staged-diff secret scan printed no matches. Push not run: `.kiro/agents/superpowers.json` denies `git push.*`.
 - Next: user runs `git push -u origin desktop-first`; then a PR into main when wanted.
+
+## 2026-11-01 — Product brief moved into steering
+- What: moved the untracked root `PRODUCT.md` (CarpetOps product brief, 223 lines) to `.kiro/steering/product.md`. Content unchanged.
+- Why: user asked to put it in `.kiro/steering/product.md`.
+- Evidence: `ls .kiro/steering` → product.md 21354 bytes; `ls PRODUCT.md` → No such file; `git status` → `?? .kiro/` (not committed).
+- Next: user decides whether to commit `.kiro/` and how to resolve the brief's out-of-date items (holidays screen, security, orders sheet now built; overtime still shown although the brief says hide it).
+
+## 2026-11-01 — Audit of the code against the product brief
+- What: wrote `docs/audit.md` (367 lines): every module and rule in `.kiro/steering/product.md` marked yes / partial / no with file:line references, conflicts with SPECS.md, data-model differences for docs/decisions.md, probe results, and a fix list in the brief's §9 order with new items slotted in. No code changed.
+- Why: user asked for a full comparison of the codebase against the brief.
+- Evidence: typecheck exit 0; `npm run lint` 0 errors / 53 warnings; vitest 9 files / 33 passed; server 26/26; e2e 27/27 cited from fcacb46 (`git diff fcacb46 -- app server` empty). A throwaway-schema probe (`/tmp/audit-probe.mjs`, not in the repo) confirmed: a reversal of an entry in a locked month is accepted; a back-dated staff reversal is accepted; a negative net is stored when rounding fills it; stock out with zero balance is accepted; another unit can take over a photo id (unit A then gets 404).
+- Main gaps (P0): daily workers not paid for Sundays/holidays; overtime still shown everywhere; slip content wrong + no signature line; paid month's lines rebuilt from current data; locked month changeable via the log; not deployed.
+- Next: user decides the three SPECS-vs-brief conflicts (overtime, paid off days, slip content), then specs for the P0 items.
+
+## 2026-11-01 — Owner decisions recorded; specs and brief updated (docs only)
+- What: created `docs/decisions.md` with D-001 overtime as an owner setting (default off), D-002 paid Sundays/holidays for daily workers (provisional business rule), D-003 short A4 slip with a signature line, all "decided by owner"; plus DM-001 (migrations run at server start), DM-002 (photo upsert overwrites ids), DM-003 (paid month's lines rebuilt from live data), each "needs confirmation". Details the agent had to assume are listed under each decision as "needs confirmation". SPECS.md: D2 (daily pay includes paid off days), D12 (overtime optional, off by default), M02 (formulas, screens, A4 slip, new AC5–AC7). `.kiro/steering/product.md`: §7 sizes (8,000 / 950 lines), auth model and test counts (26 / 33 / 27); holidays screen, security, Orders sheet, TASKS and desktop layout marked done; decisions written into 8.2, 8.3, 8.4 and §9. No code changed.
+- Why: user gave the three decisions and asked for docs to match, then a local commit without push.
+- Evidence: AC5 and AC6 checked by script (paid ₹9,846; Nov 2026 off days 8, 9, 15, 29 → ₹9,000); stale-phrase grep on the brief → none left.
+- Next: plan and implement D-001..D-003 (TASKS row 21) after the user approves the plan.

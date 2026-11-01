@@ -168,7 +168,7 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
 **Link to orders:** a delivery can take from finished-carpet stock and cannot take more than is on hand (see 8.6). **Built**.
 
 **Gaps and open items**
-- Finished carpets by design and size: **Planned** as the finished carpet catalogue (section 8.10). **[Decided by owner 2026-11-02, DM-004]** The catalogue is the one place for new finished carpets. Once it exists, the stock item form no longer offers the "finished" kind. Existing finished items keep working (balance, history, deliveries) and are labelled legacy. No automatic migration.
+- Finished carpets by design and size: **Built** as the finished carpet catalogue (section 8.10, 2026-11-02). **[Decided by owner 2026-11-02, DM-004]** The catalogue is the one place for new finished carpets. Once it exists, the stock item form no longer offers the "finished" kind. Existing finished items keep working (balance, history, deliveries) and are labelled legacy. No automatic migration.
 - Units per raw material: **[Open]** confirm with partners.
 - Carpets made for stock without an order: recorded in the catalogue (section 8.10).
 - Import of opening stock from Excel or CSV: **Planned** (backlog P2).
@@ -217,7 +217,7 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
 - **Prices:** the owner can hide cost and selling price from operators (operator permission "See prices"); the server removes them from what operators receive.
 - **Works offline;** entries sync like everything else.
 - **Not yet:** custom fields, WhatsApp cards, barcodes.
-- **Status: Planned.**
+- **Status: Built** (2026-11-02, SPEC-M15).
 
 ## 9. Gaps and backlog (in priority order)
 **P0 (before partners rely on it)**

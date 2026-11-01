@@ -42,8 +42,9 @@ export default function LogPage() {
 
   const byId = useMemo(() => new Map(recs.map((r) => [r.id, r])), [recs]);
   // SPEC-M14: unlocking a month and reversing a payment are steps of a correction, so they get their own rows.
+  // SPEC-M15: so do releasing a reservation and undoing a sale or write-off.
   const listed = useMemo(() => {
-    const isStep = (r: Rec) => r.type === 'reversal' && ['period_lock', 'wage_payment'].includes(byId.get((r.payload as ReversalP).targetId)?.type ?? '');
+    const isStep = (r: Rec) => r.type === 'reversal' && ['period_lock', 'wage_payment', 'carpet_reserve', 'carpet_out'].includes(byId.get((r.payload as ReversalP).targetId)?.type ?? '');
     return recs.filter((r) => r.type !== 'usage' && (r.type !== 'reversal' || isStep(r)));
   }, [recs, byId]);
   const types = useMemo(() => [...new Set(listed.map((r) => r.type))].sort((a, b) => t(`rec.${a}`).localeCompare(t(`rec.${b}`))), [listed, t]);

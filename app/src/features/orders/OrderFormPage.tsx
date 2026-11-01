@@ -35,7 +35,9 @@ export default function OrderFormPage() {
   const [receivedOn, setReceivedOn] = useState(todayIST()); const [buyerOpen, setBuyerOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({}); const [busy, setBusy] = useState(false);
 
-  useEffect(() => { if (!existing && !orderNo) setOrderNo(nextOrderNo(recs)); }, [recs, existing, orderNo]);
+  // The suggested number follows the records as they load (they arrive after the first render), until the user types one.
+  const [orderNoTyped, setOrderNoTyped] = useState(false);
+  const shownOrderNo = existing || orderNoTyped ? orderNo : nextOrderNo(recs);
   useEffect(() => {
     if (!existing) return;
     setBuyerId(existing.buyerId); setOrderNo(existing.orderNo); setDesign(existing.design); setSize(existing.size); setQty(String(existing.qty));
@@ -46,14 +48,14 @@ export default function OrderFormPage() {
   const save = async () => {
     const e: Record<string, string> = {};
     if (!buyerId) e.buyer = t('valid.required');
-    if (!orderNo.trim()) e.orderNo = t('valid.required');
+    if (!shownOrderNo.trim()) e.orderNo = t('valid.required');
     if (!design.trim()) e.design = t('valid.required');
     if (!Number.isInteger(q) || q <= 0) e.qty = t('valid.positive');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) e.dueDate = t('valid.date');
     setErrors(e); if (Object.keys(e).length) return;
     setBusy(true);
     try {
-      const o: OrderP = { entityId: existing?.entityId ?? uuid(), buyerId, orderNo: orderNo.trim(), design: design.trim(), size: size.trim(), qty: q, dueDate, pricePaise, notes: notes.trim() || undefined, receivedOn };
+      const o: OrderP = { entityId: existing?.entityId ?? uuid(), buyerId, orderNo: shownOrderNo.trim(), design: design.trim(), size: size.trim(), qty: q, dueDate, pricePaise, notes: notes.trim() || undefined, receivedOn };
       await addRecord<OrderP>('order', o);
       toast.show(t('action.done'), 'success');
       navigate(`/orders/${o.entityId}`, { replace: true });
@@ -74,7 +76,7 @@ export default function OrderFormPage() {
                 </div>
               )}
             </Field>
-            <Field label={t('order.orderNo')} required error={errors.orderNo}>{({ id, describedBy, invalid }) => <Input id={id} value={orderNo} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setOrderNo(e.target.value)} className="num" />}</Field>
+            <Field label={t('order.orderNo')} required error={errors.orderNo}>{({ id, describedBy, invalid }) => <Input id={id} value={shownOrderNo} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => { setOrderNo(e.target.value); setOrderNoTyped(true); }} className="num" />}</Field>
             <Field label={t('order.receivedOn')}>{({ id }) => <Input id={id} type="date" value={receivedOn} max={todayIST()} onChange={(e) => setReceivedOn(e.target.value)} className="num" />}</Field>
             <Field label={t('order.design')} required error={errors.design}>{({ id, describedBy, invalid }) => <Input id={id} value={design} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setDesign(e.target.value)} placeholder="Kashan" />}</Field>
             <Field label={t('order.size')}>{({ id }) => <Input id={id} value={size} onChange={(e) => setSize(e.target.value)} placeholder="8x10" />}</Field>

@@ -163,7 +163,7 @@ Terms:
 ## New module
 
 ### D-006 Finished carpet catalogue
-- **Status:** decided by owner (2026-11-01; ways out of the catalogue decided 2026-11-02).
+- **Status:** decided by owner (2026-11-01; ways out of the catalogue decided 2026-11-02). Built 2026-11-02 (SPEC-M15).
 - **Decision:** a catalogue of finished carpets.
   - **Each carpet:**
     - up to 4 photos, compressed
@@ -206,6 +206,13 @@ Terms:
     - The first photo is the cover in the grid.
     - Four photos per carpet can grow the database quickly; watch its size (brief §12).
   - **Old finished-carpet items:** see DM-004.
+  - **Added while building (2026-11-02, needs confirmation):**
+    - A piece tag is unique among the unit's **active** carpets, ignoring upper/lower case and spaces ("BH-0042" = "bh-0042"). An inactive carpet frees its tag.
+    - A carpet's counting mode (piece or quantity) cannot change once carpets were added.
+    - More carpets can be added to a quantity entry later ("और कालीन जोड़ें"); a piece is added once, when it is created.
+    - Taking back an "added" entry is refused when those carpets are no longer in stock (sold, delivered, reserved or written off first).
+    - The grid also filters by a selling-price range; it is shown only to users who see prices.
+    - Photos taken on one phone are fetched from the server by the other phones of the unit when online and kept for offline viewing.
 
 ## Data-model differences
 
@@ -257,3 +264,4 @@ The brief says the code is authoritative about the data model, so record the dif
   - Existing finished items keep working: their balance, ledger and history stay, and they can still be delivered from and receive finished-in entries. They are labelled **legacy** wherever they appear (stock list, item page, delivery picker).
   - No automatic migration and nothing deleted. The owner can re-enter carpets in the catalogue if they want.
 - **Details assumed (needs confirmation):** the Hindi label for "legacy" is "पुराना" (to be proofread).
+- **Built 2026-11-02:** the item form offers only raw materials; old finished items show "पुराना" on the stock list, the item page, its edit form and the order's "from stock" picker; the stock screen's finished section links to the catalogue.

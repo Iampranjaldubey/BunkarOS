@@ -39,6 +39,7 @@ Code size: about 7 500 lines in `app/src` (excluding tests) and 950 in `server/`
 | Wages | `/wages`, `/wages/:month/:workerId` | Month sheet with totals. Pay screen: line-by-line breakdown, deduction lines, advance recovery, ₹1 rounding, payment mode, photo above the limit, WhatsApp slip after preview, print. Owner locks / unlocks a month. |
 | Stock | `/stock`, `/stock/new`, `/stock/:id`, `/stock/move/in|out|adjust` | Raw items (kg / pcs / litre / metre) and finished carpets, low-stock level, in / out / adjust with reason, month ledger. Going below zero is blocked (owner may override). |
 | Orders | `/orders`, `/orders/new`, `/orders/:id`, `/buyers` | Buyer, design, size, quantity, due date, price. Status New → In production → Finished → Delivered; partial deliveries (optionally from finished stock); overdue and due-soon flags; notes; WhatsApp status after preview. |
+| Catalogue (SPEC-M15) | `/catalogue`, `/catalogue/new`, `/catalogue/:id`, `/catalogue/:id/edit` | Finished carpets with up to 4 photos (JPEG ≤ 1280 px, ≤ 300 KB), design, size (length × width in ft / m / cm), a quantity or a unique piece tag, material notes, cost and selling price (hidden from operators while "see prices" is off), notes. Grid with search and filters (design, size, status, price). Reserve for an order, release with a reason, deliver (reservation first), sold directly or written off with a date and a note, undo with a reason. The order page reserves and delivers from the catalogue. Old finished items stay as "पुराना" (legacy, DM-004); the item form makes raw materials only. |
 | Home | `/` | Today's attendance, wages due, advances outstanding, low stock, orders due / overdue, today's entries by user. Each tile opens its records. |
 | Month report | `/month` | Attendance grid, wage sheet, stock movement, orders, cash / UPI out, usage per user. Excel export with 5 sheets (summary, attendance, wages, stock, orders); print. |
 | Entry log | `/log` | Every record with author and time, filter by user, reverse with a reason (subject to role rules). |
@@ -90,7 +91,11 @@ Record types and payloads:
 | | `stock_adjust` | itemId, qtyDelta (±), reason wastage/count_correction/damage/other, note |
 | | `finished_in` | itemId, qty, orderId |
 | Orders | `order_status` | orderId, status |
-| | `delivery` | orderId, qty, finishedItemId |
+| | `delivery` | orderId, qty, finishedItemId (legacy item) or carpetId (catalogue) |
+| Catalogue | `carpet` (master) | entityId, design, lengthMilli, widthMilli, sizeUnit, mode piece/quantity, tag, materialNotes, costPaise, pricePaise, notes, photoIds (0–4), active |
+| | `carpet_in` | carpetId, qty |
+| | `carpet_reserve` | carpetId, orderId, qty (a release is a reversal) |
+| | `carpet_out` | carpetId, qty, kind sold/written_off, note |
 | | `order_note` | orderId, text |
 | Meta | `usage` | screen (owner opens of `/` and `/log`; excluded from business numbers) |
 | | `reversal` | targetId, reason |
@@ -144,11 +149,13 @@ On every pushed record (`server/rules.mjs` + `handleSync`):
 9. Field checks: attendance status and OT steps, positive integer amounts and quantities, non-zero stock adjustments with a note, orders with qty and number.
 10. PIN fields (SPEC-M11): a `user` record without `pinHash`/`pinSalt` is an edit and keeps the stored values; a new user without them, or with empty values, is refused (`invalid_user`).
 11. Photos (SPEC-M16 §6): the first unit to store an id owns it and it is never overwritten. Another unit gets 409 `photo_id_taken`; the same unit with other bytes gets 409 `photo_exists`; the same bytes again → 200.
+12. Catalogue (SPEC-M15, `server/catalogue.mjs`): the server keeps each carpet's counts and each order's reservations from the stored records, in push order. It refuses a carpet without a design, with a bad size (`invalid_size`), more than 4 photos (`too_many_photos`), a negative price (`invalid_price`), a missing or duplicate piece tag among active carpets (`tag_required`, `duplicate_tag`) or a changed mode after carpets were added (`invalid_carpet`); a piece added twice (`piece_added`); a reservation above stock or above what the order still needs (`insufficient_stock`, `exceeds_order`); a delivery above the order's reservation + stock or above the order's pending quantity, or naming both a carpet and a legacy item (`invalid_delivery`); a sale or write-off without a note (`note_required`) or above stock; taking back added carpets that are gone. Catalogue movements in a locked month are refused like other entries.
 
 What a client receives:
 
 - `user` records never carry `pinHash`/`pinSalt` (bootstrap pull, authenticated pull, push echo, admin).
 - The worker page gets only that worker's records and never the access code.
+- With "see prices" off, an operator token never receives `order.pricePaise` or `carpet.costPaise` / `pricePaise` (pull and push echo; checked on the raw response text in `server/test/catalogue.test.mjs`). An operator record carrying a price is refused (`forbidden_price`); an operator edit keeps the stored prices.
 
 ## 8. Login and PIN handling
 

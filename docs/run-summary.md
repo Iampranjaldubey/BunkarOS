@@ -1,8 +1,8 @@
-# Run summary: owner-controlled unit settings and wage behaviour
+# Run summary: finished carpet catalogue (SPEC-M15, DM-004)
 
 - **Date:** 2026-11-02 (IST). Branch `desktop-first`, committed locally, not pushed.
-- **Scope:** D-001 to D-005 in `docs/decisions.md`; SPEC-M13 stage 1 (wages are not hidden from operators); SPEC-M14; SPEC-M02 AC5–AC9.
-- **Previous run summary (SPEC-M16):** `git show 4c83c0a:docs/run-summary.md`.
+- **Scope:** SPEC-M15 AC1–AC15 and DM-004. Custom fields and WhatsApp cards were not built.
+- **Previous run summary (settings and wages):** `git show d7d256f:docs/run-summary.md`.
 - **Data:** every test ran on a throwaway Postgres schema:
   - `t_<random>` for each server test file;
   - `e2e` for Playwright;
@@ -11,87 +11,70 @@
 
 ## Acceptance criteria and evidence
 
-| # | Criterion | Built in | Test that proves it |
+| # | Criterion (goal) | Built in | Test that proves it |
 |---|---|---|---|
-| 1 | **Owner-only unit settings with defaults:** overtime off; off-day policy `sundays_and_holidays`; the 8 slip sections; operator toggles add entries on, edit past off, see prices on, export off. Only these 4 toggles are shown; there is no "see wages" toggle. | `domain/settings.ts` (`unitRules`), Settings → "पगार के नियम" and "ऑपरेटर क्या कर सकते हैं" (`features/settings/RulesCards.tsx`); server `invalid_setting`, owner-only `setting` | Vitest `rules.test.ts` "SPEC-M13 AC1" (2 tests). e2e 10 "unit rules: defaults…" checks the switch states, the 8 checked sections, 4 switches and that `perm-seeWages` is absent. Server `permissions.test.mjs` "settings validation". |
-| 2 | **Overtime off:** hidden on the worker form, attendance, wage sheet, pay page, slip, month report, Excel export and worker page. Recorded hours are not paid in unpaid months. | `wageInputsFor` zeroes overtime when the setting is off; every listed screen checks `rules.overtimeEnabled` | e2e 10 checks all 8 screens with overtime off, including the Excel headers read back with exceljs, the printed slip and the worker's own page. It then turns overtime on and sees the field, stepper and month column come back. e2e 03: the same recorded 3 h gives ₹9,846 with overtime off and ₹10,020 with it on. Vitest "AC5 overtime off → … ₹9,846". e2e 10 also checks that a new worker's `otRatePaise` is 0. |
-| 3 | **Off-day pay:** AC8 gives ₹7,400 / ₹8,600 / ₹9,000; AC5 and AC6 pass. A paid off day is paid once when the worker is Present, Half or unmarked; an explicit Absent removes it. | `paidOffDays()` in `domain/attendance.ts`; daily pay in `domain/wage.ts`; "₹" days in the month grid; off-days line on the pay page and in the wage-sheet counts | Vitest Example B for each policy (off days and gross exact), AC6 for piece and monthly workers, and "paid once / Absent removes". e2e 10 "off-day policy…" checks the pay page amount and the off-days line under each of the 3 policies. Values: `docs/wage-examples.md` "Actual results". |
-| 4 | **Slip:** a real A4 page with the chosen sections; a Rounding line only when it is non-zero; the WhatsApp text has the same fields plus the worker-page link. | `features/wages/SlipPaper.tsx`, `slipContent()` and `slipText()` in `features/wages/lines.ts`, print CSS in `index.css` | Vitest `lines.test.ts` (5 tests): default sections, rounding row only when non-zero, AC9 sections, overtime section only while on, WhatsApp text = same rows + link. e2e 11: in print media the slip is 794 × 1123 px (210 × 297 mm), shows the 8 sections and the Rounding row, and the screen breakdown is hidden. On desktop, `page.pdf` gives exactly 1 page with a 595 × 842 pt MediaBox. The share dialog shows the same rows plus `…/w/<token>`. AC9: attendance summary on and signature off take effect on the next print, and the change appears in the log. |
-| 5 | **Owner override:** any line before payment, with a required reason written to the log. M14 examples pass. After payment the pay screen shows the saved snapshot. | `settle(…, overrides)`, `overrideError`, pay-page "बदलें" sheet, `paidView` with overrides, log lines for overrides and the four correction steps | Vitest Example C (exact amounts, stored `overrides`, `paidView`), plus override limits. Server "M14 overrides" and "M14 correction steps". e2e 11 covers AC1, AC2, AC4, AC5, AC6, AC7, AC8 and AC9 (see "SPEC-M14 coverage" below). |
-| 6 | **Operator limits** enforced by the server, not only on screen. | Server `rules.mjs`: `forbidden_permission`, `forbidden_reversal`, `reason_required`, `forbidden_override`, `forbidden_price`. `routes.mjs` strips prices for operators, copies stored prices into operator edits and returns `view`. The app resyncs when `view` changes. Screens use `can(role, action, perms)`. | Server `permissions.test.mjs`: addEntries (`forbidden_permission`), editPast (accepted when on; `forbidden_reversal` when off, including back-dated), seePrices AC5–AC7 (pull and echo without prices, stored price kept, `forbidden_price`). Vitest `client.test.ts` resync tests. e2e 12 runs on two operator devices: defaults; export off/on; edit past on (operator's undo accepted); add entries off (radios disabled, entry buttons gone); see prices off while an operator entry is pending offline (resync, no `pricePaise` in IndexedDB, pending entry still synced); due-date edit keeps the stored price on the owner's device; the second operator gets the same view; prices on again brings them back; no "बदलें" for operators. |
-| 7 | **Checks:** typecheck, lint, unit, server and browser tests all pass. | — | See "Checks". |
-| 8 | **Docs.** | `docs/wage-examples.md` (new "Actual results" section), this file | — |
-
-### SPEC-M14 coverage in e2e 11
-- **AC1:** ₹923.08 → ₹500 with a reason gives ₹10,269. The stored payment matches Example C.
-- **AC2:** the save button stays disabled without a reason.
-- **AC4:** an override that makes net negative blocks the confirm button.
-- **AC5:** the log shows "बदला: ग़ैरहाज़िरी की कटौती −₹923.08 → −₹500 (…)" and the worker page marks the line "मालिक ने बदला".
-- **AC6:** the salary stays 1,200,000.
-- **AC7:** the reversal is refused while the month is locked. Then: unlock, reverse, pay again with a correction reason and a new override, lock again. Each step has a reason, the log shows them in order, the reversed payment is struck through, the worker page shows only ₹10,077, and no record is rejected.
-- **AC8:** no reason means the button is disabled for the unlock, the reversal, the re-payment and the re-lock.
-- **AC9:** a paid month has no "बदलें".
+| 1 | **Fields:** up to 4 compressed photos, design name or code, size (length, width, unit), quantity or a unique piece tag, material notes, optional cost and selling price, status (in stock, reserved, delivered, sold directly, written off), notes. | `CarpetP` in `app/src/db/types.ts`; form `features/catalogue/CarpetFormPage.tsx` with `components/ui/PhotoList.tsx`; status from entries in `domain/catalogue.ts` (`carpetView`); photo compression in `db/photos.ts` (≤ 1280 px, lowers quality or size until ≤ 300 KB) | Vitest `catalogue.test.ts` "AC1", "AC2". Server "AC2 + AC3" (5 photos → `too_many_photos`, bad sizes, negative price). e2e 13 test 1: 5 photos picked → 4 kept, "add photo" disappears; saved photos are JPEG, ≤ 1280 px, ≤ 300 KB (from a 2400 × 1600 noisy picture); the grid card shows the cover, "5 स्टॉक में", "8 × 10 ft" and ₹45,000. The five statuses appear in e2e 13 test 2 (reserved, delivered, sold, written off). |
+| 2 | **Grid** with search and filters by design, size, status and price; works offline with queued photo uploads. | `CataloguePage.tsx` (desktop filter panel, phone filter sheet), `filterCarpets` / `filterOptions` | Vitest "AC6–AC7" (search, design, size, statuses, price range, default hides delivered / sold / written off). e2e 13 test 2: search "kashan" + size 8 × 10; "reserved" only; design + max price; delivered and written-off pieces hidden by default and shown with their filter. e2e 13 test 1 runs offline: the carpet, its "added" entry and 3 photos are saved as `pending` and shown in the grid; back online every record is synced and all 3 photos change to `synced`. e2e 13 test 3: a photo taken on the owner's phone loads on the operator's phone. |
+| 3 | **Reserve** for an order, **release**, **deliver**; **sold directly** and **written off**, each with a date and a required note. | `CarpetDetailPage.tsx` (reserve, deliver, sold, written off, add more, release, undo); order page card `OrderCatalogue.tsx` ("कैटलॉग से रखें", "कैटलॉग से डिलीवर करें"); `moveLimits` / `moveError`; server `server/catalogue.mjs` | Vitest "AC4–AC5", "AC10–AC14". Server "AC1–AC5, AC10–AC13" (exceeds_order, unknown order or carpet, note_required, insufficient_stock, invalid_kind, release needs a reason, the reserved carpet can only be sold after release, a sale back-dated to yesterday). e2e 13 test 2 covers AC4, AC5, AC10, AC11 (dated yesterday), AC12, AC13 (no note, too many, reserved carpet, locked month) and AC14. The entry log shows the sale with its note, the undo with its reason, the release and the write-off. |
+| 4 | **Piece tags are unique** per unit. | `tagTaken` / `carpetError` (app), `carpetProblem` (server); case and spaces ignored, active carpets only | Vitest "AC3". Server: a duplicate tag in the same push and from an operator → `duplicate_tag`; the same carpet may keep its tag. e2e 13 test 1: a second "bh-0042" shows "यह टैग पहले से किसी और कालीन पर है" and is not saved. |
+| 5 | **See prices off:** the server's sync and API responses to an operator contain no price fields for the catalogue or orders, proven by a server test that inspects the response; the owner always sees prices. | `PRICE_FIELDS` + `publicRec` (server/db.mjs), price copy and `forbidden_price` in `routes.mjs`; the app hides price fields and does not send them | Server `catalogue.test.mjs` "criterion 5": the **raw response text** is checked with `/"(pricePaise\|costPaise)"/` and for the amounts themselves, in five places: the operator's full pull, the echo of the operator's push, the push with a priced record (refused `forbidden_price`), the token-less bootstrap pull, and the worker page `/api/w/:token`. The owner's response still has every price, including the stored prices kept on the operator's edit. Turning prices back on returns them. e2e 13 test 3: after the resync the operator's IndexedDB has no `pricePaise` / `costPaise` on carpets, there is no price on the grid, detail page or edit form, and the owner still sees ₹45,000 / ₹30,000 after the operator's edit. |
+| 6 | **Finished kind hidden** in the stock item form; legacy finished items labelled. | `ItemFormPage.tsx` (raw materials only; an old finished item shows "पुराना"), `StockPage.tsx` (badge + catalogue link), `ItemDetailPage.tsx` (title "· पुराना"), order "from stock" picker | e2e 13 test 2 (AC15): `/stock/new` has no "तैयार कालीन" choice; an existing finished item "Kashan 8x10" shows "पुराना" in the stock list, on its page and in its edit form, keeps its balance (3) and is delivered against a new order (balance 2, order 1/2). |
+| 7 | **All tests pass.** | — | See "Checks". |
 
 ## Checks (final run, 2026-11-02)
 
 | Check | Result |
 |---|---|
 | `npm run typecheck` (app) | exit 0 |
-| `npm run lint` (app) | 0 errors, 53 warnings (same as the baseline) |
-| `npx vitest run` | 12 files, 61 passed |
-| `cd server && npm test` | 36 tests, 36 pass, 0 fail |
-| `npx playwright test` (mobile 390×844 + desktop 1440×900) | 35 passed, twice in a row (4.6 min each); new specs 10, 11 and 12 run in both projects |
-| `npm run build` | exit 0, precache 112 entries / 1368.36 KiB |
-| Demo seed on schema `seedcheck` | accepted 34, rejected 0 |
+| `npm run lint` (app) | 0 errors, 55 warnings. The baseline was 53: +3 for the new lazy routes in `router.tsx` (the existing fast-refresh warning, one per lazy route), −1 because an existing effect in `ItemFormPage.tsx` was removed. |
+| `npx vitest run` | 13 files, 75 passed (new `catalogue.test.ts`, 14 tests) |
+| `cd server && npm test` | 40 tests, 40 pass, 0 fail (new `catalogue.test.mjs`, 4 tests) |
+| `npx playwright test` (mobile 390×844 + desktop 1440×900) | 41 passed, twice in a row on the final code (5.7 min each). New e2e 13 (3 tests) runs in both projects; the phone and desktop sweeps include `/catalogue` and `/catalogue/new`. |
+| `npm run build` | exit 0, precache 123 entries / 1427.96 KiB |
+| Demo seed on schema `seedcheck` | accepted 42, rejected 0 (adds 3 carpets, a reservation and a direct sale) |
 
-## Bugs found by the new tests and fixed
-- **Push order (sync client):** pending records were pushed in random id order. In one batch, a payment reversal could reach the server before the unlock that allows it, and be refused with `period_locked`. Similarly, a new payment could arrive before the reversal of the old one and be refused with `duplicate_payment`. Records are now pushed in the order they were written (`at`, then `id`). New Vitest "push order" test; it fails without the fix.
-- **Pay button:** the confirm button was enabled when a correction reason was required but empty. The app now disables it (SPEC-M14 AC8).
+## Bugs found and fixed
+- **Order number:** on a fresh page the "new order" form fixed its suggested number at ORD-001 before the records had loaded, so a second order could get ORD-001 again. The number now follows the records until the user types one. e2e 13 test 2 checks that the second order gets ORD-002.
+- **Photos on other phones:** a photo was shown only on the phone that took it. Catalogue photos are now fetched from the server (with the user's login) when they are missing locally, and kept for offline viewing. A photo the server does not have yet is asked for again after a minute, not on every render.
+- **Photo size:** compression stopped at 1280 px and JPEG quality 0.7 without checking the size. The app now lowers the quality and then the size until the photo is at most 300 KB.
 
 ## Behaviour changes to know
-- **Overtime is off by default** for every unit, including existing ones (a missing setting means off). Recorded hours stay in the data and the log. They are not paid in unpaid months until the owner turns overtime on. Months already paid keep their stored overtime.
-- **Daily workers' off days are now paid** by default: Sundays and listed holidays from the joining date, unless marked Absent. This is still provisional (D-002) and changes daily workers' pay in every unpaid month.
-- **Unlocking a month needs a reason.** Re-locking a month that was locked before also needs one.
-- **Operators:** settings are visible read-only. Operators can view attendance even when "add entries" is off, but cannot mark it.
-- **The entry log** lists "महीना खोला" and "भुगतान वापस" as their own rows. A setting row lists what changed (overtime, policy, slip sections, operator toggles).
+- **New finished carpets** go to the catalogue. The stock item form makes raw materials only. Old finished items keep working and show "पुराना".
+- **Operators** with "add entries" can add carpets, reserve, deliver, sell directly and write off. Without "see prices" they see no cost or price, and their edits keep the stored prices.
+- **Releasing** a reservation and **undoing** a sale or write-off get their own rows in the entry log.
+- **Navigation:** the side menu, the "More" page and the quick-entry menu ("नया कालीन") include the catalogue.
 
 ## New Hindi strings (for proofreading)
-All 107 new keys are in `app/src/i18n/rules.hi.ts`, with Hinglish and English in `rules.hin.ts` and `rules.en.ts` (the same key set; checked by script). The main ones:
+All 107 keys are in `app/src/i18n/catalogue.hi.ts`, with Hinglish and English in `catalogue.hin.ts` and `catalogue.en.ts` (the same key set; checked by script). The main ones:
 
 | Where | Strings |
 |---|---|
-| Settings | पगार के नियम · ओवरटाइम · चालू / बंद · छुट्टी के दिन की पगार (रोज़ वाले कारीगर) · कोई नहीं / रविवार / रविवार और छुट्टियाँ, with one-line examples · पर्ची में क्या छपे · हमेशा · पर्ची का नमूना · नियम सेव करें · ऑपरेटर क्या कर सकते हैं · एंट्री भरना · पुरानी एंट्री बदलना · भाव देखना · Excel फ़ाइल बनाना, with their hints · ऑपरेटर की छूट सेव करें |
-| Pay page | {line} बदलें · रकम बदलें · {line} · हिसाब से · नई रकम (₹) · बदलने की वजह · बदलाव रखें · हिसाब वाली रकम वापस लें · मालिक ने बदला · दोबारा भुगतान की वजह · भुगतान बदलना है? · महीना लॉक है — पहले पगार शीट पर महीना खोलें · भुगतान वापस लें · वापस लेने की वजह · महीना खोलने की वजह · लॉक करने की वजह · पर्ची प्रिंट करें (A4) |
-| Slip | कुल कमाई · कटौती · एडवांस काटा · राउंडिंग · दिया · हाज़िरी · छुट्टी के दिन (पगार वाले) · कारीगर के दस्तख़त · मालिक के दस्तख़त · अपना पूरा हिसाब यहाँ देखें: {url} |
-| Log | बदला: {line} {from} → {to} ({reason}) · दोबारा भुगतान: {reason} · महीना खोला: {month} · भुगतान वापस: {name} · {month} · वजह: {reason} |
-| Other | डेटा नया हो रहा है (resync badge) · पगार वाली छुट्टी (month grid) · the attendance keyboard hint without overtime |
+| Menu, titles | कालीन कैटलॉग · नया कालीन · कालीन बदलें · कैटलॉग में अभी कोई कालीन नहीं · इन फ़िल्टर से कोई कालीन नहीं मिला |
+| Form | डिज़ाइन (नाम या कोड) · लंबाई · चौड़ाई · नाप की इकाई (फ़ुट / मीटर / सेमी) · कैसे गिनें: गिनती (एक जैसे कई) / एक पीस (टैग के साथ) · पीस टैग · सामान के नोट (ऊन, गाँठ, रंग) · लागत (₹, एक कालीन) · बेचने का भाव (₹, एक कालीन) · फ़ोटो (ज़्यादा से ज़्यादा 4) · पहली फ़ोटो कैटलॉग में दिखेगी |
+| Status | स्टॉक में · ऑर्डर के लिए रखा · डिलीवर हुआ · सीधे बेचा · बट्टे खाते में |
+| Actions | ऑर्डर के लिए रखें · डिलीवर करें · सीधे बेचा · बट्टे खाते में डालें · रखा हुआ छोड़ें · और कालीन जोड़ें · कैटलॉग से रखें · कैटलॉग से डिलीवर करें |
+| Errors | यह टैग पहले से किसी और कालीन पर है · स्टॉक में सिर्फ़ {n} हैं (रखे हुए पहले छोड़ें) · ऑर्डर को सिर्फ़ {n} और चाहिए · नोट ज़रूरी है · यह पीस पहले ही जुड़ चुका है |
+| Legacy | पुराना · पुराने तैयार कालीन आइटम: बैलेंस और इतिहास वैसे ही रहेंगे। नए कालीन कैटलॉग में जोड़ें। |
+| Log | रखा हुआ छोड़ा: {carpet} · {order} · वापस लिया: {carpet} · {what} |
 
-Two strings name the net row differently: `slip.opt.net` "कुल भुगतान" in the settings checklist and `slip.sec.net` "दिया" on the slip. Please confirm both.
+The action "सीधे बेचा" and the status "सीधे बेचा" are the same words. Please confirm that this reads well, or suggest a verb for the button (for example "सीधे बेचें").
 
 ## Files
 - **New:**
-  - `app/src/domain/settings.ts`, `app/src/app/useCan.ts`
-  - `app/src/features/settings/RulesCards.tsx`, `app/src/features/wages/SlipPaper.tsx`
-  - `app/src/i18n/rules.{hi,hin,en}.ts`
-  - tests: `app/src/domain/rules.test.ts`, `app/src/features/wages/lines.test.ts`, `server/test/permissions.test.mjs`, `app/e2e/10-wage-rules.spec.ts`, `app/e2e/11-override.spec.ts`, `app/e2e/12-operator.spec.ts`
+  - `app/src/domain/catalogue.ts`, `app/src/features/catalogue/{CataloguePage,CarpetFormPage,CarpetDetailPage,OrderCatalogue,shared}.tsx`, `app/src/components/ui/PhotoList.tsx`, `app/src/i18n/catalogue.{hi,hin,en}.ts`, `server/catalogue.mjs`
+  - tests: `app/src/domain/catalogue.test.ts`, `server/test/catalogue.test.mjs`, `app/e2e/13-catalogue.spec.ts`
 - **Changed:**
-  - wage engine (`domain/wage.ts`, `domain/attendance.ts`), permissions (`domain/permissions.ts`)
-  - sync client (view and resync, push order)
-  - server (`rules.mjs`, `db.mjs`, `routes.mjs`)
-  - screens: attendance, workers, worker page, wages, pay page, month and export, orders, settings, log, home, navigation
-  - print CSS
-  - e2e 02, 03 and 22 now turn overtime on first; the desktop project also runs specs 10–19
-- **Docs:** `docs/wage-examples.md`, `docs/decisions.md` (D-003 rounding row and WhatsApp link), `SPECS.md` (M02 slip text, index statuses, M14 reason code), `.kiro/steering/product.md` (statuses), `TASKS.md`, `WATCHINGLOGS.md`.
+  - types (`db/types.ts`), photos (`db/photos.ts`), sync client (remote photo loader)
+  - permissions (`carpet.manage`, needs "add entries"), navigation, routes
+  - orders (catalogue card, legacy label, order number), stock list / item form / item page (DM-004), entry log
+  - server `rules.mjs` (types, locked months, `invalid_delivery`), `routes.mjs` (catalogue checks in the push), demo seed
+  - e2e fixtures (shared operator-device helpers, photo and IndexedDB helpers), e2e 12 (uses them), 20 / 21 (catalogue routes), 22 (quick menu has 7 entries)
+- **Docs:** `SPECS.md` (index status, price filter), `docs/decisions.md` (D-006 built + assumptions added while building, DM-004 built), `docs/ARCHITECTURE.md` (feature, record types, server rule 12, price removal), `.kiro/steering/product.md` (statuses), `TASKS.md`, `WATCHINGLOGS.md`.
 
 ## Not done / limits
-- **"See wages" (SPEC-M13 stage 2)** is not built. There is no toggle, and operators see wages as before.
-- **Stock-in rates** are not hidden by "see prices" (stage 1 covers orders and the catalogue). The catalogue itself (SPEC-M15) is not built, so the server's carpet price rules have no screen yet. The server test covers them with raw records.
-- **Export off** is a screen-only control. The export only contains what the device already holds.
-- **Data already on a phone** cannot be taken back from a phone that never syncs again or runs a modified app (SPEC-M13 known limit).
-- **The AC6 / AC8 calendar** (November 2026) is the current month, so e2e checks the same rule on the previous month's calendar. The exact November amounts are checked in Vitest.
-- **Sub-agent review:** `sp-implementer`, `sp-reviewer` and `sp-final-reviewer` were not used this run. I reviewed the diff myself, and the browser tests caught the two bugs above.
-- **Needs owner confirmation** (still open in `docs/decisions.md`):
-  - D-001: recorded overtime is not paid in unpaid months.
-  - D-002: the provisional default policy, and "paid once".
-  - D-003: the fixed sections, the automatic Rounding row and the WhatsApp link.
-  - D-005: "edit past" covers any user's past entries.
+- **Custom fields, WhatsApp cards**, barcodes, sale amounts or buyers for direct sales: out of scope (SPEC-M15 "Out").
+- **Photos and database size:** 4 photos per carpet are stored in Postgres. Watch the database size (brief §12).
+- **Photos on another phone** load only when that phone is online once. After that they are kept for offline viewing.
+- **The test dev server** has no service worker, so the offline e2e test loads the catalogue screens once while online. The built PWA precaches them (precache 123 entries).
+- **Sub-agent review:** independent review agents were not available in this environment (`code-review`, `security-review` and `sp-*` are not installed, and `kiro_default` is refused for crew stages). I reviewed the diff myself. That review led to two fixes: "undo added" is hidden when those carpets are gone, and a missing photo is not asked for again on every render.
+- **Needs owner confirmation** (in `docs/decisions.md` D-006 "Added while building"): tag uniqueness ignores case and spaces; the mode is fixed after carpets are added; more carpets can be added to a quantity entry; taking back added carpets is refused once they are gone; the price-range filter; photos are fetched by other phones.

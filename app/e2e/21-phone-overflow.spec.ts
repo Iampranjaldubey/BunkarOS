@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { setupAndLogin } from './fixtures';
 
-const ROUTES = ['/', '/attendance', '/workers', '/workers/new', '/advances/new', '/wages', '/stock', '/stock/new', '/stock/move/in', '/stock/move/adjust', '/orders', '/orders/new', '/buyers', '/month', '/log', '/settings', '/more'];
+const ROUTES = ['/', '/attendance', '/workers', '/workers/new', '/advances/new', '/wages', '/stock', '/stock/new', '/catalogue', '/catalogue/new', '/stock/move/in', '/stock/move/adjust', '/orders', '/orders/new', '/buyers', '/month', '/log', '/settings', '/more'];
 
 test('phone + tablet: no horizontal overflow and no page errors on any route at 390 and 768; all three languages', async ({ page }) => {
   test.setTimeout(120_000);

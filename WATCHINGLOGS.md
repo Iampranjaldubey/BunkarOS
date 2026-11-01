@@ -170,3 +170,22 @@
   - every docs/wage-examples.md example: actual = expected (new "Actual results" section).
   Details: docs/run-summary.md.
 - Next: user review; owner confirms D-001 / D-002 / D-003 / D-005 assumptions; SPEC-M15 catalogue (TASKS 25); "see wages" stage 2 later (TASKS 27). Push is run by the user.
+
+## 2026-11-02 — Finished carpet catalogue (SPEC-M15, DM-004), branch `desktop-first`
+- What:
+  - `/catalogue`: a photo grid with search and filters (design, size, status, price). Desktop has a filter panel; phones have a filter sheet. Delivered, sold and written-off carpets are hidden unless asked for.
+  - Carpet form: up to 4 photos (JPEG ≤ 1280 px, ≤ 300 KB), design, length × width + unit, a quantity or a unique piece tag, material notes, cost, selling price, notes, "save and add another".
+  - Carpet page: counts per status; reserve for an order, deliver (reservation first), sold directly and written off with a date and a required note; release and undo with a reason; history.
+  - The order page reserves and delivers from the catalogue.
+  - DM-004: the item form makes raw materials only; old finished items are labelled "पुराना" and still work.
+  - The server checks the same limits in push order (`server/catalogue.mjs`) and keeps removing prices for operators.
+  - Fixes found on the way: (1) a new order could repeat ORD-001 when records loaded after the form; (2) photos showed only on the phone that took them, so other phones now fetch them from the server; (3) photo compression had no size cap.
+- Why: user goal (7 criteria, each with a test; no custom fields or WhatsApp cards; local commit, no push).
+- Evidence:
+  - typecheck exit 0; lint 0 errors / 55 warnings (+3 lazy routes, −1 removed effect);
+  - vitest 13 files / 75 passed; server 40/40 (the operator's raw response text has no `pricePaise` / `costPaise` in pull, echo, bootstrap or worker page);
+  - Playwright 41 passed, twice on the final code (new e2e 13 in both projects);
+  - build exit 0 (precache 123 / 1427.96 KiB); seed on schema `seedcheck` accepted 42 / rejected 0.
+  Details: docs/run-summary.md.
+- Not done: independent sub-agent review (review agents not installed here); self-reviewed instead.
+- Next: user review; owner confirms the D-006 assumptions added while building; Hindi strings proofread; push is run by the user.

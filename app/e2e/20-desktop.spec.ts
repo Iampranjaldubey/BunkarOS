@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { setupAndLogin } from './fixtures';
 
-const ROUTES = ['/', '/attendance', '/workers', '/workers/new', '/advances/new', '/wages', '/stock', '/stock/new', '/stock/move/in', '/stock/move/adjust', '/orders', '/orders/new', '/buyers', '/month', '/log', '/settings', '/more'];
+const ROUTES = ['/', '/attendance', '/workers', '/workers/new', '/advances/new', '/wages', '/stock', '/stock/new', '/catalogue', '/catalogue/new', '/stock/move/in', '/stock/move/adjust', '/orders', '/orders/new', '/buyers', '/month', '/log', '/settings', '/more'];
 
 test('desktop: side menu, no bottom bar, no horizontal scroll at 1024/1440/1920 in three languages, content clear of the menu, no page errors', async ({ page }) => {
   test.setTimeout(180_000);

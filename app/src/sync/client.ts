@@ -21,6 +21,7 @@ import type { Rec, PhotoRow } from '../db/types';
 import type { SyncResponse, SyncStateView, SyncView } from './types';
 import { getDeviceId } from '../lib/session-store';
 import { setOnLocalWrite } from '../db/repo';
+import { setRemotePhotoLoader } from '../db/photos';
 
 const PUSH_BATCH = 200;
 const PULL_LIMIT = 500; // == server PULL_LIMIT (routes.mjs)
@@ -588,11 +589,20 @@ function syncSoon(): void {
   writeTimer = setTimeout(() => { writeTimer = null; void syncNow(); }, WRITE_DEBOUNCE_MS);
 }
 
+/** A photo uploaded by another phone of this unit (SPEC-M15: catalogue photos are seen on every phone). */
+async function loadRemotePhoto(id: string): Promise<Blob | null> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+  const res = await authedFetch(`/api/photos/${encodeURIComponent(id)}`);
+  if (!res.ok) return null;
+  return res.blob();
+}
+
 /** Start automatic syncing: online events + a 30 s loop + soon after every local write. Idempotent. */
 export function startAutoSync(): () => void {
   if (!isBrowser || autoStarted) return () => undefined;
   autoStarted = true;
   setOnLocalWrite(syncSoon);
+  setRemotePhotoLoader(loadRemotePhoto);
 
   const onOnline = () => {
     setState({ online: true });
@@ -615,6 +625,7 @@ export function startAutoSync(): () => void {
     if (writeTimer) clearTimeout(writeTimer);
     writeTimer = null;
     setOnLocalWrite(null);
+    setRemotePhotoLoader(null);
     autoStarted = false;
   };
 }

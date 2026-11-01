@@ -43,7 +43,7 @@ Status legend: Draft | Approved | Built.
 | SPEC-M12 | Desktop-first UI/UX (phone keeps working) | Approved (user goal 2026-11-01) |
 | SPEC-M13 | Unit rules as settings (overtime, off-day policy, slip sections) + operator permissions | Stage 1 built 2026-11-02 (see prices removed by the server). "See wages" is stage 2, later |
 | SPEC-M14 | Owner override on any wage line before payment, with a reason; logged correction of a paid month | Built 2026-11-02 |
-| SPEC-M15 | Finished carpet catalogue: photos, design, size, piece tag or quantity, prices, reserve, deliver, sell directly, write off | Approved (owner 2026-11-01/02) |
+| SPEC-M15 | Finished carpet catalogue: photos, design, size, piece tag or quantity, prices, reserve, deliver, sell directly, write off | Built 2026-11-02 (with DM-004) |
 | SPEC-M16 | Server integrity (locked-month reversals, wage amounts, stock below zero, same-day undo, photo ids) + paid month from the saved payment | Approved (user goal 2026-11-02) |
 
 ---
@@ -262,7 +262,7 @@ Status legend: Draft | Approved | Built.
   - piece status = written off / sold / delivered / reserved / in stock
   - per order: reserved and delivered from the catalogue
 - **Screens:**
-  - `/catalogue`: photo grid (cover = first photo), design, size, status chip with counts, selling price if allowed. Search by design, tag or notes; filters by status, size and design. Delivered, sold and written-off carpets are hidden unless the status filter includes them. Desktop: 4–6 cards per row with a filter panel. Phone: 2 per row with a filter sheet.
+  - `/catalogue`: photo grid (cover = first photo), design, size, status chip with counts, selling price if allowed. Search by design, tag or notes; filters by status, size, design and a selling-price range (the price filter is shown only to users who see prices; built 2026-11-02). Delivered, sold and written-off carpets are hidden unless the status filter includes them. Desktop: 4–6 cards per row with a filter panel. Phone: 2 per row with a filter sheet.
   - `/catalogue/new` and `/catalogue/:id/edit`: up to 4 photos, design, length × width + unit, piece tag or quantity, material notes, cost, selling price, notes, "save and add another".
   - `/catalogue/:id`: photos, details, counts, history, and these actions:
     - "ऑर्डर के लिए रखें" (order + qty)

@@ -1,4 +1,5 @@
 // HTTP dispatcher on node:http. JSON everywhere except photo bodies.
+import { needsCatalogue, loadCatalogue, catalogueCheck, apply as applyCatalogue } from './catalogue.mjs';
 import { getUnit, insertUnit, getRecordById, insertRecord, recordsSince, userRecordsSince, putPhoto, getPhoto,
   userRecordCount, latestUser, userRole, lockedMonths, paidPairs, recordsOfType,
   getUnitByShortCode, ensureShortCode, latestWorker, activeWorkers, workerRecords,
@@ -201,6 +202,8 @@ async function handleSync(db, req, res) {
   // SPEC-M16 §4: item balances, only when this push moves stock (or may reverse a move).
   const STOCK_TYPES = new Set(['stock_in', 'stock_out', 'stock_adjust', 'finished_in', 'delivery', 'reversal']);
   if (incoming.some((r) => STOCK_TYPES.has(r?.type))) ctx.stock = await stockBalances(db, unitId, stockMove);
+  // SPEC-M15: catalogue balances and reservations, only when this push touches the catalogue or orders.
+  const catalogue = needsCatalogue(incoming) ? await loadCatalogue(db, unitId) : null;
   // Lazy helpers for rules that need other records.
   if (incoming.some((r) => r?.type === 'reversal')) {
     ctx.targets = new Map();
@@ -244,6 +247,10 @@ async function handleSync(db, req, res) {
     }
     const verdict = evaluate(toCheck, ctx);
     if (!verdict.ok) { rejected.push({ id: rec?.id, reason: verdict.reason }); continue; }
+    if (catalogue) {
+      const why = catalogueCheck(catalogue, toCheck, toCheck.type === 'reversal' ? ctx.targets?.get(toCheck.payload.targetId) : undefined);
+      if (why) { rejected.push({ id: rec.id, reason: why }); continue; }
+    }
     const stored = { ...toCheck, sync: 'synced' }; delete stored.rejectReason;
     await insertRecord(db, { id: rec.id, unitId, type: rec.type, rec: stored });
     accepted.push(rec.id); ctx.batch.ids.add(rec.id);
@@ -259,6 +266,11 @@ async function handleSync(db, req, res) {
       if (undone) ctx.stock.set(undone.itemId, (ctx.stock.get(undone.itemId) ?? 0) - undone.delta);
     }
     if (rec.type === 'user') batchUsers.set(toCheck.payload.entityId, toCheck.payload);
+    if (catalogue) {
+      applyCatalogue(catalogue, toCheck, 1);
+      const target = rec.type === 'reversal' ? ctx.targets?.get(rec.payload.targetId) : undefined;
+      if (target) applyCatalogue(catalogue, target, -1);
+    }
   }
 
   const pulled = await recordsSince(db, unitId, since, limit);

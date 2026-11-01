@@ -25,6 +25,7 @@ import { todayIST } from '../../domain/ids';
 import { useCan } from '../../app/useCan';
 import { useT } from '../../i18n';
 import { StatusBadge, DueLine } from './shared';
+import { OrderCatalogueCard } from '../catalogue/OrderCatalogue';
 
 export default function OrderDetailPage() {
   const { t, lang } = useT();
@@ -81,6 +82,7 @@ export default function OrderDetailPage() {
               <Button variant="success" onClick={() => setDeliverOpen(true)}><Truck aria-hidden="true" size={18} />{t('order.deliver')}</Button>
             </div>
           )}
+          <OrderCatalogueCard recs={recs} orderId={id} canManage={canManage} open={v.pendingQty > 0} />
           <div className="flex gap-2">
             {canManage && <Button variant="secondary" size="md" className="flex-1" onClick={() => setNoteOpen(true)}><MessageSquarePlus aria-hidden="true" size={16} />{t('order.addNote')}</Button>}
             {v.buyer?.phone && <Button variant="secondary" size="md" className="flex-1" onClick={() => setShare(true)}><Share2 aria-hidden="true" size={16} />{t('action.share')}</Button>}
@@ -106,7 +108,7 @@ export default function OrderDetailPage() {
       <Sheet open={deliverOpen} onClose={() => setDeliverOpen(false)} title={`${t('order.deliver')} · ${t('order.pending')}: ${v.pendingQty}`} footer={<Button block variant="success" onClick={() => void deliver()}>{t('order.deliver')}</Button>}>
         <Field label={t('order.deliverQty')} required error={dErr}>{({ id, describedBy, invalid }) => <Input id={id} inputMode="numeric" value={dQty} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => { setDQty(e.target.value.replace(/\D/g, '')); setDErr(''); }} className="num text-2xl" autoFocus />}</Field>
         <DateField value={dDay} onChange={setDDay} />
-        {finishedItems.length > 0 && <Field label={t('order.fromStock')}>{({ id }) => <Select id={id} value={dItem} onChange={(e) => setDItem(e.target.value)}><option value="">—</option>{finishedItems.map((i) => <option key={i.entityId} value={i.entityId}>{i.name} ({stockBalance(recs, i.entityId) / 1000})</option>)}</Select>}</Field>}
+        {finishedItems.length > 0 && <Field label={t('order.fromStock')}>{({ id }) => <Select id={id} value={dItem} onChange={(e) => setDItem(e.target.value)}><option value="">—</option>{finishedItems.map((i) => <option key={i.entityId} value={i.entityId}>{i.name} ({stockBalance(recs, i.entityId) / 1000}) · {t('cat.legacy')}</option>)}</Select>}</Field>}
         <Field label={t('common.note')}>{({ id }) => <Textarea id={id} rows={2} value={dNote} onChange={(e) => setDNote(e.target.value)} />}</Field>
       </Sheet>
       <Sheet open={noteOpen} onClose={() => setNoteOpen(false)} title={t('order.addNote')} footer={<Button block onClick={() => void addNote()}>{t('action.save')}</Button>}>

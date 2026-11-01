@@ -51,7 +51,8 @@ test('desktop UX: keyboard roll call, log table + type filter, quick entry, coll
   // Quick entry menu: opens, Esc closes and returns focus, a link navigates and closes it.
   const quick = page.getByTestId('quick-entry'); const menu = page.getByTestId('quick-entry-menu');
   await quick.click();
-  await expect(menu.getByRole('link')).toHaveCount(6);
+  await expect(menu.getByRole('link')).toHaveCount(7); // + "नया कालीन" (SPEC-M15)
+  await expect(menu.getByRole('link', { name: 'नया कालीन' })).toHaveAttribute('href', '/catalogue/new');
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await expect(quick).toBeFocused();

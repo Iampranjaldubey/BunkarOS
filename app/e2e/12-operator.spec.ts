@@ -1,24 +1,6 @@
-import { test, expect, type Browser, type Page } from '@playwright/test';
-import { setupAndLogin, loginAs, attRow, markRadio, istToday, setPerms, addStaffLogin, localRecords, synced, settled } from './fixtures';
+import { test, expect, type Page } from '@playwright/test';
+import { setupAndLogin, attRow, markRadio, istToday, setPerms, addStaffLogin, localRecords, synced, settled, operatorDevice, afterSync } from './fixtures';
 
-/** Another device joins the unit with the code and key from Settings, then an operator logs in on it. */
-async function operatorDevice(browser: Browser, owner: Page, unitId: string, unitKey: string, name: string, pin: string) {
-  const ctx = await browser.newContext({ baseURL: 'http://localhost:5174', viewport: owner.viewportSize()! });
-  const op = await ctx.newPage();
-  await op.goto('/setup');
-  await op.getByRole('radio', { name: 'मौजूदा यूनिट से जुड़ें' }).click();
-  await op.getByLabel(/यूनिट कोड/).fill(unitId);
-  await op.getByLabel(/यूनिट चाबी/).fill(unitKey);
-  await op.getByRole('button', { name: 'जुड़ें', exact: true }).click();
-  await expect(op).toHaveURL(/\/login/);
-  await loginAs(op, name, pin);
-  await synced(op);
-  return { ctx, op };
-}
-/** Reload until the operator device has pulled the owner's latest setting and the check passes. */
-async function afterSync(op: Page, check: () => Promise<void>) {
-  await expect(async () => { await op.reload(); await synced(op); await check(); }).toPass({ timeout: 40_000, intervals: [500, 1000, 2000] });
-}
 const orderPrices = async (p: Page) => (await localRecords(p)).filter((r) => r.type === 'order').map((r) => r.payload.pricePaise);
 
 /** SPEC-M13 AC1, AC3–AC9 and SPEC-M14 AC3 (UI); the server refusals are in server/test/permissions.test.mjs. */

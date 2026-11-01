@@ -47,7 +47,7 @@ export default function ItemDetailPage() {
 
   return (
     <section>
-      <PageHeader title={item.name} back={() => navigate('/stock')} right={canManage && <Button size="md" variant="secondary" onClick={() => navigate(`/stock/${id}/edit`)}><Pencil aria-hidden="true" size={16} />{t('action.edit')}</Button>} />
+      <PageHeader title={item.kind === 'finished' ? `${item.name} · ${t('cat.legacy')}` : item.name} back={() => navigate('/stock')} right={canManage && <Button size="md" variant="secondary" onClick={() => navigate(`/stock/${id}/edit`)}><Pencil aria-hidden="true" size={16} />{t('action.edit')}</Button>} />
       <PageGrid asideSticky aside={
         <div className="flex flex-col gap-3">
           <StatTile label={t('stock.balance')} tone={low ? 'given' : 'received'} value={<Qty q={balance} item={item} />} testid="item-balance" />

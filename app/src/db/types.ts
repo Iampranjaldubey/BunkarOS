@@ -18,6 +18,8 @@ export type RecordType =
   | 'stock_in' | 'stock_out' | 'stock_adjust' | 'finished_in'
   // orders
   | 'order_status' | 'delivery' | 'order_note'
+  // finished carpet catalogue (SPEC-M15): 'carpet' is a master (versioned by entityId)
+  | 'carpet' | 'carpet_in' | 'carpet_reserve' | 'carpet_out'
   // meta
   | 'usage' | 'reversal';
 
@@ -145,8 +147,33 @@ export interface FinishedInP { itemId: string; qty: number; orderId?: string; }
 // ---------- orders ----------
 export type OrderStatus = 'new' | 'in_production' | 'finished' | 'delivered';
 export interface OrderStatusP { orderId: string; status: OrderStatus; note?: string; }
-export interface DeliveryP { orderId: string; qty: number; note?: string; finishedItemId?: string; }
+/** `finishedItemId`: a legacy finished item (DM-004). `carpetId`: a catalogue carpet; the order's reservation of it is used first (SPEC-M15). */
+export interface DeliveryP { orderId: string; qty: number; note?: string; finishedItemId?: string; carpetId?: string; }
 export interface OrderNoteP { orderId: string; text: string; }
+
+// ---------- finished carpet catalogue (SPEC-M15, D-006, DM-004) ----------
+export type SizeUnit = 'ft' | 'm' | 'cm';
+/** `piece`: one carpet with a unique tag. `quantity`: several identical carpets counted together. */
+export type CarpetMode = 'piece' | 'quantity';
+export interface CarpetP {
+  entityId: string;
+  design: string;                     // design name or code
+  lengthMilli: number; widthMilli: number; sizeUnit: SizeUnit; // thousandths of the unit (8 ft = 8000)
+  mode: CarpetMode;
+  tag?: string;                       // piece mode only; unique among the unit's active carpets
+  materialNotes?: string;
+  costPaise?: number; pricePaise?: number; // removed by the server for operators while prices are hidden (SPEC-M13)
+  notes?: string;
+  photoIds: string[];                 // 0–4; the first is the cover
+  active: boolean;
+}
+/** Carpets added to the catalogue (piece mode: exactly once, qty 1). */
+export interface CarpetInP { carpetId: string; qty: number; note?: string; }
+/** Carpets set aside for an order. A release is a reversal with a reason. */
+export interface CarpetReserveP { carpetId: string; orderId: string; qty: number; note?: string; }
+export type CarpetOutKind = 'sold' | 'written_off';
+/** Sold directly or written off: no order, a note is required, the record's day is the date. */
+export interface CarpetOutP { carpetId: string; qty: number; kind: CarpetOutKind; note: string; }
 
 // ---------- meta ----------
 export interface UsageP { screen: string; }

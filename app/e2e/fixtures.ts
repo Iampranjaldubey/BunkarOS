@@ -1,4 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import zlib from 'node:zlib';
+import type { Browser } from '@playwright/test';
 
 export const OWNER = { unit: 'Ideal Carpet', name: 'Shubham', phone: '9876543210', pin: '1234' };
 
@@ -118,4 +120,64 @@ export async function synced(page: Page) { await expect(page.getByText('सि�
 export async function settled(page: Page): Promise<string[]> {
   await expect.poll(async () => (await localRecords(page)).filter((r) => r.sync === 'pending').length, { timeout: 25_000 }).toBe(0);
   return (await localRecords(page)).filter((r) => r.sync === 'rejected').map((r) => `${r.type} ${(r as { rejectReason?: string }).rejectReason ?? ''}`);
+}
+
+// ---------- shared by e2e 12 and 13 ----------
+/** Another device joins the unit with the code and key from Settings, then an operator logs in on it. */
+export async function operatorDevice(browser: Browser, owner: Page, unitId: string, unitKey: string, name: string, pin: string) {
+  const ctx = await browser.newContext({ baseURL: 'http://localhost:5174', viewport: owner.viewportSize()! });
+  const op = await ctx.newPage();
+  await op.goto('/setup');
+  await op.getByRole('radio', { name: 'मौजूदा यूनिट से जुड़ें' }).click();
+  await op.getByLabel(/यूनिट कोड/).fill(unitId);
+  await op.getByLabel(/यूनिट चाबी/).fill(unitKey);
+  await op.getByRole('button', { name: 'जुड़ें', exact: true }).click();
+  await expect(op).toHaveURL(/\/login/);
+  await loginAs(op, name, pin);
+  await synced(op);
+  return { ctx, op };
+}
+/** Reload until the operator device has pulled the owner's latest setting and the check passes. */
+export async function afterSync(op: Page, check: () => Promise<void>) {
+  await expect(async () => { await op.reload(); await synced(op); await check(); }).toPass({ timeout: 40_000, intervals: [500, 1000, 2000] });
+}
+
+/** Photos in this browser's IndexedDB (id, sync state, size, dimensions). */
+export async function localPhotos(page: Page): Promise<{ id: string; sync: string; mime: string; w: number; h: number; size: number }[]> {
+  return page.evaluate(async () => {
+    const req = indexedDB.open('bunkar-mvp');
+    const db: IDBDatabase = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+    const rows: { id: string; sync: string; mime: string; w: number; h: number; blob: Blob }[] = await new Promise((res) => { const g = db.transaction('photos').objectStore('photos').getAll(); g.onsuccess = () => res(g.result); });
+    return rows.map((r) => ({ id: r.id, sync: r.sync, mime: r.mime, w: r.w, h: r.h, size: r.blob.size }));
+  });
+}
+/** Write a record straight into this phone's IndexedDB as a pending entry of the logged-in user (the sync client pushes it). */
+export async function injectPending(page: Page, type: string, payload: Record<string, unknown>, day?: string): Promise<string> {
+  return page.evaluate(async ({ type, payload, day }) => {
+    const s = JSON.parse(localStorage.getItem('bunkar.session')!);
+    const at = new Date().toISOString();
+    const rec = { id: crypto.randomUUID(), type, unitId: s.unitId, payload, by: s.userId, role: s.role, device: localStorage.getItem('bunkar.device') ?? 'e2e', at, day: day ?? new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10), sync: 'pending' };
+    const req = indexedDB.open('bunkar-mvp');
+    const db: IDBDatabase = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+    await new Promise<void>((res, rej) => { const tx = db.transaction('records', 'readwrite'); tx.objectStore('records').put(rec); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+    return rec.id;
+  }, { type, payload, day });
+}
+/** A large noisy PNG (worst case for JPEG size): proves the app shrinks every photo to ≤ 1280 px and ≤ 300 KB. */
+export function noisyPng(width = 2400, height = 1600): Buffer {
+  const crc32 = (zlib as unknown as { crc32: (b: Buffer) => number }).crc32;
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td) >>> 0);
+    return Buffer.concat([len, td, crc]);
+  };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  const raw = Buffer.alloc((width * 3 + 1) * height);
+  let seed = 12345;
+  for (let y = 0; y < height; y++) {
+    const o = y * (width * 3 + 1); raw[o] = 0;
+    for (let i = 1; i <= width * 3; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; raw[o + i] = seed >> 16; }
+  }
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 1 })), chunk('IEND', Buffer.alloc(0))]);
 }

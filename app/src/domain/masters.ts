@@ -1,5 +1,5 @@
 // Master projections (pure). Latest version per entityId; reversed/rejected ignored.
-import type { Rec, SettingP, UserP, WorkerP, ItemP, BuyerP, OrderP } from '../db/types.ts';
+import type { Rec, SettingP, UserP, WorkerP, ItemP, BuyerP, OrderP, CarpetP } from '../db/types.ts';
 import { latestEntities } from './records.ts';
 
 export function getSettings(recs: Rec[]): SettingP | undefined {
@@ -27,7 +27,8 @@ export function nameMaps(recs: Rec[]) {
   const items = new Map(listItems(recs, false).map((i) => [i.entityId, i]));
   const buyers = new Map(listBuyers(recs, false).map((b) => [b.entityId, b.name]));
   const orders = new Map(listOrders(recs).map((o) => [o.entityId, o]));
-  return { users, workers, items, buyers, orders };
+  const carpets = new Map(latestEntities<CarpetP>(recs, 'carpet').map((c) => [c.entityId, c]));
+  return { users, workers, items, buyers, orders, carpets };
 }
 
 /** Next order number ORD-001, ORD-002 … (max existing + 1). */

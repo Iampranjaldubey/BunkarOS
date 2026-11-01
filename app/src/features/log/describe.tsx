@@ -1,4 +1,5 @@
-import type { Lang, Rec, SettingP, WagePaymentP } from '../../db/types';
+import type { CarpetP, Lang, Rec, SettingP, WagePaymentP } from '../../db/types';
+import { sizeLabel } from '../../domain/catalogue';
 import { SHOWN_OPERATOR_TOGGLES, SLIP_SECTIONS, unitRules } from '../../domain/settings';
 import type { nameMaps } from '../../domain/masters';
 import { formatINR } from '../../domain/money';
@@ -35,6 +36,7 @@ export function describeRecord(r: Rec, n: Names, t: T, lang: Lang, byId?: Map<st
   const item = () => n.items.get(String(p.itemId));
   const qty = (v: unknown) => { const it = item(); return it ? `${formatQty(Number(v), it.unit)} ${it.unit}` : String(v); };
   const order = () => n.orders.get(String(p.orderId))?.orderNo ?? '?';
+  const carpet = () => { const c = n.carpets.get(String(p.carpetId)); return c ? `${c.design}${c.tag ? ` · ${c.tag}` : ''}` : '?'; };
   switch (r.type) {
     case 'user': return { text: `${p.name} · ${t('role.' + p.role)}${p.active === false ? ` · ${t('common.inactive')}` : ''}`, tone: 'neutral' };
     case 'setting': return { text: [`${p.unitName} · ${t('settings.workingDays')}: ${p.workingDaysPerMonth}`, ...settingChanges(r, t, byId)].join(' · '), tone: 'neutral' };
@@ -64,6 +66,13 @@ export function describeRecord(r: Rec, n: Names, t: T, lang: Lang, byId?: Map<st
         const tp = target.payload as WagePaymentP;
         return { text: `${t('log.payReversed', { name: n.workers.get(tp.workerId) ?? '?', month: formatMonth(tp.month, lang) })} · ${why}`, tone: 'warn' };
       }
+      if (target?.type === 'carpet_reserve' || target?.type === 'carpet_out') {
+        const tp = target.payload as { carpetId: string; qty: number; kind?: string; orderId?: string };
+        const c = n.carpets.get(tp.carpetId);
+        const what = c ? `${c.design}${c.tag ? ` · ${c.tag}` : ''}` : '?';
+        const key = target.type === 'carpet_reserve' ? 'cat.log.released' : 'cat.log.undone';
+        return { text: `${t(key, { carpet: what, n: tp.qty, order: n.orders.get(String(tp.orderId))?.orderNo ?? '', what: t(`cat.ev.${tp.kind}`, { n: tp.qty }) })} · ${why}`, tone: 'warn' };
+      }
       return { text: why, tone: 'neutral' };
     }
     case 'stock_in': return { text: `${item()?.name ?? '?'} +${qty(p.qty)}${p.supplier ? ` · ${p.supplier}` : ''}`, tone: 'received' };
@@ -71,7 +80,15 @@ export function describeRecord(r: Rec, n: Names, t: T, lang: Lang, byId?: Map<st
     case 'stock_adjust': return { text: `${item()?.name ?? '?'} ${Number(p.qtyDelta) >= 0 ? '+' : ''}${qty(p.qtyDelta)} · ${t('stock.reason.' + p.reason)}`, tone: 'warn' };
     case 'finished_in': return { text: `${item()?.name ?? '?'} +${qty(p.qty)}`, tone: 'received' };
     case 'order_status': return { text: `${order()} → ${t('order.status.' + p.status)}`, tone: 'info' };
-    case 'delivery': return { text: `${order()} · ${p.qty} ${t('order.delivered')}`, tone: 'received' };
+    case 'delivery': return { text: `${order()} · ${p.qty} ${t('order.delivered')}${p.carpetId ? ` · ${carpet()}` : ''}${p.note ? ` · ${p.note}` : ''}`, tone: 'received' };
+    // SPEC-M15 catalogue
+    case 'carpet': {
+      const c = p as unknown as CarpetP;
+      return { text: `${c.design} · ${sizeLabel(c)}${c.tag ? ` · ${c.tag}` : ''}${c.active === false ? ` · ${t('common.inactive')}` : ''}`, tone: 'neutral' };
+    }
+    case 'carpet_in': return { text: `${carpet()} · ${t('cat.ev.in', { n: Number(p.qty) })}`, tone: 'received' };
+    case 'carpet_reserve': return { text: `${carpet()} · ${t('cat.ev.reserve', { n: Number(p.qty), order: order() })}`, tone: 'info' };
+    case 'carpet_out': return { text: `${carpet()} · ${t(`cat.ev.${p.kind}`, { n: Number(p.qty) })} · ${p.note}`, tone: 'given' };
     case 'order_note': return { text: `${order()} · ${p.text}`, tone: 'neutral' };
     default: return { text: r.type, tone: 'neutral' };
   }

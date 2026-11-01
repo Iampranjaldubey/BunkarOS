@@ -1,8 +1,10 @@
 // Server-authoritative record validation. Returns {ok:true} or {ok:false, reason}.
 const TYPES = new Set(['user','setting','worker','item','buyer','order','attendance','piece_entry','advance','wage_payment','period_lock',
-  'stock_in','stock_out','stock_adjust','finished_in','order_status','delivery','order_note','usage','reversal']);
+  'stock_in','stock_out','stock_adjust','finished_in','order_status','delivery','order_note','usage','reversal',
+  'carpet','carpet_in','carpet_reserve','carpet_out']); // SPEC-M15 catalogue
 const OWNER_ONLY_TYPES = new Set(['setting', 'user', 'period_lock']);
-const MONEY_TYPES = new Set(['attendance', 'piece_entry', 'advance', 'wage_payment', 'stock_in', 'stock_out', 'stock_adjust', 'finished_in', 'delivery']);
+const MONEY_TYPES = new Set(['attendance', 'piece_entry', 'advance', 'wage_payment', 'stock_in', 'stock_out', 'stock_adjust', 'finished_in', 'delivery',
+  'carpet_in', 'carpet_reserve', 'carpet_out']); // SPEC-M15: locked months refuse catalogue movements dated inside them
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_ROUNDING_PAISE = 50; // paid = net rounded to ₹1 half-up → |rounding| ≤ 50 paise
 // SPEC-M13 unit rules
@@ -142,7 +144,10 @@ export function evaluate(rec, ctx) {
       break;
     case 'stock_in': case 'stock_out': case 'finished_in': if (!pos(p.qty)) return bad('invalid_qty'); break;
     case 'stock_adjust': if (!isInt(p.qtyDelta) || p.qtyDelta === 0 || typeof p.note !== 'string') return bad('invalid_qty'); break;
-    case 'delivery': if (!pos(p.qty)) return bad('invalid_qty'); break;
+    case 'delivery':
+      if (!pos(p.qty)) return bad('invalid_qty');
+      if (p.carpetId !== undefined && p.finishedItemId) return bad('invalid_delivery'); // one source: a catalogue carpet or a legacy item (SPEC-M15)
+      break;
     case 'order': if (!pos(p.qty) || typeof p.orderNo !== 'string') return bad('invalid_order'); break;
     case 'reversal': {
       if (typeof p.targetId !== 'string') return bad('invalid_reversal');

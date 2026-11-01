@@ -7,12 +7,12 @@ export type Action =
   | 'settings.edit' | 'user.manage' | 'worker.rates' | 'month.lock' | 'export'
   | 'record.reverse.any' | 'record.reverse.ownToday' | 'record.reverse.past'
   | 'worker.manage' | 'attendance.mark' | 'advance.give' | 'wage.pay' | 'wage.override'
-  | 'item.manage' | 'stock.move' | 'order.manage' | 'log.view' | 'wages.view' | 'price.view';
+  | 'item.manage' | 'stock.move' | 'order.manage' | 'carpet.manage' | 'log.view' | 'wages.view' | 'price.view';
 
 /** Never an operator's, whatever the toggles say. */
 const OWNER_ONLY: Action[] = ['settings.edit', 'user.manage', 'worker.rates', 'month.lock', 'record.reverse.any', 'wage.override'];
 /** Writing entries: needs "add entries". */
-const ENTRY: Action[] = ['worker.manage', 'attendance.mark', 'advance.give', 'wage.pay', 'item.manage', 'stock.move', 'order.manage', 'record.reverse.ownToday'];
+const ENTRY: Action[] = ['worker.manage', 'attendance.mark', 'advance.give', 'wage.pay', 'item.manage', 'stock.move', 'order.manage', 'carpet.manage', 'record.reverse.ownToday'];
 
 export function can(role: Role, action: Action, perms: OperatorPerms = DEFAULT_OPERATOR_PERMS): boolean {
   if (role === 'owner') return true;

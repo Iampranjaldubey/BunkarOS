@@ -39,9 +39,11 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 20 | — | Owner decisions D-001 overtime setting, D-002 paid off days (provisional), D-003 A4 slip → docs/decisions.md + SPECS D2/D12/M02 + brief updated; DM-001..003 recorded as needs confirmation | DONE | docs only, no code; AC5/AC6 numbers checked by script (₹9,846; off days 8, 9, 15, 29 → ₹9,000) |
 | 21 | M02 | Implement D-001, D-002, D-003 | TODO | needs a plan; specs are now in SPECS.md M02 |
 | 22 | — | Product direction (D15): brief "Product direction" section; decisions P-000, D-001…D-006, DM-004; SPECS D2, M00, M02, M03, M04, M13, M14, M15 | DONE | docs only, no code; override and off-day example amounts checked by script |
-| 23 | M13 | Unit settings (overtime, off-day policy, slip sections) + operator permission toggles | TODO | needs a plan; replaces row 21's setting work |
-| 24 | M14 | Owner override on any wage line, with a reason | TODO | needs a plan |
-| 25 | M15 | Finished carpet catalogue | TODO | needs a plan; decide DM-004 first |
+| 23 | M13 | Unit settings (overtime, off-day policy, slip sections) + operator toggles stage 1 (add entries, edit past, see prices removed by the server with forced resync, export) | TODO | spec ready (SPECS M13 AC1–AC10); no plan or code yet |
+| 24 | M14 | Owner override on any wage line before payment, with a reason; logged unlock → reverse → pay → lock correction | TODO | spec ready (SPECS M14 AC1–AC9); numbers in docs/wage-examples.md Example C |
+| 25 | M15 | Finished carpet catalogue incl. sold directly and written off; finished kind hidden; legacy label | TODO | spec ready (SPECS M15 AC1–AC15); DM-004 decided |
+| 26 | — | Owner answers 2026-11-02 → docs/decisions.md (D-004, D-005, D-006, DM-004), SPECS M13–M15, brief; docs/wage-examples.md | DONE | docs only, no code; every example value recomputed by script |
+| 27 | M13 stage 2 | "See wages" toggle together with server-side wage redaction and forced resync | LATER | not before stage 1 is built; no toggle shown until then |
 
 ## Blocked
 - Push to GitHub: needs the user's "yes" and ShubhamKang write access on Pranjal's repo (Git Credential Manager will prompt in the browser).

@@ -126,3 +126,21 @@
 - Why: owner gave the product direction and asked for the documents to match, with a local commit and no push.
 - Evidence: example amounts checked by script — off-day policy none / Sundays / Sundays and holidays → ₹7,400 / ₹8,600 / ₹9,000; override of the absence deduction ₹923.08 → ₹500 → gross ₹11,269.23, paid ₹10,269; `git status -- app server` empty.
 - Next: owner confirms the assumptions marked in docs/decisions.md (most affect pay or privacy), then a plan for SPEC-M13, M14 and M15.
+
+## 2026-11-01 — Local servers stopped
+- What: stopped the API (:8791), the Vite dev app (:5174) and the Postgres container `bunkar-mvp-db` (`docker compose stop`, not `down`; volume `startup_bunkar-mvp-pg` kept).
+- Why: user asked to stop the servers and continue later.
+- Evidence: ports 8791, 5174 and 5432 free; container status "Exited (0)"; volume still listed.
+- Next: to resume, `docker compose up -d db`, `cd server && npm start`, `cd app && npm run dev -- --host 0.0.0.0`. Open work: owner confirms the assumptions in docs/decisions.md, then a plan for SPEC-M13, M14, M15. Branch `desktop-first` still not pushed.
+
+## 2026-11-02 — Local servers started again
+- What: `docker compose up -d db` (healthy, same volume `startup_bunkar-mvp-pg`), API `npm start` on :8791 (log /tmp/bunkar-server.log), dev app `npm run dev -- --host 0.0.0.0` on :5174 (log /tmp/bunkar-app.log). Branch `desktop-first`.
+- Why: user asked to start the servers.
+- Evidence: `/api/health` 200 directly and through the :5174 proxy; `http://192.168.31.250:5174/` 200; :8791 serves bundle index-DQtZphKl.js (the desktop-first build).
+- Next: owner confirms the assumptions in docs/decisions.md, then a plan for SPEC-M13, M14, M15.
+
+## 2026-11-02 — Owner answers recorded: server-side price hiding, correction steps, catalogue exits (docs only)
+- What: `docs/decisions.md` D-004 (overrides only before payment; a paid month is changed by unlock → reverse payment → pay again → lock, each with a reason), D-005 (toggles apply to all operators together; hidden values are removed by the server; stage 1 = "See prices" for orders and catalogue; no "See wages" toggle until server-side wage redaction exists; changing a toggle forces operator devices to resync), D-006 (exits: delivered, sold directly, written off, each with a date and a required note; status values extended), DM-004 decided (catalogue is the one place for new finished carpets; finished kind hidden in the item form; legacy label; no migration), D-002 notes on monthly pay. SPECS.md: M13 rewritten (stage 1 AC1–AC10, stage 2 described), M14 (correction steps, AC7–AC9), M15 (`carpet_out`, AC11–AC15 incl. sold directly, written off, limits, reversal, legacy), M02 AC5/AC6/AC8 point to the examples, M03 and A6 updated. Brief: direction bullets, settings table, §5 operator row, 8.4 override steps, 8.5 legacy items, 8.10 exits, backlog 10b–10d. New `docs/wage-examples.md` with exact inputs and expected values (Examples A, B, C). No code changed; no implementation plan written (user asked not to).
+- Why: owner answered the open questions and asked for the documents to match.
+- Evidence: example values recomputed by script with the formulas of `src/domain/wage.ts`: AC5 paid 984600 (rounding −15); AC6/AC8 gross 740000 / 860000 / 900000 (off days none / 8, 15, 29 / 8, 9, 15, 29); M14 gross 1126923, net 1026923, paid 1026900 (rounding −23); 1–4 Oct 2026 are Thu–Sun and 9 Nov 2026 is a Monday. Stale-phrase search across the three documents found nothing left.
+- Next: implementation of M13 stage 1, M14 and M15 in a later session (TASKS rows 23–25); "See wages" is row 27 (later).

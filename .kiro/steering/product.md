@@ -4,8 +4,9 @@
 **A digital register for carpet units.** It records attendance, workers, wages, orders and inventory, including a catalogue of finished carpets.
 
 - **The owner sees and edits everything.**
+- **What the owner hides from operators is removed by the server**, never only hidden on screen. Changing what is hidden forces operator devices to resync.
 - **The unit decides who operates it:** the owner alone, or one or more operators (usually the munshi; the `staff` role in the code). The owner sets what operators may do.
-- **Calculations are suggestions.** The owner can override any calculated wage line with a reason, and the override is written to the history.
+- **Calculations are suggestions.** Before a payment is confirmed, the owner can override any calculated wage line with a reason, and the override is written to the history.
 - **Rules are per-business settings with sensible defaults, not hard-coded decisions.** When a partner works differently, add or extend a setting. Do not change the rule for every unit.
 - **Not yet:** custom fields, WhatsApp cards.
 
@@ -14,9 +15,9 @@
 | Overtime enabled | on / off | off | 8.2, docs/decisions.md D-001 |
 | Off-day policy | none / Sundays / Sundays and listed holidays | Sundays and listed holidays [Provisional] | 8.3, D-002 |
 | Slip sections | a fixed list of sections, each on or off | business name, worker name, month, gross, advance recovered, deductions, net pay, signature line | 8.4, D-003 |
-| Operator permissions | add entries, edit past entries, see wages, see prices, export | on, off, on, on, off (= today's staff limits) | section 5, D-005 |
+| Operator permissions (all operators of the unit together) | add entries, edit past entries, see prices, export; "see wages" comes later | on, off, on, off (= today's staff limits) | section 5, D-005 |
 
-Wage overrides: section 8.4 and D-004. Finished carpet catalogue: section 8.10 and D-006. Specs: SPECS.md D15, SPEC-M13 to SPEC-M15.
+Wage overrides: section 8.4 and D-004. Finished carpet catalogue: section 8.10, D-006 and DM-004. Worked wage examples: docs/wage-examples.md. Specs: SPECS.md D15, SPEC-M13 to SPEC-M15.
 
 ---
 
@@ -62,7 +63,7 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
 | Role | Access | Status |
 |---|---|---|
 | Owner | Sees and edits everything: settings, users, pay rates, locking months, export, undo any entry, override any wage line with a reason | Built, except wage overrides (Planned, D-004) |
-| Operator (staff, munshi) | What the owner allows with five toggles. Defaults = today's limits: add entries (attendance, advances, stock, orders); cannot edit past entries except own entries from the same day; sees wages and prices; cannot export. Never: settings, users, pay rates, month lock, wage overrides | Built with today's fixed limits; toggles Planned (D-005) |
+| Operator (staff, munshi) | What the owner allows with toggles that apply to all operators of the unit. Stage 1: add entries (default on), edit past entries (off; otherwise own entries from the same day only), see prices (on; when off the server removes order and catalogue prices from what it sends), export (off). Operators see wages as today; a "see wages" toggle comes later, only together with server-side wage removal. Never: settings, users, pay rates, month lock, wage overrides | Built with today's fixed limits; toggles Planned (D-005) |
 | Worker | Own read-only page by WhatsApp link or by shop code, name and 4-digit worker code. No login | Built |
 | Founders' admin | Read-only view of all units, only when ADMIN_KEYS is set | Built |
 | Faculty or demo viewer | A read-only way to see the product | Gap. Use a demo unit with fake data for now |
@@ -133,7 +134,13 @@ Name: **CarpetOps** is the working name. Parts of the code use "Bunkar" (for exa
 - **[Open]** Whether a half day is always half a day.
 - **[Open]** Whether piece rates vary by design or size. The rate is stored on each piece entry, so this already works if entered per entry.
 - **Wage slip [Decided by owner 2026-11-01, docs/decisions.md D-003]:** the printed slip is a real A4 page made of a fixed list of sections that the owner switches on or off (setting "Slip sections"). Default: business name, worker name, month, gross wage (also for monthly workers), advance recovered, deductions, net pay and a signature line. Off by default: attendance summary, paid off days, pieces, overtime, rate, rounding, owner changes, advance balance, payment date and mode. The detailed breakdown stays on the pay screen and the worker's own page. A4 print is the main route; WhatsApp share is secondary. Status: **Gap** (today the slip lists the breakdown lines, monthly workers get no gross line, there is no signature line, and printing prints the screen).
-- **Owner override [Decided by owner 2026-11-01, docs/decisions.md D-004]:** before paying, the owner can change the amount of any calculated wage line. A reason is required. The computed amount, new amount, reason, who and when go to the history; the worker's page marks the line as changed by the owner. Net pay can never go negative. Overrides never change the worker's rates. Status: **Gap**.
+- **Owner override [Decided by owner 2026-11-01/02, docs/decisions.md D-004]:**
+  - Only before the payment is confirmed, the owner can change the amount of any calculated wage line. A reason is required.
+  - The computed amount, new amount, reason, who and when go to the history; the worker's page marks the line as changed by the owner.
+  - Net pay can never go negative. Overrides never change the worker's rates.
+  - **To change a paid month**, the owner does four steps in order, each logged with a reason: unlock the month, reverse the payment (the reversed payment stays in the history), pay again, lock the month again.
+  - Worked example: docs/wage-examples.md Example C.
+  - Status: **Gap**.
 
 ### 8.5 Inventory management (raw materials, finished carpets and stock ledger)
 Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adjust and finished_in records). This is the inventory module.
@@ -161,7 +168,7 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
 **Link to orders:** a delivery can take from finished-carpet stock and cannot take more than is on hand (see 8.6). **Built**.
 
 **Gaps and open items**
-- Finished carpets by design and size: **Planned** as the finished carpet catalogue (section 8.10). Today they are items named like "Design A 5x8"; those items keep working (docs/decisions.md DM-004).
+- Finished carpets by design and size: **Planned** as the finished carpet catalogue (section 8.10). **[Decided by owner 2026-11-02, DM-004]** The catalogue is the one place for new finished carpets. Once it exists, the stock item form no longer offers the "finished" kind. Existing finished items keep working (balance, history, deliveries) and are labelled legacy. No automatic migration.
 - Units per raw material: **[Open]** confirm with partners.
 - Carpets made for stock without an order: recorded in the catalogue (section 8.10).
 - Import of opening stock from Excel or CSV: **Planned** (backlog P2).
@@ -194,14 +201,20 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
   - either a quantity, or a unique piece tag for a single carpet
   - material notes
   - optional cost and selling price
-  - status: in stock, reserved or delivered
+  - status: in stock, reserved, delivered, sold or written off
   - notes
 - **Screens:**
-  - Photo grid with search (design, tag, notes) and filters (status, size, design). Delivered carpets are hidden unless the filter asks for them.
+  - Photo grid with search (design, tag, notes) and filters (status, size, design). Delivered, sold and written-off carpets are hidden unless the filter asks for them.
   - Reserve carpets for an order, deliver from the reservation, and release a reservation with a reason.
   - A delivery updates the order's delivered quantity and status as today.
-- **Limits:** a reservation or delivery can never exceed what is in stock or what the order still needs. Piece tags are unique in the unit.
-- **Prices:** the owner can hide cost and selling price from operators (operator permission "See prices").
+- **Ways out of the catalogue [Decided by owner 2026-11-02]:** each has a date:
+  - delivered against an order;
+  - sold directly (no order; a note is required);
+  - written off (no order; a note is required).
+  - Sold and written off take carpets from stock only; a reserved carpet must be released first.
+  - A mistake is undone with a reversal and a reason.
+- **Limits:** a reservation, delivery, sale or write-off can never exceed what is available, and a reservation or delivery can never exceed what the order still needs. Piece tags are unique in the unit.
+- **Prices:** the owner can hide cost and selling price from operators (operator permission "See prices"); the server removes them from what operators receive.
 - **Works offline;** entries sync like everything else.
 - **Not yet:** custom fields, WhatsApp cards, barcodes.
 - **Status: Planned.**
@@ -221,8 +234,9 @@ Called "stock" in the app and in the code (item, stock_in, stock_out, stock_adju
 9. A read-only viewer role for faculty (can be an operator with "Add entries" off, D-005).
 10. (Done 2026-11-01: TASKS.md updated.)
 10a. Owner override on any wage line with a reason, written to the history (section 8.4, D-004, SPEC-M14).
-10b. Operator permission toggles: add entries, edit past entries, see wages, see prices, export (section 5, D-005, SPEC-M13).
-10c. Finished carpet catalogue (section 8.10, D-006, SPEC-M15).
+10b. Operator permission toggles, stage 1: add entries, edit past entries, see prices (removed by the server, forced resync on change), export (section 5, D-005, SPEC-M13).
+10c. Finished carpet catalogue with sold directly and written off; finished kind hidden in the item form; legacy label for old finished items (section 8.10, D-006, DM-004, SPEC-M15).
+10d. Later: "See wages" toggle, only together with server-side removal of wage data and the same forced resync (D-005 stage 2, SPEC-M13 stage 2).
 
 **P2**
 11. CSV export, pending-delivery quantity tile. (The Orders sheet in the Excel export is done.)

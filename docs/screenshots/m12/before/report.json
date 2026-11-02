@@ -1,0 +1,352 @@
+[
+ {
+  "width": 1440,
+  "name": "home",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "attendance",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "workers",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "worker",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "worker-new",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "wages",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "wage-pay",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "advance-new",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "stock",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "item",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "stock-in",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "orders",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "order",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "order-new",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "buyers",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "month",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "log",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "settings",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "name": "more",
+  "scrollW": 1440,
+  "clientW": 1440,
+  "mainW": 1152,
+  "mainX": 272,
+  "overflow": false
+ },
+ {
+  "width": 1440,
+  "pageErrors": []
+ },
+ {
+  "width": 390,
+  "name": "home",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "attendance",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "workers",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "worker",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "worker-new",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "wages",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "wage-pay",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "advance-new",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "stock",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "item",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "stock-in",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "orders",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "order",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "order-new",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "buyers",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "month",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "log",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "settings",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "name": "more",
+  "scrollW": 390,
+  "clientW": 390,
+  "mainW": 390,
+  "mainX": 0,
+  "overflow": false
+ },
+ {
+  "width": 390,
+  "pageErrors": []
+ }
+]

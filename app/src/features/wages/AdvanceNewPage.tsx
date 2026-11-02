@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { FormActions } from '../../components/ui/FormActions';
 
-import { Card } from '../../components/ui/Card';
+import { Card, CardTitle } from '../../components/ui/Card';
+import { FormWithContext } from '../../components/ui/FormWithContext';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { Input, Select, Textarea } from '../../components/ui/Input';
@@ -16,14 +17,15 @@ import { useRecords } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
 import type { AdvanceP, PayMode } from '../../db/types';
 import { listWorkers, getSettings } from '../../domain/masters';
-import { advanceBalance } from '../../domain/advances';
+import { advanceBalance, advancesFor } from '../../domain/advances';
+import { formatDay } from '../../domain/dates';
 import { isDayLocked } from '../../domain/locks';
 import { formatINR, rupeesToPaise } from '../../domain/money';
 import { todayIST } from '../../domain/ids';
 import { useT } from '../../i18n';
 
 export default function AdvanceNewPage() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const toast = useToast();
@@ -55,8 +57,28 @@ export default function AdvanceNewPage() {
     } finally { setBusy(false); }
   };
 
+  const recent = useMemo(() => (workerId ? advancesFor(recs, workerId).slice(0, 5) : []), [recs, workerId]);
+  const picked = workers.find((w) => w.entityId === workerId);
+  const context = (
+    <Card>
+      <CardTitle>{t('ctx.worker')}</CardTitle>
+      {!picked ? <p className="text-sm text-muted">{t('ctx.pickWorker')}</p> : (
+        <>
+          <p className="font-medium text-ink">{picked.name}</p>
+          <div className="my-3 rounded-xl bg-given-soft/60 p-3"><p className="text-sm text-muted">{t('wages.outstanding')}</p><p className="num text-2xl font-bold text-given" data-testid="ctx-balance">{formatINR(balance)}</p></div>
+          <p className="mb-1 text-sm font-medium text-muted">{t('ctx.lastAdvances')}</p>
+          {recent.length === 0 ? <p className="text-sm text-muted">{t('ctx.none')}</p> : (
+            <ul className="divide-y divide-line text-sm">
+              {recent.map((a) => <li key={a.recId} className="flex items-center justify-between py-2"><span className="text-muted">{formatDay(a.day, lang, 'short')} · {a.mode === 'cash' ? t('common.cash') : t('common.upi')}</span><span className="num font-medium text-given">{formatINR(a.amountPaise)}</span></li>)}
+            </ul>
+          )}
+        </>
+      )}
+    </Card>
+  );
+
   return (
-    <section className="mx-auto max-w-2xl">
+    <FormWithContext context={context}>
       <PageHeader title={t('adv.title')} back />
       <Card className="md:p-6">
         <form onSubmit={(e) => { e.preventDefault(); void save(); }}>
@@ -76,6 +98,6 @@ export default function AdvanceNewPage() {
           <FormActions><Button type="submit" size="xl" disabled={busy}>{t('action.save')}</Button></FormActions>
         </form>
       </Card>
-    </section>
+    </FormWithContext>
   );
 }

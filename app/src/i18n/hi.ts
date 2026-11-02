@@ -37,6 +37,7 @@ const hi = {
   'setup.pin': '4 अंक का पिन बनाएँ', 'setup.pinConfirm': 'पिन दोबारा भरें', 'setup.unitCode': 'यूनिट कोड',
   'setup.unitKey': 'यूनिट चाबी', 'setup.createBtn': 'यूनिट बनाएँ', 'setup.joinBtn': 'जुड़ें',
   'setup.hint': 'पहली बार? नई यूनिट बनाएँ। दूसरा फ़ोन? यूनिट कोड और चाबी से जुड़ें।',
+  'login.needsInternet': 'इस फ़ोन पर पहली बार लॉगिन के लिए इंटरनेट चाहिए', 'login.rateLimited': 'बहुत ज़्यादा कोशिशें — थोड़ी देर बाद',
 
   'login.title': 'अपना नाम चुनें', 'login.enterPin': 'पिन भरें', 'login.wrongPin': 'ग़लत पिन',
   'login.lockedOut': '{s} सेकंड बाद कोशिश करें', 'login.clear': 'मिटाएँ', 'login.noUsers': 'अभी कोई यूज़र नहीं — इंटरनेट चालू करके फिर खोलें',
@@ -60,6 +61,7 @@ const hi = {
   'settings.addUser': 'स्टाफ़ जोड़ें', 'settings.userName': 'नाम', 'settings.userPhone': 'फ़ोन', 'settings.userRole': 'भूमिका',
   'settings.userPin': '4 अंक का पिन', 'settings.deactivate': 'बंद करें', 'settings.joinInfo': 'दूसरे फ़ोन से जुड़ने के लिए',
   'settings.joinHint': 'यूनिट कोड और चाबी किसी बाहरी को न दें।', 'settings.copy': 'कॉपी', 'settings.copied': 'कॉपी हो गया',
+  'settings.holidayAdd': 'छुट्टी जोड़ें', 'settings.holidayRemove': '{day} हटाएँ', 'settings.holidaysEmpty': 'अभी कोई छुट्टी नहीं', 'settings.holidaysHint': 'रविवार हमेशा छुट्टी है। छुट्टी के दिन हाज़िरी बाकी नहीं गिनी जाती; महीने के काम के दिन (W) नहीं बदलते।', 'settings.holidayDate': 'छुट्टी की तारीख',
   'settings.saved': 'सेटिंग सेव हो गई', 'settings.holidays': 'छुट्टियाँ', 'settings.theme': 'रंग', 'settings.theme.auto': 'फ़ोन जैसा',
   'settings.theme.light': 'हल्का', 'settings.theme.dark': 'गहरा',
 

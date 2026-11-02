@@ -8,12 +8,17 @@ export interface SyncStateView {
   syncing: boolean;
   /** 'ok' once a valid token is held; 'needs_login' when the server wants a fresh login. */
   authState: 'ok' | 'needs_login';
+  /** SPEC-M13: true while the device clears and re-pulls its data because the owner changed what it may see. */
+  resyncing?: boolean;
 }
+/** What the server removed for this token (SPEC-M13). Owner: everything visible. */
+export interface SyncView { seePrices: boolean }
 export interface SyncResponse {
   accepted: string[];
   rejected: { id: string; reason: string }[];
   records: Rec[];
   cursor: number;
+  view?: SyncView;
 }
 export interface SyncDb {
   records: {

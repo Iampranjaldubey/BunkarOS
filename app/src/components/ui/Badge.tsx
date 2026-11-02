@@ -12,7 +12,7 @@ const badge = cva(
         received: 'bg-ok/12 text-ok',
         warn: 'bg-accent/20 text-accent-ink',
         info: 'bg-primary/10 text-primary',
-        danger: 'bg-given text-white',
+        danger: 'bg-given text-on-fill',
       },
     },
     defaultVariants: { tone: 'neutral' },

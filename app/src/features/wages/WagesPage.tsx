@@ -6,7 +6,9 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { StatTile, EmptyState } from '../../components/ui/Feedback';
 import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
-import { ConfirmSheet } from '../../components/ui/Sheet';
+import { ConfirmSheet, Sheet } from '../../components/ui/Sheet';
+import { Field } from '../../components/ui/Field';
+import { Textarea } from '../../components/ui/Input';
 import { useRecords } from '../../db/hooks';
 import { addRecord, reverse } from '../../db/repo';
 import type { PeriodLockP } from '../../db/types';
@@ -16,15 +18,13 @@ import { recsOfType } from '../../domain/records';
 import { formatINR } from '../../domain/money';
 import { formatDay } from '../../domain/dates';
 import { monthOf, todayIST } from '../../domain/ids';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
 import { Avatar } from '../workers/shared';
 import { MonthPicker } from './shared';
+import { useCan, useUnitRules } from '../../app/useCan';
 
 export default function WagesPage() {
   const { t, lang } = useT();
-  const { role } = useSession();
   const navigate = useNavigate();
   const recs = useRecords();
   const [month, setMonth] = useState(monthOf(todayIST()));
@@ -34,19 +34,31 @@ export default function WagesPage() {
   const rows = useMemo(() => wageSheet(recs, workers, month, settings), [recs, workers, month, settings]);
   const totals = useMemo(() => sheetTotals(rows), [rows]);
   const lockRec = useMemo(() => recsOfType<PeriodLockP>(recs, 'period_lock').find((r) => r.payload.month === month), [recs, month]);
-  const canLock = role ? can(role, 'month.lock') : false;
+  const allowed = useCan();
+  const canLock = allowed('month.lock');
 
+  const rules = useUnitRules();
+  // SPEC-M14: a month whose lock was reversed before needs a reason to lock again; an unlock always needs one.
+  const lockedBefore = useMemo(() => {
+    const reversed = new Set(recs.filter((r) => r.type === 'reversal' && r.sync !== 'rejected').map((r) => (r.payload as { targetId: string }).targetId));
+    return recs.some((r) => r.type === 'period_lock' && reversed.has(r.id) && (r.payload as PeriodLockP).month === month);
+  }, [recs, month]);
+  const needsReason = Boolean(lockRec) || lockedBefore;
+  const [lockReason, setLockReason] = useState('');
   const toggleLock = async () => {
-    if (lockRec) await reverse(lockRec.id, 'unlock'); else await addRecord<PeriodLockP>('period_lock', { month });
-    setConfirmLock(false);
+    if (needsReason && !lockReason.trim()) return;
+    if (lockRec) await reverse(lockRec.id, lockReason.trim());
+    else await addRecord<PeriodLockP>('period_lock', { month, ...(lockReason.trim() ? { reason: lockReason.trim() } : {}) });
+    setConfirmLock(false); setLockReason('');
   };
+  const counts = (r: WageRow) => `P ${r.inputs.present} · H ${r.inputs.half} · A ${r.inputs.absent}${r.inputs.payType === 'daily' && r.inputs.offDays ? ` · ${t('wages.offDays')} ${r.inputs.offDays}` : ''}`;
 
   const card = (r: WageRow) => (
     <button type="button" onClick={() => navigate(`/wages/${month}/${r.worker.entityId}`)} className="card-hover flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-3 text-left shadow-card">
       <Avatar name={r.worker.name} size={44} photoId={r.worker.photoId} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-ink">{r.worker.name}</p>
-        <p className="num text-xs text-muted">P {r.inputs.present} · H {r.inputs.half} · A {r.inputs.absent}{r.inputs.otHours ? ` · OT ${r.inputs.otHours}h` : ''}{r.inputs.payType === 'piece' ? ` · ${r.inputs.pieces} ${t('wages.pieces')}` : ''}</p>
+        <p className="num text-xs text-muted">{counts(r)}{rules.overtimeEnabled && r.inputs.otHours ? ` · OT ${r.inputs.otHours}h` : ''}{r.inputs.payType === 'piece' ? ` · ${r.inputs.pieces} ${t('wages.pieces')}` : ''}</p>
       </div>
       <div className="text-right">
         <p className="num text-lg font-bold text-ink">{formatINR(r.payment ? r.payment.payload.paidPaise : r.settlement.paidPaise)}</p>
@@ -71,8 +83,8 @@ export default function WagesPage() {
         empty={<EmptyState icon={<Wallet size={40} />} title={t('wages.noWorkers')} />}
         columns={[
           { key: 'name', header: t('worker.name'), cell: (r) => <span className="flex items-center gap-2"><Avatar name={r.worker.name} size={32} photoId={r.worker.photoId} /><span className="font-medium">{r.worker.name}</span></span> },
-          { key: 'att', header: t('att.title'), cell: (r) => <span className="num">P {r.inputs.present} · H {r.inputs.half} · A {r.inputs.absent}</span> },
-          { key: 'ot', header: t('wages.ot'), align: 'right', cell: (r) => <span className="num">{r.inputs.otHours}h</span> },
+          { key: 'att', header: t('att.title'), cell: (r) => <span className="num">{counts(r)}</span> },
+          ...(rules.overtimeEnabled ? [{ key: 'ot', header: t('wages.ot'), align: 'right' as const, cell: (r: WageRow) => <span className="num">{r.inputs.otHours}h</span> }] : []),
           { key: 'gross', header: t('wages.gross'), align: 'right', cell: (r) => <span className="num">{formatINR((r.payment?.payload.grossPaise ?? r.settlement.grossPaise) + (r.payment?.payload.otPaise ?? r.settlement.otPaise))}</span> },
           { key: 'adv', header: t('wages.advances'), align: 'right', cell: (r) => <span className="num text-given">{formatINR(r.payment?.payload.advanceRecoveredPaise ?? r.settlement.advanceRecoveredPaise)}</span> },
           { key: 'net', header: t('wages.net'), align: 'right', cell: (r) => <span className="num font-bold">{formatINR(r.payment?.payload.paidPaise ?? r.settlement.paidPaise)}</span> },
@@ -85,7 +97,15 @@ export default function WagesPage() {
           <Button variant={lockRec ? 'secondary' : 'primary'} onClick={() => setConfirmLock(true)}>{lockRec ? <><Unlock aria-hidden="true" size={18} />{t('wages.unlock')}</> : <><Lock aria-hidden="true" size={18} />{t('wages.lock')}</>}</Button>
         </div>
       )}
-      <ConfirmSheet open={confirmLock} onClose={() => setConfirmLock(false)} onConfirm={() => void toggleLock()} title={lockRec ? t('wages.unlock') : t('wages.lock')} message={t('wages.lockHint')} />
+      {needsReason ? (
+        <Sheet open={confirmLock} onClose={() => setConfirmLock(false)} title={lockRec ? t('wages.unlock') : t('wages.lock')}
+          footer={<Button block disabled={!lockReason.trim()} onClick={() => void toggleLock()}>{t('action.confirm')}</Button>}>
+          <p className="mb-3 text-sm text-muted">{lockRec ? t('wages.lockHint') : t('wages.lockAgainHint')}</p>
+          <Field label={lockRec ? t('wages.unlockReason') : t('wages.lockReason')} required>{({ id }) => <Textarea id={id} rows={2} value={lockReason} onChange={(e) => setLockReason(e.target.value)} />}</Field>
+        </Sheet>
+      ) : (
+        <ConfirmSheet open={confirmLock} onClose={() => setConfirmLock(false)} onConfirm={() => void toggleLock()} title={t('wages.lock')} message={t('wages.lockHint')} />
+      )}
     </section>
   );
 }

@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { setupAndLogin, loginAs } from './fixtures';
+import { setupAndLogin, loginAs, logout, attRow, markRadio, setOvertime } from './fixtures';
 
 test('add worker → mark attendance with OT → re-mark logs an edit → detail grid counts', async ({ page }) => {
   await setupAndLogin(page);
+  await setOvertime(page, true); // D-001: overtime is off by default
   // New monthly worker ₹12,000
   await page.goto('/workers/new');
   await page.getByLabel(/^नाम/).fill('Rafiq');
@@ -14,17 +15,17 @@ test('add worker → mark attendance with OT → re-mark logs an edit → detail
 
   // Attendance: present + 2h OT, then change to half.
   await page.goto('/attendance');
-  const row = page.getByTestId('attendance-list').locator('li').filter({ hasText: 'Rafiq' });
-  await row.getByRole('radio', { name: /^P$|हाज़िर/ }).first().click();
-  await expect(row.getByRole('radio', { name: /^P$|हाज़िर/ }).first()).toHaveAttribute('aria-checked', 'true');
+  const row = attRow(page, 'Rafiq');
+  await markRadio(row, 'P').click();
+  await expect(markRadio(row, 'P')).toHaveAttribute('aria-checked', 'true');
   await row.getByRole('button', { name: '+0.5h' }).click();
   await row.getByRole('button', { name: '+0.5h' }).click();
   await row.getByRole('button', { name: '+0.5h' }).click();
   await row.getByRole('button', { name: '+0.5h' }).click();
   await expect(row.getByText('OT 2h')).toBeVisible();
   await expect(page.getByText(/1\/1 लगी/)).toBeVisible();
-  await row.getByRole('radio', { name: /^H$|आधा दिन/ }).first().click();
-  await expect(row.getByRole('radio', { name: /^H$|आधा दिन/ }).first()).toHaveAttribute('aria-checked', 'true');
+  await markRadio(row, 'H').click();
+  await expect(markRadio(row, 'H')).toHaveAttribute('aria-checked', 'true');
 
   // Log: newest attendance is marked "edited", the old one reversed.
   await page.goto('/log');
@@ -54,7 +55,7 @@ test('staff cannot edit pay figures (fields disabled, note shown)', async ({ pag
   await page.getByRole('dialog').getByLabel(/4 अंक का पिन/).fill('2222');
   await page.getByRole('dialog').getByRole('button', { name: /सेव करें/ }).click();
   await expect(page.getByText('Munshi', { exact: true })).toBeVisible();
-  await page.goto('/more'); await page.getByRole('button', { name: /लॉग आउट/ }).click();
+  await logout(page);
   await loginAs(page, 'Munshi', '2222');
   await page.goto('/workers'); await page.getByText('Salim').first().click();
   await page.getByRole('button', { name: /बदलें/ }).click();

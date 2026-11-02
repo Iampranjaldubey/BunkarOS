@@ -37,6 +37,7 @@ const en = {
   'setup.pin': 'Create a 4-digit PIN', 'setup.pinConfirm': 'Re-enter PIN', 'setup.unitCode': 'Unit code',
   'setup.unitKey': 'Unit key', 'setup.createBtn': 'Create unit', 'setup.joinBtn': 'Join',
   'setup.hint': 'First time? Create a unit. Second phone? Join with the unit code and key.',
+  'login.needsInternet': 'First login on this phone needs internet', 'login.rateLimited': 'Too many tries — wait a little',
 
   'login.title': 'Pick your name', 'login.enterPin': 'Enter PIN', 'login.wrongPin': 'Wrong PIN',
   'login.lockedOut': 'Try again in {s} seconds', 'login.clear': 'Clear', 'login.noUsers': 'No users yet — turn on internet and reopen',
@@ -58,6 +59,7 @@ const en = {
   'settings.addUser': 'Add staff', 'settings.userName': 'Name', 'settings.userPhone': 'Phone', 'settings.userRole': 'Role',
   'settings.userPin': '4-digit PIN', 'settings.deactivate': 'Deactivate', 'settings.joinInfo': 'To join from another phone',
   'settings.joinHint': 'Never share the unit code and key outside the unit.', 'settings.copy': 'Copy', 'settings.copied': 'Copied',
+  'settings.holidayAdd': 'Add holiday', 'settings.holidayRemove': 'Remove {day}', 'settings.holidaysEmpty': 'No holidays yet', 'settings.holidaysHint': 'Sundays are always off. Holidays are not counted as unmarked days and do not change the working days (W).', 'settings.holidayDate': 'Holiday date',
   'settings.saved': 'Settings saved', 'settings.holidays': 'Holidays', 'settings.theme': 'Theme', 'settings.theme.auto': 'Same as phone',
   'settings.theme.light': 'Light', 'settings.theme.dark': 'Dark',
 

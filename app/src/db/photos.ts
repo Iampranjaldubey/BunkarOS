@@ -5,6 +5,8 @@ import { getStoredSession } from '../lib/session-store';
 
 const MAX_DIM = 1280;
 const JPEG_QUALITY = 0.7;
+/** D8 / SPEC-M15 AC9: every stored photo is a JPEG of at most 300 KB (the server refuses > 400 KB). */
+export const MAX_PHOTO_BYTES = 300 * 1024;
 
 // Cache object URLs so repeated <img src> for the same photo don't leak URLs.
 const urlCache = new Map<string, string>();
@@ -53,33 +55,34 @@ export async function savePhoto(file: File | Blob): Promise<string> {
   const unitId = session.unitId;
 
   const src = await loadBitmap(file);
-  const scale = Math.min(1, MAX_DIM / Math.max(src.width, src.height));
-  const w = Math.max(1, Math.round(src.width * scale));
-  const h = Math.max(1, Math.round(src.height * scale));
-
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas 2d context unavailable');
-  src.draw(ctx, w, h);
-
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('canvas toBlob failed'))),
-      'image/jpeg',
-      JPEG_QUALITY,
-    );
-  });
+  // Longest edge ≤ 1280 px, JPEG q 0.7; if that is still above 300 KB, lower the quality, then the size.
+  let dim = MAX_DIM; let quality = JPEG_QUALITY;
+  let blob: Blob; let w: number; let h: number;
+  for (;;) {
+    const scale = Math.min(1, dim / Math.max(src.width, src.height));
+    w = Math.max(1, Math.round(src.width * scale));
+    h = Math.max(1, Math.round(src.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas 2d context unavailable');
+    src.draw(ctx, w, h);
+    blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('canvas toBlob failed'))), 'image/jpeg', quality);
+    });
+    if (blob.size <= MAX_PHOTO_BYTES || dim <= 320) break;
+    if (quality > 0.45) quality -= 0.1; else dim = Math.round(dim * 0.8);
+  }
 
   const id = uuid();
   const row: PhotoRow = {
     id,
     unitId,
-    blob,
+    blob: blob!,
     mime: 'image/jpeg',
-    w,
-    h,
+    w: w!,
+    h: h!,
     at: new Date().toISOString(),
     sync: 'pending',
   };
@@ -93,14 +96,43 @@ export async function getPhotoBlob(id: string): Promise<Blob | undefined> {
   return row?.blob;
 }
 
+/** Set by the sync module: loads a photo another phone uploaded (GET /api/photos/:id with the user's login). */
+let remoteLoader: ((id: string) => Promise<Blob | null>) | null = null;
+export function setRemotePhotoLoader(fn: ((id: string) => Promise<Blob | null>) | null): void { remoteLoader = fn; }
+const inflight = new Map<string, Promise<Blob | null>>();
+/** Photos the server did not have (not uploaded yet by their phone): asked again after a minute, not on every render. */
+const missing = new Map<string, number>();
+const RETRY_MISSING_MS = 60_000;
+
+/** A photo that is not on this phone yet is fetched once from the server and kept (synced) for offline use. */
+async function fetchRemote(id: string): Promise<Blob | null> {
+  if (!remoteLoader) return null;
+  const missedAt = missing.get(id);
+  if (missedAt !== undefined && Date.now() - missedAt < RETRY_MISSING_MS) return null;
+  let p = inflight.get(id);
+  if (!p) {
+    p = (async () => {
+      try {
+        const blob = await remoteLoader!(id);
+        const session = getStoredSession();
+        if (!blob) missing.set(id, Date.now()); else missing.delete(id);
+        if (blob && session) await db.photos.put({ id, unitId: session.unitId, blob, mime: blob.type || 'image/jpeg', w: 0, h: 0, at: new Date().toISOString(), sync: 'synced' });
+        return blob;
+      } catch { return null; } finally { inflight.delete(id); }
+    })();
+    inflight.set(id, p);
+  }
+  return p;
+}
+
 /**
  * Resolve a photo id to a displayable object URL. Cached per id for the page
- * lifetime. Returns null if the photo is not stored locally.
+ * lifetime. A photo not stored locally is fetched from the server when online; null if it is not there either.
  */
 export async function photoUrl(id: string): Promise<string | null> {
   const cached = urlCache.get(id);
   if (cached) return cached;
-  const blob = await getPhotoBlob(id);
+  const blob = (await getPhotoBlob(id)) ?? (await fetchRemote(id));
   if (!blob) return null;
   const url = URL.createObjectURL(blob);
   urlCache.set(id, url);

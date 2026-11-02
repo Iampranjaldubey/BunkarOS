@@ -48,7 +48,10 @@ export default function LoginPage() {
     if (result.ok) { await refreshUnit(); navigate('/', { replace: true }); return; }
     const left = lockoutSecondsLeft();
     setLockLeft(left);
-    setError(left > 0 ? t('login.lockedOut', { s: left }) : t('login.wrongPin'));
+    setError(left > 0 ? t('login.lockedOut', { s: left })
+      : result.reason === 'needs_internet' ? t('login.needsInternet')
+      : result.reason === 'rate_limited' ? t('login.rateLimited')
+      : t('login.wrongPin'));
     setPin('');
   };
 

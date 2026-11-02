@@ -1,14 +1,21 @@
 import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarCheck, Wallet, Boxes, ClipboardList, AlertTriangle, Truck, HandCoins, ArrowDownToLine, Users } from 'lucide-react';
+import { CalendarCheck, Wallet, Boxes, ClipboardList, AlertTriangle, Truck, HandCoins, ArrowDownToLine, Users, ChevronRight } from 'lucide-react';
 import { Card, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { PageGrid } from '../../components/ui/PageGrid';
 import { PwaInstallCard } from '../../components/ui/PwaInstallCard';
+import { useIsDesktop } from '../../components/ui/useIsDesktop';
+import { useCan } from '../../app/useCan';
 import { useRecords } from '../../db/hooks';
+import type { Rec } from '../../db/types';
 import { listWorkers, listItems } from '../../domain/masters';
 import { getSettings } from '../../domain/masters';
-import { dashboard } from '../../domain/dashboard';
+import { dashboard, type Dashboard } from '../../domain/dashboard';
+import { orderViews } from '../../domain/orders';
+import { formatQty } from '../../domain/qty';
+import { DueLine } from '../orders/shared';
+import { Qty } from '../stock/shared';
 import { formatINR } from '../../domain/money';
 import { formatDay } from '../../domain/dates';
 import { todayIST } from '../../domain/ids';
@@ -33,6 +40,8 @@ export default function HomePage() {
   const { role, user } = useSession();
   const navigate = useNavigate();
   const recs = useRecords();
+  const isDesktop = useIsDesktop();
+  const allowed = useCan();
   const today = todayIST();
   const workers = useMemo(() => listWorkers(recs), [recs]);
   const items = useMemo(() => listItems(recs), [recs]);
@@ -57,17 +66,17 @@ export default function HomePage() {
       <Card>
         <CardTitle>{t('home.quick')}</CardTitle>
         <div className="grid grid-cols-2 gap-2">
-          <Button size="md" onClick={() => navigate('/attendance')}><CalendarCheck aria-hidden="true" size={18} />{t('nav.attendance')}</Button>
-          <Button size="md" variant="secondary" onClick={() => navigate('/advances/new')}><HandCoins aria-hidden="true" size={18} />{t('adv.title')}</Button>
-          <Button size="md" variant="secondary" onClick={() => navigate('/stock/move/in')}><ArrowDownToLine aria-hidden="true" size={18} />{t('stock.in')}</Button>
-          <Button size="md" variant="secondary" onClick={() => navigate('/orders/new')}><ClipboardList aria-hidden="true" size={18} />{t('order.new')}</Button>
+          {allowed('attendance.mark') && <Button size="md" onClick={() => navigate('/attendance')}><CalendarCheck aria-hidden="true" size={18} />{t('nav.attendance')}</Button>}
+          {allowed('advance.give') && <Button size="md" variant="secondary" onClick={() => navigate('/advances/new')}><HandCoins aria-hidden="true" size={18} />{t('adv.title')}</Button>}
+          {allowed('stock.move') && <Button size="md" variant="secondary" onClick={() => navigate('/stock/move/in')}><ArrowDownToLine aria-hidden="true" size={18} />{t('stock.in')}</Button>}
+          {allowed('order.manage') && <Button size="md" variant="secondary" onClick={() => navigate('/orders/new')}><ClipboardList aria-hidden="true" size={18} />{t('order.new')}</Button>}
         </div>
       </Card>
       {isOwner && (
         <Card data-testid="entries-today">
           <CardTitle>{t('home.entries')}</CardTitle>
           {d.entriesToday.length === 0 ? <p className="text-sm text-muted">{t('home.noEntries')}</p> : (
-            <ul className="divide-y divide-line">{d.entriesToday.map((e) => <li key={e.userId} className="flex items-center justify-between py-2"><span className="text-ink">{e.name}</span><Link to="/log" className="num text-sm font-medium text-primary">{t('home.entriesCount', { n: e.count })}</Link></li>)}</ul>
+            <ul className="divide-y divide-line">{d.entriesToday.map((e) => <li key={e.userId} className="flex items-center justify-between py-2"><span className="text-ink">{e.name}</span><Link to="/log" className="num -mr-2 inline-flex min-h-11 min-w-11 items-center justify-end rounded-xl px-2 text-sm font-medium text-primary hover:bg-primary-soft">{t('home.entriesCount', { n: e.count })}</Link></li>)}</ul>
           )}
         </Card>
       )}
@@ -78,17 +87,68 @@ export default function HomePage() {
 
   return (
     <section>
-      <div className="mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-dark p-5 text-white shadow-card">
-        <p className="text-sm text-white/80">{formatDay(today, lang, 'long')}</p>
-        <h1 className="mt-0.5 font-display text-3xl text-white md:text-4xl">{t('home.greeting', { name: user?.name ?? '' })}</h1>
+      <div className="mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-dark p-5 text-on-fill shadow-card">
+        <p className="text-sm text-on-fill/80">{formatDay(today, lang, 'long')}</p>
+        <h1 className="mt-0.5 font-display text-3xl text-on-fill md:text-4xl">{t('home.greeting', { name: user?.name ?? '' })}</h1>
         <p className="mt-3 flex flex-wrap gap-2 text-sm">
-          <span className={cn('rounded-full px-3 py-1', unmarked > 0 ? 'bg-white/15' : 'bg-white/25')}>{t('home.attendanceOf', { present: d.roll.present + d.roll.half, total: d.roll.total })}</span>
-          {d.lowStock.length > 0 && <span className="rounded-full bg-white/15 px-3 py-1">{t('home.lowStock')}: {d.lowStock.length}</span>}
-          {d.orders.overdue > 0 && <span className="rounded-full bg-white/15 px-3 py-1">{t('home.ordersOverdue')}: {d.orders.overdue}</span>}
-          {!isOwner && <span className="rounded-full bg-white/15 px-3 py-1">{t('home.staffHint')}</span>}
+          <span className={cn('rounded-full px-3 py-1', unmarked > 0 ? 'bg-on-fill/15' : 'bg-on-fill/25')}>{t('home.attendanceOf', { present: d.roll.present + d.roll.half, total: d.roll.total })}</span>
+          {d.lowStock.length > 0 && <span className="rounded-full bg-on-fill/15 px-3 py-1">{t('home.lowStock')}: {d.lowStock.length}</span>}
+          {d.orders.overdue > 0 && <span className="rounded-full bg-on-fill/15 px-3 py-1">{t('home.ordersOverdue')}: {d.orders.overdue}</span>}
+          {!isOwner && <span className="rounded-full bg-on-fill/15 px-3 py-1">{t('home.staffHint')}</span>}
         </p>
       </div>
-      <PageGrid main={tiles} aside={aside} asideSticky />
+      <PageGrid main={isDesktop ? <div className="flex flex-col gap-5">{tiles}<HomePanels recs={recs} today={today} lowStock={d.lowStock} /></div> : tiles} aside={aside} asideSticky />
     </section>
+  );
+}
+
+/** SPEC-M12 (desktop): what to deliver soon and what is running out, each row opens its record. */
+function HomePanels({ recs, today, lowStock }: { recs: Rec[]; today: string; lowStock: Dashboard['lowStock'] }) {
+  const { t, lang } = useT();
+  const due = useMemo(() => orderViews(recs, today).filter((v) => v.overdue || v.dueSoon).slice(0, 6), [recs, today]);
+  const head = (title: string, to: string) => (
+    <div className="mb-2 flex items-center justify-between"><CardTitle className="mb-0">{title}</CardTitle>
+      <Link to={to} className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-medium text-primary hover:bg-primary-soft">{t('home.viewAll')}<ChevronRight aria-hidden="true" size={16} /></Link></div>
+  );
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <Card data-testid="home-orders-panel">
+        {head(t('home.ordersPanel'), '/orders')}
+        {due.length === 0 ? <p className="py-3 text-sm text-muted">{t('home.ordersPanelEmpty')}</p> : (
+          <ul className="divide-y divide-line">
+            {due.map((v) => (
+              <li key={v.order.entityId}>
+                <Link to={`/orders/${v.order.entityId}`} className="-mx-2 flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-ink">{v.order.orderNo} · {v.order.design} {v.order.size}</p>
+                    <p className="truncate text-sm text-muted">{v.buyer?.name ?? ''} · {formatDay(v.order.dueDate, lang, 'short')}</p>
+                    <DueLine v={v} />
+                  </div>
+                  <span className="num shrink-0 text-sm font-medium text-ink">{t('home.pendingQty', { n: v.pendingQty })}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+      <Card data-testid="home-stock-panel">
+        {head(t('home.stockPanel'), '/stock')}
+        {lowStock.length === 0 ? <p className="py-3 text-sm text-muted">{t('home.stockPanelEmpty')}</p> : (
+          <ul className="divide-y divide-line">
+            {lowStock.slice(0, 6).map((r) => (
+              <li key={r.item.entityId}>
+                <Link to={`/stock/${r.item.entityId}`} className="-mx-2 flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-2">
+                  <span className="min-w-0 flex-1 truncate font-medium text-ink">{r.item.name}</span>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <Qty q={r.balance} item={r.item} className="font-medium text-given" />
+                    <span className="text-xs text-muted">{t('home.lowLevel')}: {formatQty(r.item.lowStockQty, r.item.unit)}</span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
   );
 }

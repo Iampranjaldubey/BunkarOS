@@ -8,7 +8,8 @@ import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { Input, Select } from '../../components/ui/Input';
 import { FormGrid } from '../../components/ui/FormGrid';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Badge } from '../../components/ui/Badge';
+import { Link } from 'react-router-dom';
 import { useToast } from '../../components/ui/Toast';
 import { useRecords } from '../../db/hooks';
 import { addRecord } from '../../db/repo';
@@ -27,10 +28,10 @@ export default function ItemFormPage() {
   const toast = useToast();
   const recs = useRecords();
   const existing = useMemo(() => (id ? listItems(recs, false).find((i) => i.entityId === id) : undefined), [recs, id]);
+  // kind is 'finished' only for an existing legacy item (DM-004).
   const [name, setName] = useState(''); const [kind, setKind] = useState<ItemKind>('raw'); const [unit, setUnit] = useState<ItemUnit>('kg'); const [low, setLow] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({}); const [busy, setBusy] = useState(false);
   useEffect(() => { if (existing) { setName(existing.name); setKind(existing.kind); setUnit(existing.unit); setLow(existing.lowStockQty ? formatQty(existing.lowStockQty, existing.unit) : ''); } }, [existing]);
-  useEffect(() => { if (!existing && kind === 'finished') setUnit('pcs'); }, [kind, existing]);
 
   const save = async (another: boolean) => {
     const e: Record<string, string> = {};
@@ -51,9 +52,11 @@ export default function ItemFormPage() {
       <PageHeader title={existing ? t('stock.editItem') : t('stock.newItem')} back />
       <Card className="md:p-6">
         <form onSubmit={(e) => { e.preventDefault(); void save(false); }}>
-          <div className="mb-4"><p className="mb-1.5 text-sm font-medium text-muted">{t('stock.kind')}</p>
-            <SegmentedControl<ItemKind> label={t('stock.kind')} value={kind} onChange={setKind} options={[{ value: 'raw', label: t('stock.raw') }, { value: 'finished', label: t('stock.finished') }]} />
-            <p className="mt-1 text-sm text-muted">{t(`stock.kind.${kind}`)}</p></div>
+          {/* DM-004: new finished carpets go to the catalogue, so the form only makes raw-material items.
+              An old finished item keeps its kind and is shown as legacy. */}
+          {kind === 'finished'
+            ? <p className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted" data-testid="item-legacy"><Badge tone="neutral">{t('cat.legacy')}</Badge>{t('stock.finished')} · {t('cat.legacyHint')}</p>
+            : <p className="mb-4 text-sm text-muted" data-testid="item-kind-raw">{t('stock.kind.raw')} · <Link to="/catalogue/new" className="font-medium text-primary underline-offset-2 hover:underline">{t('cat.new')}</Link></p>}
           <FormGrid>
             <Field label={t('stock.name')} required error={errors.name} className="lg:col-span-2">{({ id, describedBy, invalid }) => <Input id={id} value={name} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setName(e.target.value)} autoFocus placeholder={kind === 'finished' ? 'Kashan 8x10' : undefined} />}</Field>
             <Field label={t('stock.unit')}>{({ id }) => <Select id={id} value={unit} onChange={(e) => setUnit(e.target.value as ItemUnit)}>{UNITS.map((u) => <option key={u} value={u}>{t(`stock.unit.${u}`)}</option>)}</Select>}</Field>

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAndLogin } from './fixtures';
+import { setupAndLogin, istToday, attRow, markRadio, setSalary } from './fixtures';
 
 /** SPEC-M07: owner sends a link → worker's phone opens it once and keeps it; shop-code fallback; cancel → closed. */
 test('worker page via link, via shop code, stays after reload, revoked after cancel', async ({ page, browser }) => {
@@ -7,14 +7,14 @@ test('worker page via link, via shop code, stays after reload, revoked after can
   await page.goto('/workers/new');
   await page.getByLabel(/^नाम/).fill('Rafiq'); await page.getByLabel(/^फ़ोन/).fill('9876501234');
   await page.getByLabel(/महीने की तनख्वाह/).fill('12000');
-  const y = new Date().getFullYear(); const m = String(new Date().getMonth() + 1).padStart(2, '0');
-  await page.getByLabel(/कब से काम पर/).fill(`${y}-${m}-01`);
+  const y = istToday().slice(0, 4);
+  await page.getByLabel(/कब से काम पर/).fill(`${istToday().slice(0, 7)}-01`);
   await page.getByRole('button', { name: 'सेव करें', exact: true }).click(); await expect(page).toHaveURL(/\/workers$/);
   // One absent day and an advance so the worker page has something to show.
   await page.goto('/attendance');
-  const row = page.getByTestId('attendance-list').locator('li').filter({ hasText: 'Rafiq' });
-  await row.getByRole('radio', { name: /^A$/ }).click();
-  await expect(row.getByRole('radio', { name: /^A$/ })).toHaveAttribute('aria-checked', 'true');
+  const row = attRow(page, 'Rafiq');
+  await markRadio(row, 'A').click();
+  await expect(markRadio(row, 'A')).toHaveAttribute('aria-checked', 'true');
   await page.goto('/advances/new');
   await page.getByLabel(/किसको/).selectOption({ label: 'Rafiq' }); await page.getByLabel(/रकम/).fill('500');
   await page.getByRole('button', { name: 'सेव करें', exact: true }).click();
@@ -78,6 +78,19 @@ test('worker page via link, via shop code, stays after reload, revoked after can
   await expect(wp.getByTestId(`year-total-${y}`)).toHaveText(paidText);
   await wp.getByRole('button', { name: /को मिला/ }).first().click();
   await expect(wp.getByText(/एडवांस काटा/)).toBeVisible();
+  const slipLinesBefore = await wp.getByTestId('wp-slip-line').allTextContents();
+  expect(slipLinesBefore.join(' ')).toContain('₹12,000');
+
+  // SPEC-M16 AC1: the owner changes the salary afterwards → the worker's page still shows what was paid.
+  await setSalary(page, 'Rafiq', 15000);
+  await expect(page.getByText('सिंक हो गया')).toBeVisible({ timeout: 20_000 });
+  await wp.reload();
+  await expect(wp.getByTestId('wp-estimate')).toHaveText(paidText); // this month (paid) tab
+  await wp.getByRole('tab', { name: /^पगार$/ }).click();
+  await expect(wp.getByTestId(`year-total-${y}`)).toHaveText(paidText);
+  await wp.getByRole('button', { name: /को मिला/ }).first().click();
+  await expect(wp.getByTestId('wp-slip-line')).toHaveText(slipLinesBefore);
+  await expect(wp.getByText('₹15,000')).toHaveCount(0);
 
   // Owner cancels the link → phone #1 sees the closed message on next load.
   await page.goto('/workers'); await page.getByText('Rafiq').first().click();

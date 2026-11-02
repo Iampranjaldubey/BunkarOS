@@ -1,11 +1,13 @@
 // HTTP dispatcher on node:http. JSON everywhere except photo bodies.
+import { needsCatalogue, loadCatalogue, catalogueCheck, apply as applyCatalogue } from './catalogue.mjs';
 import { getUnit, insertUnit, getRecordById, insertRecord, recordsSince, userRecordsSince, putPhoto, getPhoto,
   userRecordCount, latestUser, userRole, lockedMonths, paidPairs, recordsOfType,
   getUnitByShortCode, ensureShortCode, latestWorker, activeWorkers, workerRecords,
-  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords } from './db.mjs';
+  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords, publicRec, stockBalances,
+  latestSetting, latestByEntity, correctionHistory, PRICE_FIELDS } from './db.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { hashUnitKey, verifyUnitKey } from './auth.mjs';
-import { evaluate } from './rules.mjs';
+import { evaluate, stockMove, operatorPerms } from './rules.mjs';
 import { signToken, verifyToken, verifyPinServer, signAdminToken, verifyAdminToken } from './token.mjs';
 import { serveStatic } from './static.mjs';
 
@@ -172,19 +174,36 @@ async function handleSync(db, req, res) {
     if (!token || token.unitId !== unitId) {
       if (incoming.length > 0) return sendError(res, 401, 'needs_login', req);
       const rows = await userRecordsSince(db, unitId, since, limit);
-      return sendJson(res, 200, { accepted: [], rejected: [], records: rows.map((r) => r.rec), cursor: since }, req);
+      return sendJson(res, 200, { accepted: [], rejected: [], records: rows.map((r) => publicRec(r.rec)), cursor: since }, req);
     }
     auth = { userId: token.userId, role: await userRole(db, unitId, token.userId) };
   }
 
   const accepted = []; const rejected = [];
+  const batchUsers = new Map(); // entityId → payload accepted earlier in this batch (owner + edit in one push)
   const ctx = {
     unitId, auth, hasUsers,
     locked: await lockedMonths(db, unitId),
     paid: await paidPairs(db, unitId),
     batch: { ids: new Set(), paid: new Set() },
     targets: null, prevWorker: null,
+    serverDay: istDay(new Date()), // SPEC-M16 §5: "today" for staff undo is the server's IST date at receive time
+    stock: null,
+    perms: operatorPerms(await latestSetting(db, unitId)), // SPEC-M13: the owner's toggles for all operators
+    ...(await correctionHistory(db, unitId)),               // SPEC-M14: reversed payments, re-locks
   };
+  const isOperator = Boolean(auth && auth.role !== 'owner');
+  // What this token may see: operators lose prices while the owner hides them (SPEC-M13). Sent back as `view`.
+  const view = { seePrices: !isOperator || ctx.perms.seePrices };
+  // Operator edits of price-carrying masters keep the stored prices (the operator's phone never had them).
+  const priceTypes = isOperator && !view.seePrices ? Object.keys(PRICE_FIELDS).filter((t) => incoming.some((r) => r?.type === t)) : [];
+  const prevMasters = new Map();
+  for (const t of priceTypes) prevMasters.set(t, await latestByEntity(db, unitId, t));
+  // SPEC-M16 §4: item balances, only when this push moves stock (or may reverse a move).
+  const STOCK_TYPES = new Set(['stock_in', 'stock_out', 'stock_adjust', 'finished_in', 'delivery', 'reversal']);
+  if (incoming.some((r) => STOCK_TYPES.has(r?.type))) ctx.stock = await stockBalances(db, unitId, stockMove);
+  // SPEC-M15: catalogue balances and reservations, only when this push touches the catalogue or orders.
+  const catalogue = needsCatalogue(incoming) ? await loadCatalogue(db, unitId) : null;
   // Lazy helpers for rules that need other records.
   if (incoming.some((r) => r?.type === 'reversal')) {
     ctx.targets = new Map();
@@ -206,31 +225,84 @@ async function handleSync(db, req, res) {
       const existing = await getRecordById(db, rec.id);
       if (existing) { accepted.push(rec.id); ctx.batch.ids.add(rec.id); continue; }
     }
-    const verdict = evaluate(rec, ctx);
+    // SPEC-M11: phones no longer hold PIN hashes. A `user` record without them is an edit:
+    // keep the stored hash/salt. A brand-new user must bring both.
+    let toCheck = rec;
+    if (rec?.type === 'user' && rec.payload && typeof rec.payload === 'object') {
+      const p = rec.payload;
+      const hasHash = p.pinHash !== undefined || p.pinSalt !== undefined;
+      if (hasHash) {
+        if (typeof p.pinHash !== 'string' || !p.pinHash || typeof p.pinSalt !== 'string' || !p.pinSalt) { rejected.push({ id: rec.id, reason: 'invalid_user' }); continue; }
+      } else {
+        const prev = batchUsers.get(p.entityId) ?? (await latestUser(db, unitId, p.entityId));
+        if (!prev?.pinHash || !prev?.pinSalt) { rejected.push({ id: rec.id, reason: 'invalid_user' }); continue; }
+        toCheck = { ...rec, payload: { ...p, pinHash: prev.pinHash, pinSalt: prev.pinSalt } };
+      }
+    }
+    if (rec && priceTypes.includes(rec.type) && rec.payload && typeof rec.payload === 'object') {
+      const fields = PRICE_FIELDS[rec.type];
+      if (fields.some((k) => rec.payload[k] !== undefined)) { rejected.push({ id: rec.id, reason: 'forbidden_price' }); continue; }
+      const prev = prevMasters.get(rec.type)?.get(rec.payload.entityId);
+      if (prev) toCheck = { ...rec, payload: { ...rec.payload, ...Object.fromEntries(fields.filter((k) => prev[k] !== undefined).map((k) => [k, prev[k]])) } };
+    }
+    const verdict = evaluate(toCheck, ctx);
     if (!verdict.ok) { rejected.push({ id: rec?.id, reason: verdict.reason }); continue; }
-    const stored = { ...rec, sync: 'synced' }; delete stored.rejectReason;
+    if (catalogue) {
+      const why = catalogueCheck(catalogue, toCheck, toCheck.type === 'reversal' ? ctx.targets?.get(toCheck.payload.targetId) : undefined);
+      if (why) { rejected.push({ id: rec.id, reason: why }); continue; }
+    }
+    const stored = { ...toCheck, sync: 'synced' }; delete stored.rejectReason;
     await insertRecord(db, { id: rec.id, unitId, type: rec.type, rec: stored });
     accepted.push(rec.id); ctx.batch.ids.add(rec.id);
     if (rec.type === 'period_lock') ctx.locked.add(rec.payload.month);
+    // Keep the batch view current: later records in the same push see this one.
+    const move = ctx.stock ? stockMove(rec) : null;
+    if (move) ctx.stock.set(move.itemId, (ctx.stock.get(move.itemId) ?? 0) + move.delta);
+    if (rec.type === 'reversal') {
+      const target = ctx.targets?.get(rec.payload.targetId);
+      if (target?.type === 'period_lock' && target.payload?.month) { ctx.locked.delete(target.payload.month); ctx.relocked.add(target.payload.month); } // unlock reopens the month
+      if (target?.type === 'wage_payment' && target.payload) { const k = `${target.payload.workerId}|${target.payload.month}`; ctx.paid.delete(k); ctx.batch.paid.delete(k); ctx.reversedPaid.add(k); }
+      const undone = ctx.stock && target ? stockMove(target) : null;
+      if (undone) ctx.stock.set(undone.itemId, (ctx.stock.get(undone.itemId) ?? 0) - undone.delta);
+    }
+    if (rec.type === 'user') batchUsers.set(toCheck.payload.entityId, toCheck.payload);
+    if (catalogue) {
+      applyCatalogue(catalogue, toCheck, 1);
+      const target = rec.type === 'reversal' ? ctx.targets?.get(rec.payload.targetId) : undefined;
+      if (target) applyCatalogue(catalogue, target, -1);
+    }
   }
 
   const pulled = await recordsSince(db, unitId, since, limit);
   const cursor = pulled.length ? pulled[pulled.length - 1].seq : since;
-  return sendJson(res, 200, { accepted, rejected, records: pulled.map((r) => r.rec), cursor }, req);
+  return sendJson(res, 200, { accepted, rejected, records: pulled.map((r) => publicRec(r.rec, view)), cursor, view }, req);
 }
 
-async function handlePutPhoto(db, req, res, id) {
+/** SPEC-M11: photos need the unit key and, once the unit has users, a valid user token for that unit. */
+async function photoAuth(db, req, res) {
   const unit = await authUnit(db, req);
-  if (!unit) return sendError(res, 401, 'unauthorized', req);
+  if (!unit) { sendError(res, 401, 'unauthorized', req); return null; }
+  if ((await userRecordCount(db, unit.unit_id)) > 0) {
+    const token = await bearerAuth(db, req);
+    if (!token || token.unitId !== unit.unit_id) { sendError(res, 401, 'needs_login', req); return null; }
+  }
+  return unit;
+}
+async function handlePutPhoto(db, req, res, id) {
+  const unit = await photoAuth(db, req, res);
+  if (!unit) { await readBody(req, PHOTO_LIMIT).catch(() => undefined); return undefined; }
   const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
   if (!PHOTO_MIME_ALLOW.has(mime)) { await readBody(req, PHOTO_LIMIT).catch(() => undefined); return sendError(res, 415, 'unsupported_media_type', req); }
   const buf = await readBody(req, PHOTO_LIMIT);
-  await putPhoto(db, { id, unitId: unit.unit_id, mime, bytes: buf });
+  // SPEC-M16 §6: never overwrite a photo, never move it between units.
+  const result = await putPhoto(db, { id, unitId: unit.unit_id, mime, bytes: buf });
+  if (result === 'taken') return sendError(res, 409, 'photo_id_taken', req);
+  if (result === 'exists') return sendError(res, 409, 'photo_exists', req);
   return sendJson(res, 200, { ok: true, id }, req);
 }
 async function handleGetPhoto(db, req, res, id) {
-  const unit = await authUnit(db, req);
-  if (!unit) return sendError(res, 401, 'unauthorized', req);
+  const unit = await photoAuth(db, req, res);
+  if (!unit) return undefined;
   const row = await getPhoto(db, unit.unit_id, id);
   if (!row) return sendError(res, 404, 'not_found', req);
   const mime = PHOTO_MIME_ALLOW.has(row.mime) ? row.mime : 'application/octet-stream';

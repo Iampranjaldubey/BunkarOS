@@ -10,7 +10,7 @@
 @theme {
   --color-primary: #0e7c7b;
   --color-primary-dark: #0a5c5b;
-  --color-primary-soft: #e3f2f1;
+  --color-primary-soft: #edf7f6;
   --color-accent: #e0a526;
   --color-accent-ink: #7a5a08;
   --color-accent-soft: #fdf3dc;
@@ -18,11 +18,11 @@
   --color-given: #c0392b;
   --color-given-soft: #fbe9e7;
   --color-received: #2e7d4f;
-  --color-received-soft: #e6f4ea;
+  --color-received-soft: #ebf6ee;
   --color-ok: #2e7d4f;
   --color-danger: #c0392b;
   --color-warn: #b45309;
-  --color-warn-soft: #fdf0e1;
+  --color-warn-soft: #fdf3e7;
 
   --color-bg: #f6f5f1;
   --color-surface: #ffffff;
@@ -30,6 +30,8 @@
   --color-ink: #1b2430;
   --color-muted: #5b6673;
   --color-line: #dde1e6;
+  /* Text on filled primary / given / received surfaces (AA in both schemes). */
+  --color-on-fill: #ffffff;
 
   --font-sans: 'Mukta', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Tiro Devanagari Hindi', 'Mukta', serif;
@@ -63,6 +65,7 @@
     --color-ink: #eceff3;
     --color-muted: #a2adba;
     --color-line: #2a333d;
+    --color-on-fill: #0f1419;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
@@ -88,6 +91,7 @@
   --color-ink: #eceff3;
   --color-muted: #a2adba;
   --color-line: #2a333d;
+    --color-on-fill: #0f1419;
   color-scheme: dark;
 }
 
@@ -130,7 +134,15 @@
   .no-print { display: none !important; }
   body { background: #fff; color: #000; font-size: 12pt; }
   main { max-width: none !important; padding: 0 !important; }
+  /* D-003: a page with a slip prints only the slip, on one A4 page. */
+  body:has(.print-slip) main > *:not(.print-slip) { display: none !important; }
+  .print-slip { display: block !important; page: slip; }
 }
+.print-slip { display: none; }
+@page { size: A4; margin: 12mm; }
+@page slip { size: A4; margin: 0; }
+.slip-paper { width: 210mm; min-height: 297mm; box-sizing: border-box; }
+@media print { .slip-paper { height: 297mm; min-height: 0; overflow: hidden; break-inside: avoid; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

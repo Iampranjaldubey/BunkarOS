@@ -18,9 +18,10 @@
 import { useSyncExternalStore } from 'react';
 import { db } from '../db/db';
 import type { Rec, PhotoRow } from '../db/types';
-import type { SyncResponse, SyncStateView } from './types';
+import type { SyncResponse, SyncStateView, SyncView } from './types';
 import { getDeviceId } from '../lib/session-store';
 import { setOnLocalWrite } from '../db/repo';
+import { setRemotePhotoLoader } from '../db/photos';
 
 const PUSH_BATCH = 200;
 const PULL_LIMIT = 500; // == server PULL_LIMIT (routes.mjs)
@@ -38,10 +39,11 @@ interface AuthMeta {
   userId: string;
 }
 
-/** Result of a token request. `reason` disambiguates a failure for the UI. */
+/** Result of a token request. `reason` disambiguates a failure for the UI (SPEC-M11). */
 export interface TokenResult {
   ok: boolean;
-  reason?: 'needs_login';
+  /** wrong_pin = server said 401; rate_limited = 429; network = no answer; needs_login = no unit key / bad reply. */
+  reason?: 'wrong_pin' | 'rate_limited' | 'network' | 'needs_login';
 }
 
 /**
@@ -162,6 +164,8 @@ export async function requestToken(unitId: string, userId: string, pin: string):
     });
     if (!res.ok) {
       setState({ authState: 'needs_login' });
+      if (res.status === 401) return { ok: false, reason: 'wrong_pin' };
+      if (res.status === 429) return { ok: false, reason: 'rate_limited' };
       return { ok: false, reason: 'needs_login' };
     }
     const data = (await res.json()) as { token?: string; exp?: number };
@@ -173,9 +177,9 @@ export async function requestToken(unitId: string, userId: string, pin: string):
     setState({ authState: 'ok', error: null });
     return { ok: true };
   } catch {
-    // Offline / network error: local login proceeds; sync flags needs_login.
+    // Offline / network error: the caller may fall back to this phone's own PIN check.
     setState({ authState: 'needs_login' });
-    return { ok: false, reason: 'needs_login' };
+    return { ok: false, reason: 'network' };
   }
 }
 
@@ -304,17 +308,21 @@ async function throwFor401(_res: Response): Promise<never> {
  * Network errors propagate (syncNow backs off and retries); a photo the server can never
  * accept (413 too large / 415 wrong type) is marked 'rejected' instead of retried forever.
  */
-async function pushPendingPhotos(creds: { unitId: string; unitKey: string }): Promise<void> {
+async function pushPendingPhotos(creds: { unitId: string; unitKey: string }, token?: string): Promise<void> {
   const pending: PhotoRow[] = await db.photos.where('sync').equals('pending').toArray();
   for (const photo of pending) {
     if (photo.unitId && photo.unitId !== creds.unitId) continue;
+    const headers: Record<string, string> = { 'x-unit-id': creds.unitId, 'x-unit-key': creds.unitKey, 'Content-Type': photo.mime };
+    if (token) headers['Authorization'] = `Bearer ${token}`; // SPEC-M11: photos need a user login
     const res = await fetch(`/api/photos/${encodeURIComponent(photo.id)}`, {
       method: 'PUT',
-      headers: { 'x-unit-id': creds.unitId, 'x-unit-key': creds.unitKey, 'Content-Type': photo.mime },
+      headers,
       body: photo.blob,
     });
     if (res.ok) await db.photos.update(photo.id, { sync: 'synced' });
-    else if (res.status === 413 || res.status === 415) await db.photos.update(photo.id, { sync: 'rejected' });
+    // 413 too large / 415 wrong type / 409 id owned by another unit or already stored with other bytes (SPEC-M16 §6):
+    // the server will never accept this upload, so stop retrying it.
+    else if (res.status === 409 || res.status === 413 || res.status === 415) await db.photos.update(photo.id, { sync: 'rejected' });
   }
 }
 
@@ -329,7 +337,10 @@ async function pushPending(
   token: string | undefined,
   authorId?: string,
 ): Promise<SyncResponse | null> {
-  const allPending: Rec[] = await db.records.where('sync').equals('pending').toArray();
+  // Push in the order the entries were written. The index returns them by random id, and the server applies a
+  // batch in order: an unlock must come before the reversal it allows, a reversal before the payment that replaces it.
+  const allPending: Rec[] = (await db.records.where('sync').equals('pending').toArray())
+    .sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
   const pending = (authorId ? allPending.filter((r) => r.by === authorId) : allPending).slice(0, PUSH_BATCH);
 
   const since = (await metaGet<number>('cursor')) ?? 0;
@@ -347,12 +358,65 @@ async function pushPending(
   for (const r of data.records) if (typeof r.serverSeq === 'number') seqById.set(r.id, r.serverSeq);
   for (const id of data.accepted) {
     await db.records.update(id, { sync: 'synced', serverSeq: seqById.get(id) });
+    await stripPinLocal(id);
   }
   // Apply rejected: mark rejected + reason.
   for (const { id, reason } of data.rejected) {
     await db.records.update(id, { sync: 'rejected', rejectReason: reason });
   }
   return data;
+}
+
+// ---------------- PIN hashes (SPEC-M11) ----------------
+/** Remove pinHash/pinSalt from one local `user` record once the server holds it. */
+async function stripPinLocal(id: string): Promise<void> {
+  const r = await db.records.get(id);
+  if (!r || r.type !== 'user') return;
+  const p = r.payload as Record<string, unknown>;
+  if (!('pinHash' in p) && !('pinSalt' in p)) return;
+  const { pinHash: _h, pinSalt: _s, ...rest } = p;
+  await db.records.update(id, { payload: rest });
+}
+const SCRUB_KEY = 'scrub.pin.v1';
+/**
+ * One-time clean-up for phones that pulled PIN hashes before SPEC-M11: strip them from every
+ * synced `user` record. Pending ones keep them (the server still needs them). Returns how many changed.
+ */
+export async function scrubPinHashes(): Promise<number> {
+  if (await metaGet<boolean>(SCRUB_KEY)) return 0;
+  const users = await db.records.where('type').equals('user').toArray();
+  let n = 0;
+  for (const r of users) {
+    if (r.sync === 'pending') continue;
+    const p = r.payload as Record<string, unknown>;
+    if (!('pinHash' in p) && !('pinSalt' in p)) continue;
+    await stripPinLocal(r.id); n += 1;
+  }
+  await metaSet(SCRUB_KEY, true);
+  return n;
+}
+
+// ---------------- forced resync (SPEC-M13) ----------------
+const VIEW_KEY = 'sync.view';
+const sameView = (a: SyncView, b: SyncView) => a.seePrices === b.seePrices;
+/**
+ * The server tells us what it hid for this token. When that changes (the owner hid or showed prices),
+ * data already on this phone no longer matches: delete every record that is not pending, start the pull
+ * from 0 and fetch everything again. Pending entries stay and are pushed. Returns true when it reset.
+ * A phone that never stored a view held everything visible, so "no view yet" counts as all visible.
+ */
+async function applyView(view: SyncView | undefined): Promise<boolean> {
+  if (!view) return false;
+  const prev = (await metaGet<SyncView>(VIEW_KEY)) ?? { seePrices: true };
+  await metaSet(VIEW_KEY, view);
+  if (sameView(prev, view)) return false;
+  setState({ resyncing: true });
+  const keep = await db.records.where('sync').equals('pending').primaryKeys();
+  const keepSet = new Set(keep);
+  const drop = (await db.records.toCollection().primaryKeys()).filter((id) => !keepSet.has(id));
+  await db.records.bulkDelete(drop);
+  await metaSet('cursor', 0);
+  return true;
 }
 
 // ---------------- pull ----------------
@@ -374,6 +438,7 @@ async function applyPulled(data: SyncResponse): Promise<void> {
       serverSeq: incoming.serverSeq,
       rejectReason: undefined,
     });
+    if (incoming.type === 'user') await stripPinLocal(incoming.id);
   }
   if (typeof data.cursor === 'number') await metaSet('cursor', data.cursor);
 }
@@ -400,6 +465,7 @@ async function drainPull(
     if (res.status === 401) await throwFor401(res);
     if (!res.ok) break;
     const data = (await res.json()) as SyncResponse;
+    if (await applyView(data.view)) { more = true; continue; } // view changed mid-drain: start again from 0
     await applyPulled(data);
     // Short page → caught up. Full page → there may be more.
     more = data.records.length >= PULL_LIMIT;
@@ -464,7 +530,9 @@ async function syncCycle(): Promise<void> {
     // user's records are pushed (see pushPending).
     const authorId = auth?.userId;
     let data = await pushPending(creds, token, authorId);
-    if (data) await applyPulled(data);
+    // SPEC-M13: a changed view resets the local data first; the pull below then starts from 0.
+    const reset = data ? await applyView(data.view) : false;
+    if (data && !reset) await applyPulled(data);
 
     // If a full batch went out there may be more: keep going until a short batch.
     let guard = 0;
@@ -479,10 +547,10 @@ async function syncCycle(): Promise<void> {
 
     // Photos last: small, critical records (money, wool) never wait behind photo
     // uploads on a slow connection; every still-pending photo is (re)tried each cycle.
-    await pushPendingPhotos(creds);
+    await pushPendingPhotos(creds, token);
 
     backoff = BACKOFF_BASE_MS;
-    setState({ online: true, authState: 'ok', error: null, lastSyncAt: new Date().toISOString() });
+    setState({ online: true, authState: 'ok', error: null, lastSyncAt: new Date().toISOString(), resyncing: false });
   } catch (err) {
     if (err instanceof NeedsLoginError) {
       // Stale/absent token: drop it and ask the user to log in again when online.
@@ -521,11 +589,20 @@ function syncSoon(): void {
   writeTimer = setTimeout(() => { writeTimer = null; void syncNow(); }, WRITE_DEBOUNCE_MS);
 }
 
+/** A photo uploaded by another phone of this unit (SPEC-M15: catalogue photos are seen on every phone). */
+async function loadRemotePhoto(id: string): Promise<Blob | null> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+  const res = await authedFetch(`/api/photos/${encodeURIComponent(id)}`);
+  if (!res.ok) return null;
+  return res.blob();
+}
+
 /** Start automatic syncing: online events + a 30 s loop + soon after every local write. Idempotent. */
 export function startAutoSync(): () => void {
   if (!isBrowser || autoStarted) return () => undefined;
   autoStarted = true;
   setOnLocalWrite(syncSoon);
+  setRemotePhotoLoader(loadRemotePhoto);
 
   const onOnline = () => {
     setState({ online: true });
@@ -548,6 +625,7 @@ export function startAutoSync(): () => void {
     if (writeTimer) clearTimeout(writeTimer);
     writeTimer = null;
     setOnLocalWrite(null);
+    setRemotePhotoLoader(null);
     autoStarted = false;
   };
 }

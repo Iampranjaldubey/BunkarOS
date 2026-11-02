@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startTestServer, bootstrapUnit, makeRec, sync, UNIT_KEY, PIN } from './helpers.mjs';
+import { startTestServer, bootstrapUnit, makeRec, sync, UNIT_KEY, PIN, istToday } from './helpers.mjs';
 
 let srv, unitId, ownerId, token, staffId, staffToken;
 test.before(async () => {
@@ -54,20 +54,24 @@ test('wage_payment: arithmetic must hold; one per worker+month', async () => {
   assert.deepEqual(r.body.rejected.map((x) => x.reason), ['duplicate_payment']);
 });
 
-test('staff may reverse only own same-day records; owner any', async () => {
-  const mine = att(staffId, '2026-10-20');
-  const theirs = att(ownerId, '2026-10-20');
-  let r = await sync(srv.base, unitId, UNIT_KEY, [mine], 0, staffToken); assert.equal(r.body.rejected.length, 0);
+test('staff may reverse only own records from the server\'s today; owner any (SPEC-M16 §5)', async () => {
+  const today = istToday(); const yesterday = istToday(-1);
+  const mine = att(staffId, today);
+  const mineOld = att(staffId, yesterday);
+  const theirs = att(ownerId, today);
+  let r = await sync(srv.base, unitId, UNIT_KEY, [mine, mineOld], 0, staffToken); assert.equal(r.body.rejected.length, 0);
   r = await sync(srv.base, unitId, UNIT_KEY, [theirs], 0, token); assert.equal(r.body.rejected.length, 0);
-  const revOk = makeRec('reversal', { targetId: mine.id, reason: 'edited' }, { unitId, by: staffId, role: 'staff', day: '2026-10-20' });
-  const revOther = makeRec('reversal', { targetId: theirs.id, reason: 'x' }, { unitId, by: staffId, role: 'staff', day: '2026-10-20' });
-  const revLate = makeRec('reversal', { targetId: mine.id, reason: 'x' }, { unitId, by: staffId, role: 'staff', day: '2026-10-21' });
-  r = await sync(srv.base, unitId, UNIT_KEY, [revOk, revOther, revLate], 0, staffToken);
-  assert.deepEqual(r.body.rejected.map((x) => x.reason).sort(), ['forbidden_reversal', 'forbidden_reversal']);
+  const revOk = makeRec('reversal', { targetId: mine.id, reason: 'edited' }, { unitId, by: staffId, role: 'staff', day: today });
+  const revOther = makeRec('reversal', { targetId: theirs.id, reason: 'x' }, { unitId, by: staffId, role: 'staff', day: today });
+  // Back-dated undo: the reversal claims yesterday to match its target; the server uses its own date.
+  const revBackDated = makeRec('reversal', { targetId: mineOld.id, reason: 'x' }, { unitId, by: staffId, role: 'staff', day: yesterday });
+  const revOldToday = makeRec('reversal', { targetId: mineOld.id, reason: 'x' }, { unitId, by: staffId, role: 'staff', day: today });
+  r = await sync(srv.base, unitId, UNIT_KEY, [revOk, revOther, revBackDated, revOldToday], 0, staffToken);
   assert.deepEqual(r.body.accepted, [revOk.id]);
-  const ownerRev = makeRec('reversal', { targetId: theirs.id, reason: 'owner' }, { unitId, by: ownerId });
+  assert.deepEqual(Object.fromEntries(r.body.rejected.map((x) => [x.id, x.reason])), { [revOther.id]: 'forbidden_reversal', [revBackDated.id]: 'forbidden_reversal', [revOldToday.id]: 'forbidden_reversal' });
+  const ownerRev = makeRec('reversal', { targetId: mineOld.id, reason: 'owner' }, { unitId, by: ownerId, day: today });
   r = await sync(srv.base, unitId, UNIT_KEY, [ownerRev], 0, token);
-  assert.equal(r.body.rejected.length, 0);
+  assert.equal(r.body.rejected.length, 0, 'owner may reverse an older entry in an unlocked month');
 });
 
 test('staff cannot change a worker\'s pay fields; owner can', async () => {
@@ -82,13 +86,14 @@ test('staff cannot change a worker\'s pay fields; owner can', async () => {
   assert.equal(r.body.rejected.length, 0);
 });
 
-test('photos: PUT/GET round trip, wrong mime 415', async () => {
+test('photos: PUT/GET round trip with a login, wrong mime 415', async () => {
   const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
-  let r = await fetch(`${srv.base}/api/photos/p1`, { method: 'PUT', headers: { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY, 'Content-Type': 'image/jpeg' }, body: bytes });
+  const h = { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY, Authorization: `Bearer ${token}` };
+  let r = await fetch(`${srv.base}/api/photos/p1`, { method: 'PUT', headers: { ...h, 'Content-Type': 'image/jpeg' }, body: bytes });
   assert.equal(r.status, 200);
-  r = await fetch(`${srv.base}/api/photos/p1`, { headers: { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY } });
+  r = await fetch(`${srv.base}/api/photos/p1`, { headers: h });
   assert.equal(r.status, 200); assert.equal(r.headers.get('content-type'), 'image/jpeg');
   assert.equal(Buffer.from(await r.arrayBuffer()).length, bytes.length);
-  r = await fetch(`${srv.base}/api/photos/p2`, { method: 'PUT', headers: { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY, 'Content-Type': 'text/html' }, body: 'x' });
+  r = await fetch(`${srv.base}/api/photos/p2`, { method: 'PUT', headers: { ...h, 'Content-Type': 'text/html' }, body: 'x' });
   assert.equal(r.status, 415);
 });

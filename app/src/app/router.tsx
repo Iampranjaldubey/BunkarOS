@@ -25,6 +25,9 @@ const OrderFormPage = lazy(() => import('../features/orders/OrderFormPage'));
 const OrderDetailPage = lazy(() => import('../features/orders/OrderDetailPage'));
 const BuyersPage = lazy(() => import('../features/orders/BuyersPage'));
 const MonthPage = lazy(() => import('../features/month/MonthPage'));
+const CataloguePage = lazy(() => import('../features/catalogue/CataloguePage'));
+const CarpetFormPage = lazy(() => import('../features/catalogue/CarpetFormPage'));
+const CarpetDetailPage = lazy(() => import('../features/catalogue/CarpetDetailPage'));
 const WorkerLinkPage = lazy(() => import('../worker/WorkerLinkPage'));
 const WorkerHomePage = lazy(() => import('../worker/WorkerHomePage'));
 const WorkerJoinPage = lazy(() => import('../worker/WorkerJoinPage'));
@@ -55,7 +58,7 @@ export const router = createBrowserRouter([
       { path: 'workers/new', element: guard('worker.manage', <WorkerFormPage />) },
       { path: 'workers/:id', element: <WorkerDetailPage /> },
       { path: 'workers/:id/edit', element: guard('worker.manage', <WorkerFormPage />) },
-      { path: 'attendance', element: guard('attendance.mark', <AttendancePage />) },
+      { path: 'attendance', element: <AttendancePage /> }, // viewable by all; marking needs "add entries" (SPEC-M13)
       { path: 'advances/new', element: guard('advance.give', <AdvanceNewPage />) },
       { path: 'wages', element: guard('wages.view', <WagesPage />) },
       { path: 'wages/:month/:workerId', element: guard('wages.view', <WagePayPage />) },
@@ -69,6 +72,10 @@ export const router = createBrowserRouter([
       { path: 'orders/:id', element: <OrderDetailPage /> },
       { path: 'orders/:id/edit', element: guard('order.manage', <OrderFormPage />) },
       { path: 'buyers', element: guard('order.manage', <BuyersPage />) },
+      { path: 'catalogue', element: <CataloguePage /> },                       // SPEC-M15
+      { path: 'catalogue/new', element: guard('carpet.manage', <CarpetFormPage />) },
+      { path: 'catalogue/:id', element: <CarpetDetailPage /> },
+      { path: 'catalogue/:id/edit', element: guard('carpet.manage', <CarpetFormPage />) },
       { path: 'month', element: guard('wages.view', <MonthPage />) },
     ],
   },

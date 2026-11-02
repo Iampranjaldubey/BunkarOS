@@ -1,4 +1,5 @@
 const d = {
+  'wages.negativeNet': 'Deductions are more than the pay — this payment is not possible', 'wages.attendanceDeduct': 'Attendance deduction',
   'wages.title': 'Wages', 'wages.sheet': 'Wage sheet', 'wages.gross': 'Gross', 'wages.ot': 'Overtime', 'wages.deductions': 'Deductions',
   'wages.advances': 'Advance recovered', 'wages.net': 'Net due', 'wages.paid': 'Paid', 'wages.pending': 'Pending', 'wages.pay': 'Pay',
   'wages.paidOn': 'Paid on {date}', 'wages.lock': 'Lock month', 'wages.unlock': 'Unlock month', 'wages.locked': 'Month is locked',

@@ -66,7 +66,7 @@ export function PwaInstallCard() {
         type="button"
         data-testid="pwa-install-add"
         onClick={() => void install()}
-        className="min-h-12 shrink-0 rounded-xl bg-primary px-4 text-base font-medium text-white focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
+        className="min-h-12 shrink-0 rounded-xl bg-primary px-4 text-base font-medium text-on-fill focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
       >
         {t('pwa.install.add')}
       </button>

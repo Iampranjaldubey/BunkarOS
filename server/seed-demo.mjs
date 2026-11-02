@@ -50,6 +50,20 @@ const records = [
   rec('advance', { workerId: workers[0].entityId, amountPaise: 100000, mode: 'cash' }, staffId, 'staff', day(14)),
   rec('advance', { workerId: workers[1].entityId, amountPaise: 200000, mode: 'upi' }, staffId, 'staff', day(7)),
 ];
+// Finished carpet catalogue (SPEC-M15): a quantity carpet with a reservation, a tagged piece, one sold directly. No photos.
+const carpets = [
+  { entityId: randomUUID(), design: 'Kashan 101', lengthMilli: 8000, widthMilli: 10000, sizeUnit: 'ft', mode: 'quantity', materialNotes: 'New Zealand wool, 100 knots', costPaise: 3000000, pricePaise: 4500000, photoIds: [], active: true },
+  { entityId: randomUUID(), design: 'Bokhara', lengthMilli: 6000, widthMilli: 9000, sizeUnit: 'ft', mode: 'piece', tag: 'BH-0042', pricePaise: 2500000, photoIds: [], active: true },
+  { entityId: randomUUID(), design: 'Gabbeh', lengthMilli: 1520, widthMilli: 2440, sizeUnit: 'm', mode: 'quantity', pricePaise: 1800000, photoIds: [], active: true },
+];
+records.push(
+  ...carpets.map((c) => rec('carpet', c, ownerId, 'owner', day(6))),
+  rec('carpet_in', { carpetId: carpets[0].entityId, qty: 6 }, ownerId, 'owner', day(6)),
+  rec('carpet_in', { carpetId: carpets[1].entityId, qty: 1 }, ownerId, 'owner', day(6)),
+  rec('carpet_in', { carpetId: carpets[2].entityId, qty: 3 }, ownerId, 'owner', day(6)),
+  rec('carpet_reserve', { carpetId: carpets[0].entityId, orderId: orders[0].entityId, qty: 2 }, ownerId, 'owner', day(2)),
+  rec('carpet_out', { carpetId: carpets[2].entityId, qty: 1, kind: 'sold', note: 'Sold at the shop' }, ownerId, 'owner', day(1)),
+);
 // Two settled months (owner-authored) so pay history and year totals show on the worker page.
 const prevM = (n) => { const d = new Date(Date.now() + IST); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - n); return d.toISOString().slice(0, 7); };
 for (const n of [1, 2]) {

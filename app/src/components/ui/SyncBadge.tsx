@@ -7,10 +7,11 @@ import { usePendingCount } from '../../db/hooks';
 /** Header sync status: offline / sign in / n pending (tap to sync) / synced. */
 export function SyncBadge() {
   const { t } = useT();
-  const { online, authState } = useSyncState();
+  const { online, authState, resyncing } = useSyncState();
   const pending = usePendingCount(); // live: shows a just-saved entry immediately
   if (!online) return <Badge tone="warn" aria-live="polite"><CloudOff aria-hidden="true" size={16} />{t('sync.offline')}</Badge>;
   if (authState === 'needs_login') return <Badge tone="warn" aria-live="polite"><LogIn aria-hidden="true" size={16} />{t('sync.login')}</Badge>;
+  if (resyncing) return <Badge tone="info" aria-live="polite" data-testid="sync-resyncing"><RefreshCw aria-hidden="true" size={16} className="animate-spin" />{t('sync.resyncing')}</Badge>;
   if (pending > 0) {
     return (
       <button type="button" onClick={() => void syncNow()} aria-label={t('sync.pending', { n: pending })} className="tap-48 inline-flex items-center justify-center rounded-full">

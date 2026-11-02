@@ -16,27 +16,26 @@ import { stockBalance, stockLedger, type Move } from '../../domain/stock';
 import { formatQty } from '../../domain/qty';
 import { formatDay } from '../../domain/dates';
 import { monthOf, todayIST } from '../../domain/ids';
-import { can } from '../../domain/permissions';
-import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
 import { MonthPicker } from '../wages/shared';
 import { Qty } from './shared';
+import { useCan } from '../../app/useCan';
 
 export default function ItemDetailPage() {
   const { t, lang } = useT();
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const { role } = useSession();
   const recs = useRecords();
   const [month, setMonth] = useState(monthOf(todayIST()));
   const [confirm, setConfirm] = useState(false);
   const item = useMemo(() => listItems(recs, false).find((i) => i.entityId === id), [recs, id]);
   const names = useMemo(() => nameMaps(recs), [recs]);
   const ledger = useMemo(() => stockLedger(recs, id, month), [recs, id, month]);
+  const allowed = useCan();
   if (!item) return <EmptyState title={t('common.empty')} />;
   const balance = stockBalance(recs, id);
   const low = item.lowStockQty > 0 && balance <= item.lowStockQty;
-  const canManage = role ? can(role, 'item.manage') : false;
+  const canManage = allowed('item.manage');
 
   const refOf = (m: Move) => {
     if (m.kind === 'in') return m.ref ?? '';
@@ -48,7 +47,7 @@ export default function ItemDetailPage() {
 
   return (
     <section>
-      <PageHeader title={item.name} back={() => navigate('/stock')} right={canManage && <Button size="md" variant="secondary" onClick={() => navigate(`/stock/${id}/edit`)}><Pencil aria-hidden="true" size={16} />{t('action.edit')}</Button>} />
+      <PageHeader title={item.kind === 'finished' ? `${item.name} · ${t('cat.legacy')}` : item.name} back={() => navigate('/stock')} right={canManage && <Button size="md" variant="secondary" onClick={() => navigate(`/stock/${id}/edit`)}><Pencil aria-hidden="true" size={16} />{t('action.edit')}</Button>} />
       <PageGrid asideSticky aside={
         <div className="flex flex-col gap-3">
           <StatTile label={t('stock.balance')} tone={low ? 'given' : 'received'} value={<Qty q={balance} item={item} />} testid="item-balance" />

@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { setupAndLogin, loginAs } from './fixtures';
+import { setupAndLogin, loginAs, logout, isDesktop } from './fixtures';
 
 test('setup → owner login → add staff → log shows entries → staff login → sync', async ({ page }) => {
   await setupAndLogin(page);
-  await expect(page.getByTestId('bottom-nav')).toBeVisible();
+  const nav = isDesktop(page) ? 'side-nav' : 'bottom-nav';
+  await expect(page.getByTestId(nav)).toBeVisible();
 
   // Settings: add a staff login.
   await page.goto('/settings');
@@ -21,11 +22,9 @@ test('setup → owner login → add staff → log shows entries → staff login 
   await expect(page.getByText('सिंक हो गया')).toBeVisible({ timeout: 20_000 });
 
   // Logout → staff login works (PIN 2222) and bottom nav is there.
-  await page.goto('/more');
-  await page.getByRole('button', { name: /लॉग आउट/ }).click();
-  await expect(page).toHaveURL(/\/login/);
+  await logout(page);
   await loginAs(page, 'Munshi Ji', '2222');
-  await expect(page.getByTestId('bottom-nav')).toBeVisible();
+  await expect(page.getByTestId(nav)).toBeVisible();
 });
 
 test('three languages: Hinglish and English apply instantly and persist', async ({ page }) => {

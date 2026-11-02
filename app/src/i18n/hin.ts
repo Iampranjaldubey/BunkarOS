@@ -37,6 +37,7 @@ const hin = {
   'setup.pin': '4 ank ka PIN banaayein', 'setup.pinConfirm': 'PIN dobara bharein', 'setup.unitCode': 'Unit code',
   'setup.unitKey': 'Unit key', 'setup.createBtn': 'Unit banaayein', 'setup.joinBtn': 'Judein',
   'setup.hint': 'Pehli baar? Nayi unit banaayein. Doosra phone? Unit code aur key se judein.',
+  'login.needsInternet': 'Is phone par pehli baar login ke liye internet chahiye', 'login.rateLimited': 'Bahut zyada koshishein — thodi der baad',
 
   'login.title': 'Apna naam chunein', 'login.enterPin': 'PIN bharein', 'login.wrongPin': 'Galat PIN',
   'login.lockedOut': '{s} second baad try karein', 'login.clear': 'Mitaayein', 'login.noUsers': 'Abhi koi user nahi — internet on karke phir kholein',
@@ -58,6 +59,7 @@ const hin = {
   'settings.addUser': 'Staff jodein', 'settings.userName': 'Naam', 'settings.userPhone': 'Phone', 'settings.userRole': 'Role',
   'settings.userPin': '4 ank ka PIN', 'settings.deactivate': 'Band karein', 'settings.joinInfo': 'Doosre phone se judne ke liye',
   'settings.joinHint': 'Unit code aur key kisi bahar wale ko na dein.', 'settings.copy': 'Copy', 'settings.copied': 'Copy ho gaya',
+  'settings.holidayAdd': 'Chhutti jodein', 'settings.holidayRemove': '{day} hatayein', 'settings.holidaysEmpty': 'Abhi koi chhutti nahi', 'settings.holidaysHint': 'Ravivaar hamesha chhutti hai. Chhutti ke din haaziri baaki nahi ginti; mahine ke kaam ke din (W) nahi badalte.', 'settings.holidayDate': 'Chhutti ki tareekh',
   'settings.saved': 'Settings save ho gayi', 'settings.holidays': 'Chhuttiyaan', 'settings.theme': 'Rang', 'settings.theme.auto': 'Phone jaisa',
   'settings.theme.light': 'Halka', 'settings.theme.dark': 'Gehra',
 

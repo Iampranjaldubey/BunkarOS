@@ -1,4 +1,5 @@
 const d = {
+  'stock.overrideReason': 'माइनस में जाने की वजह', 'stock.overrideHint': 'स्टॉक माइनस में जाएगा। वजह लिखें — यह इतिहास में दर्ज होगी।',
   'stock.title': 'स्टॉक', 'stock.raw': 'कच्चा माल', 'stock.finished': 'तैयार कालीन', 'stock.newItem': 'नया आइटम', 'stock.editItem': 'आइटम बदलें',
   'stock.name': 'नाम', 'stock.kind': 'किस तरह का', 'stock.kind.raw': 'कच्चा माल (ऊन, धागा, रंग)', 'stock.kind.finished': 'तैयार कालीन (डिज़ाइन + साइज़)',
   'stock.unit': 'इकाई', 'stock.unit.kg': 'किलो', 'stock.unit.pcs': 'नग', 'stock.unit.litre': 'लीटर', 'stock.unit.metre': 'मीटर',

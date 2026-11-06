@@ -26,6 +26,7 @@ const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(imp
 if (isMain) {
   createServer().then((inst) => inst.listen().then((p) => {
     console.log(`Bunkar MVP API on http://localhost:${p}${inst.staticDir ? ' (serving app from ' + inst.staticDir + ')' : ''}`);
+    console.log(`Row-level security mode: ${inst.db.rlsMode}`);
     const shutdown = () => inst.close().then(() => process.exit(0));
     process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
   })).catch((e) => { console.error(e); process.exit(1); });

@@ -4,6 +4,14 @@ import { createHash, randomBytes } from 'node:crypto';
 
 const { Pool } = pg;
 
+/** Hosted Postgres suspends and drops idle connections; without a listener that error would end the process. */
+const logDropped = (e) => console.warn('database connection dropped:', e?.message ?? e);
+function newPool(config) {
+  const pool = new Pool(config);
+  pool.on('error', logDropped);
+  return pool;
+}
+
 /**
  * Open a pool and migrate. `schema` lets tests isolate themselves (one schema per run).
  * @param {{connectionString?:string, schema?:string}} opts
@@ -14,14 +22,14 @@ export async function openDb(opts = {}) {
   const ssl = /sslmode=require|render\.com|railway/.test(connectionString) ? { rejectUnauthorized: false } : undefined;
   if (!/^[a-z_][a-z0-9_]*$/.test(schema)) throw new Error('bad schema name');
   // The schema must exist before any pooled connection sets its search_path to it.
-  const boot = new Pool({ connectionString, ssl, max: 1 });
+  const boot = newPool({ connectionString, ssl, max: 1 });
   try {
     // PG_RESET=1 (never on public): start from an empty schema — used by the e2e harness.
     if ((opts.reset ?? process.env.PG_RESET === '1') && schema !== 'public') await boot.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
     await boot.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
   } finally { await boot.end(); }
   // Migrate as the database owner, then serve every request through a role that row-level security applies to (SPEC-M18 §5).
-  const owner = new Pool({ connectionString, ssl, max: 1, options: `-c search_path=${schema}` });
+  const owner = newPool({ connectionString, ssl, max: 1, options: `-c search_path=${schema}` });
   let appRole = null;
   try {
     await owner.query(`
@@ -71,7 +79,7 @@ export async function openDb(opts = {}) {
     `);
     appRole = await ensureAppRole(owner, schema);
   } finally { await owner.end(); }
-  const pool = new Pool({ connectionString, ssl, max: 8, options: `-c search_path=${schema}${appRole ? ` -c role=${APP_ROLE}` : ''}` });
+  const pool = newPool({ connectionString, ssl, max: 8, options: `-c search_path=${schema}${appRole ? ` -c role=${APP_ROLE}` : ''}` });
   const who = (await pool.query("SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user")).rows[0];
   /** 'role' = requests run as the limited app role; 'owner' = the owner is not exempt, FORCE applies; 'off' = not enforced (logged). */
   const rlsMode = appRole ? 'role' : who && !who.rolsuper && !who.rolbypassrls ? 'owner' : 'off';
@@ -81,7 +89,7 @@ export async function openDb(opts = {}) {
     async close() { await pool.end(); },
     async dropSchema() {
       if (schema === 'public') return;
-      const o = new Pool({ connectionString, ssl, max: 1 });
+      const o = newPool({ connectionString, ssl, max: 1 });
       try { await o.query(`DROP SCHEMA ${schema} CASCADE`); } finally { await o.end(); }
     },
   };
@@ -117,6 +125,7 @@ async function ensureAppRole(owner, schema) {
 async function scoped(db, settings, fn) {
   if (db.scoped) return fn(db);
   const c = await db.pool.connect();
+  c.on('error', logDropped); // the pool only listens while a connection is idle
   try {
     await c.query('BEGIN');
     for (const [k, v] of settings) await c.query('SELECT set_config($1, $2, true)', [k, v]);
@@ -126,7 +135,7 @@ async function scoped(db, settings, fn) {
   } catch (e) {
     await c.query('ROLLBACK').catch(() => undefined);
     throw e;
-  } finally { c.release(); }
+  } finally { c.removeListener('error', logDropped); c.release(); }
 }
 export const withUnit = (db, unitId, fn) => scoped(db, [['app.unit_id', String(unitId)]], fn);
 export const withAdmin = (db, fn) => scoped(db, [['app.admin', 'on']], fn);

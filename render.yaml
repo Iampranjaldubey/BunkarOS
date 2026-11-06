@@ -1,28 +1,24 @@
-# Render blueprint: one web service (Node API + built PWA) and one Postgres.
-# Deploy: Render dashboard → New → Blueprint → pick this repo, branch `mvp`.
+# Render blueprint: free temporary demo. One web service (Node API + built PWA); the database is on Neon.
+# Deploy: Render dashboard → New → Blueprint → this repo, branch `deploy/demo`. See docs/deploy.md.
 services:
   - type: web
-    name: bunkar-mvp
+    name: bunkar-demo
     runtime: node
-    plan: free            # upgrade to starter to stop the free-tier sleep
+    plan: free            # sleeps after 15 idle minutes; not for paying customers
     region: singapore
-    branch: mvp
+    branch: deploy/demo
     rootDir: .
-    buildCommand: cd app && npm ci && npm run build && cd ../server && npm ci
+    buildCommand: cd app && npm ci --include=dev && npm run build && cd ../server && npm ci
     startCommand: cd server && node index.mjs
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: "24"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: bunkar-mvp-db
-          property: connectionString
-      - key: BUNKAR_SECRET
-        generateValue: true
       - key: TRUST_PROXY
         value: "1"
-databases:
-  - name: bunkar-mvp-db
-    plan: free            # 1 GB, expires after 90 days on free; starter keeps it
-    region: singapore
+      - key: DATABASE_URL  # Neon direct address (no -pooler), ending in ?sslmode=verify-full
+        sync: false
+      - key: ADMIN_KEYS    # name:key,name:key
+        sync: false
+      - key: BUNKAR_SECRET
+        generateValue: true

@@ -10,7 +10,7 @@ import { Sheet } from '../../components/ui/Sheet';
 import { PageGrid } from '../../components/ui/PageGrid';
 import { DateField } from '../../components/ui/DateField';
 import { PhotoCapture } from '../../components/ui/PhotoCapture';
-import { EmptyState, StatTile } from '../../components/ui/Feedback';
+import { EmptyState, StatTile, StatRow } from '../../components/ui/Feedback';
 import { useToast } from '../../components/ui/Toast';
 import { useRecords } from '../../db/hooks';
 import { addRecord, reverse } from '../../db/repo';
@@ -124,18 +124,18 @@ export default function CarpetDetailPage() {
               </dl>
             )}
           </Card>
-          <div className="grid grid-cols-3 gap-2">
+          <StatRow className="grid-cols-3">
             <StatTile label={t('cat.st.in_stock')} tone="received" value={<span className="num">{v.counts.inStock}</span>} testid="count-in-stock" />
             <StatTile label={t('cat.st.reserved')} tone="neutral" value={<span className="num">{v.counts.reserved}</span>} testid="count-reserved" />
             <StatTile label={t('cat.st.delivered')} tone="neutral" value={<span className="num">{v.counts.delivered}</span>} testid="count-delivered" />
             <StatTile label={t('cat.st.sold')} tone="neutral" value={<span className="num">{v.counts.sold}</span>} testid="count-sold" />
             <StatTile label={t('cat.st.written_off')} tone="neutral" value={<span className="num">{v.counts.writtenOff}</span>} testid="count-written-off" />
             <StatTile label={t('cat.added')} tone="neutral" value={<span className="num">{v.counts.added}</span>} testid="count-added" />
-          </div>
+          </StatRow>
           {canMove && (
             <div className="grid grid-cols-2 gap-2">
               <Button size="md" onClick={() => open('reserve')} disabled={v.counts.inStock <= 0}><Bookmark aria-hidden="true" size={16} />{t('cat.reserve')}</Button>
-              <Button size="md" variant="success" onClick={() => open('deliver')} disabled={v.counts.inStock + v.counts.reserved <= 0}><Truck aria-hidden="true" size={16} />{t('cat.deliver')}</Button>
+              <Button size="md" variant="secondary" onClick={() => open('deliver')} disabled={v.counts.inStock + v.counts.reserved <= 0}><Truck aria-hidden="true" size={16} />{t('cat.deliver')}</Button>
               <Button size="md" variant="secondary" onClick={() => open('sold')} disabled={v.counts.inStock <= 0}><ShoppingBag aria-hidden="true" size={16} />{t('cat.sell')}</Button>
               <Button size="md" variant="secondary" onClick={() => open('written_off')} disabled={v.counts.inStock <= 0}><Ban aria-hidden="true" size={16} />{t('cat.writeOff')}</Button>
               {!pieceAdded && <Button size="md" variant="ghost" className="col-span-2" onClick={() => open('in')}><PackagePlus aria-hidden="true" size={16} />{t('cat.addMore')}</Button>}
@@ -145,12 +145,15 @@ export default function CarpetDetailPage() {
       } main={
         <div className="flex flex-col gap-4">
           <Card className="p-0">
-            <div className="aspect-[4/3] w-full overflow-hidden rounded-t-2xl bg-bg"><CarpetPhoto id={c.photoIds[photoIdx] ?? c.photoIds[0]} alt={c.design} /></div>
+            <div className="aspect-[4/3] w-full overflow-hidden rounded-t-2xl bg-surface-2">
+              <CarpetPhoto id={c.photoIds[photoIdx] ?? c.photoIds[0]} alt={c.design} design={c.design} length={c.lengthMilli} width={c.widthMilli} seed={c.entityId} />
+            </div>
+            {c.photoIds.length === 0 && <p className="px-4 py-2.5 text-sm text-muted">{t('m17.drawn')}</p>}
             {c.photoIds.length > 1 && (
               <ul className="flex gap-2 p-3" aria-label={t('common.photo')}>
                 {c.photoIds.map((p, i) => (
                   <li key={p}><button type="button" onClick={() => setPhotoIdx(i)} aria-label={t('cat.photoN', { n: i + 1 })} aria-pressed={i === photoIdx}
-                    className={`h-16 w-16 overflow-hidden rounded-xl border-2 ${i === photoIdx ? 'border-primary' : 'border-line'}`}><CarpetPhoto id={p} alt="" /></button></li>
+                    className={`h-16 w-16 overflow-hidden rounded-xl border-2 transition-colors ${i === photoIdx ? 'border-primary' : 'border-line hover:border-line-strong'}`}><CarpetPhoto id={p} alt="" /></button></li>
                 ))}
               </ul>
             )}
@@ -182,7 +185,7 @@ export default function CarpetDetailPage() {
                     <div className="min-w-0 flex-1">
                       <p className={e.reversal ? 'text-muted line-through' : 'text-ink'}>{evText(e)}{e.note ? ` · ${e.note}` : ''}</p>
                       {e.reversal && <p className="text-sm text-muted">{t('cat.ev.reversed', { reason: e.reversal.payload.reason })}</p>}
-                      <p className="text-xs text-muted">{formatDay(e.rec.day, lang, 'short')} · {names.users.get(e.rec.by) ?? ''}{e.rec.sync === 'pending' ? ' · …' : ''}</p>
+                      <p className="text-sm text-muted">{formatDay(e.rec.day, lang, 'short')} · {names.users.get(e.rec.by) ?? ''}{e.rec.sync === 'pending' ? ' · …' : ''}</p>
                     </div>
                     {!e.reversal && e.kind !== 'reserve' && canUndo(e.rec) && !(e.kind === 'in' && v.counts.inStock < e.qty) && ( /* the server refuses taking back carpets that are no longer in stock */
                       <button type="button" onClick={() => setUndo({ rec: e.rec, title: evText(e) })} aria-label={`${t('cat.undo')}: ${evText(e)}`} title={t('cat.undo')}

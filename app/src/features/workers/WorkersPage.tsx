@@ -15,7 +15,7 @@ import { monthAttendance } from '../../domain/attendance';
 import { formatINR } from '../../domain/money';
 import { todayIST, monthOf } from '../../domain/ids';
 import { useT } from '../../i18n';
-import { Avatar, PaySummary, JobBadge } from './shared';
+import { Avatar, PaySummary } from './shared';
 import { useCan } from '../../app/useCan';
 
 export default function WorkersPage() {
@@ -32,7 +32,7 @@ export default function WorkersPage() {
   const canManage = allowed('worker.manage');
 
   const card = (w: WorkerP) => (
-    <Link to={`/workers/${w.entityId}`} className="card-hover flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-card">
+    <Link to={`/workers/${w.entityId}`} className="card-hover flex items-center gap-3 rounded-2xl border border-line bg-surface p-3">
       <Avatar name={w.name} size={44} photoId={w.photoId} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-ink">{w.name}{!w.active && <Badge tone="neutral" className="ml-2">{t('common.inactive')}</Badge>}</p>
@@ -53,7 +53,7 @@ export default function WorkersPage() {
           <Search aria-hidden="true" size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <Input aria-label={t('worker.search')} placeholder={t('worker.search')} value={q} onChange={(e) => setQ(e.target.value)} className="pl-10" />
         </div>
-        <label className="flex min-h-12 items-center gap-2 text-sm text-muted"><input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-5 w-5 accent-primary" />{t('worker.showInactive')}</label>
+        <label className="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm text-ink-2 hover:bg-surface-2"><input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-5 w-5" />{t('worker.showInactive')}</label>
         <span className="num text-sm text-muted">{t('worker.count', { n: workers.length })}</span>
       </div>
       <ResponsiveTable<WorkerP>
@@ -64,7 +64,7 @@ export default function WorkersPage() {
         empty={<EmptyState icon={<Users size={40} />} title={t('worker.empty')} hint={t('worker.emptyHint')} action={canManage && <Button onClick={() => navigate('/workers/new')}>{t('worker.new')}</Button>} />}
         columns={[
           { key: 'name', header: t('worker.name'), cell: (w) => <span className="flex items-center gap-2"><Avatar name={w.name} size={32} photoId={w.photoId} /><span className="font-medium">{w.name}</span>{!w.active && <Badge tone="neutral">{t('common.inactive')}</Badge>}</span> },
-          { key: 'job', header: t('worker.jobTitle'), cell: (w) => <JobBadge w={w} /> },
+          { key: 'job', header: t('worker.jobTitle'), cell: (w) => <span className="text-ink-2">{t(`worker.job.${w.jobTitle}`)}</span> },
           { key: 'pay', header: t('worker.payType'), cell: (w) => <PaySummary w={w} /> },
           { key: 'att', header: t('worker.thisMonth'), align: 'right', cell: (w) => <span className="num">P {att.get(w.entityId)?.present ?? 0} · H {att.get(w.entityId)?.half ?? 0} · A {att.get(w.entityId)?.absent ?? 0}</span> },
           { key: 'bal', header: t('worker.balance'), align: 'right', cell: (w) => <span className={`num ${(balances.get(w.entityId) ?? 0) > 0 ? 'text-given font-medium' : 'text-muted'}`}>{formatINR(balances.get(w.entityId) ?? 0)}</span> },

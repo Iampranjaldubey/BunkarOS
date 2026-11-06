@@ -43,33 +43,30 @@ export function Sheet({ open, onClose, title, children, footer, className }: She
         if (e.target === ref.current) onClose();
       }}
       className={cn(
-        // Below lg: bottom sheet pinned to the bottom edge, full-width rail
-        // centered horizontally — identical to the phone layout.
-        'w-full max-w-md m-0 mt-auto mb-0 rounded-t-3xl bg-surface p-0',
-        'backdrop:bg-ink/40 shadow-sheet',
+        // Below lg: bottom sheet pinned to the bottom edge, full-width rail centred horizontally.
+        'sheet w-full max-w-md m-0 mt-auto mb-0 rounded-t-3xl border border-line bg-surface p-0 text-ink',
+        'backdrop:bg-[#1f1b16]/45 shadow-sheet',
         'left-1/2 -translate-x-1/2',
-        // lg+: a centered modal dialog (fully rounded) instead of a bottom
-        // sheet. `my-auto` + the <dialog> default margin:auto re-centres it
-        // vertically; the shared `left-1/2 -translate-x-1/2` keeps it centred
-        // horizontally at the lg max width.
-        'lg:max-w-lg lg:my-auto lg:rounded-2xl',
+        // lg+: a centred modal dialog instead of a bottom sheet.
+        'lg:max-w-lg lg:my-auto lg:rounded-3xl lg:shadow-float',
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-        <h2 className="text-xl">{title}</h2>
+      <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-line-strong lg:hidden" aria-hidden="true" />
+      <div className="flex items-center justify-between gap-3 px-5 pb-2 pt-3 lg:pt-4">
+        <h2 className="text-lg font-semibold">{title}</h2>
         <button
           type="button"
           onClick={onClose}
-          className="tap-48 -mr-2 inline-flex items-center justify-center rounded-full text-muted hover:text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
+          className="tap-48 -mr-3 inline-flex items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink"
         >
-          <X aria-hidden="true" />
+          <X aria-hidden="true" size={20} />
           <span className="visually-hidden">{t('action.cancel')}</span>
         </button>
       </div>
-      <div className="max-h-[70vh] overflow-y-auto px-4 py-4">{children}</div>
+      <div className="max-h-[70vh] overflow-y-auto px-5 py-3">{children}</div>
       {footer && (
-        <div className="sticky bottom-0 flex gap-3 border-t border-line bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="sticky bottom-0 flex gap-3 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {footer}
         </div>
       )}

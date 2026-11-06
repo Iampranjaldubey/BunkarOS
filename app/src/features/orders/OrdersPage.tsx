@@ -11,7 +11,7 @@ import { orderViews, orderCounts, type OrderView } from '../../domain/orders';
 import { formatDay } from '../../domain/dates';
 import { todayIST } from '../../domain/ids';
 import { useT } from '../../i18n';
-import { StatusBadge, DueLine } from './shared';
+import { StatusBadge, DueLine, OrderProgress } from './shared';
 import { useCan } from '../../app/useCan';
 
 type Filter = 'open' | 'all';
@@ -28,13 +28,13 @@ export default function OrdersPage() {
   const canManage = allowed('order.manage');
 
   const card = (v: OrderView) => (
-    <Link to={`/orders/${v.order.entityId}`} className={`card-hover flex items-center gap-3 rounded-2xl border bg-surface p-3 shadow-card ${v.overdue ? 'border-given/40' : 'border-line'}`}>
+    <Link to={`/orders/${v.order.entityId}`} className="card-hover flex items-center gap-3 rounded-2xl border border-line bg-surface p-3">
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-ink"><span className="num">{v.order.orderNo}</span> · {v.order.design} {v.order.size}</p>
         <p className="truncate text-sm text-muted">{v.buyer?.name ?? ''} · {formatDay(v.order.dueDate, lang, 'short')}</p>
         <DueLine v={v} />
       </div>
-      <div className="text-right"><p className="num text-lg font-bold text-ink">{v.deliveredQty}/{v.order.qty}</p><StatusBadge v={v} /></div>
+      <div className="flex w-24 shrink-0 flex-col items-end gap-1.5"><p className="num text-lg font-medium text-ink">{v.deliveredQty}/{v.order.qty}</p><OrderProgress v={v} /><StatusBadge v={v} /></div>
     </Link>
   );
 
@@ -51,7 +51,7 @@ export default function OrdersPage() {
           { key: 'no', header: t('order.orderNo'), cell: (v) => <span className="num font-medium">{v.order.orderNo}</span> },
           { key: 'buyer', header: t('order.buyer'), cell: (v) => v.buyer?.name ?? '' },
           { key: 'what', header: t('order.design'), cell: (v) => `${v.order.design} ${v.order.size}` },
-          { key: 'qty', header: t('order.qty'), align: 'right', cell: (v) => <span className="num">{v.deliveredQty}/{v.order.qty}</span> },
+          { key: 'qty', header: t('order.qty'), align: 'right', cell: (v) => <span className="ml-auto flex w-28 flex-col items-end gap-1.5"><span className="num">{v.deliveredQty}/{v.order.qty}</span><OrderProgress v={v} /></span> },
           { key: 'due', header: t('order.dueDate'), cell: (v) => <span className="flex flex-col"><span className="num">{formatDay(v.order.dueDate, lang, 'short')}</span><DueLine v={v} /></span> },
           { key: 'st', header: t('order.status'), cell: (v) => <StatusBadge v={v} /> },
         ]} />

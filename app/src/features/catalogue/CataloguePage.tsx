@@ -53,8 +53,8 @@ export default function CataloguePage() {
         <legend className="mb-1.5 text-base font-medium text-ink">{t('cat.statusFilter')}</legend>
         <div className="flex flex-col gap-1">
           {CARPET_STATUSES.map((s) => (
-            <label key={s} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 hover:bg-surface-2">
-              <input type="checkbox" checked={statuses.includes(s)} onChange={() => toggle(s)} className="h-5 w-5 accent-[var(--color-primary)]" data-testid={`filter-status-${s}`} />
+            <label key={s} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 transition-colors hover:bg-surface-2">
+              <input type="checkbox" checked={statuses.includes(s)} onChange={() => toggle(s)} className="h-5 w-5" data-testid={`filter-status-${s}`} />
               <span className="text-ink">{t(`cat.st.${s}`)}</span>
             </label>
           ))}
@@ -72,13 +72,15 @@ export default function CataloguePage() {
 
   const card = (v: CarpetView) => (
     <li key={v.carpet.entityId}>
-      <Link to={`/catalogue/${v.carpet.entityId}`} className="card-hover flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card" data-testid="carpet-card" data-carpet={v.carpet.entityId}>
-        <div className="aspect-[4/3] w-full overflow-hidden bg-bg"><CarpetPhoto id={v.carpet.photoIds[0]} alt={v.carpet.design} /></div>
-        <div className="flex flex-1 flex-col gap-1 p-3">
+      <Link to={`/catalogue/${v.carpet.entityId}`} className="card-hover flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface" data-testid="carpet-card" data-carpet={v.carpet.entityId}>
+        <div className="aspect-[4/3] w-full overflow-hidden border-b border-line bg-surface-2">
+          <CarpetPhoto id={v.carpet.photoIds[0]} alt={v.carpet.design} design={v.carpet.design} length={v.carpet.lengthMilli} width={v.carpet.widthMilli} seed={v.carpet.entityId} />
+        </div>
+        <div className="flex flex-1 flex-col gap-1.5 p-3">
           <p className="truncate font-medium text-ink" title={v.carpet.design}>{v.carpet.design}</p>
           <p className="num text-sm text-muted">{sizeLabel(v.carpet)}{v.carpet.tag ? ` · ${v.carpet.tag}` : ''}</p>
           <StatusChips v={v} />
-          {canSeePrice && v.carpet.pricePaise !== undefined && <p className="num mt-auto pt-1 font-bold text-ink" data-testid="carpet-price">{formatINR(v.carpet.pricePaise)}</p>}
+          {canSeePrice && v.carpet.pricePaise !== undefined && <p className="num mt-auto pt-1 text-lg font-medium text-ink" data-testid="carpet-price">{formatINR(v.carpet.pricePaise)}</p>}
         </div>
       </Link>
     </li>
@@ -91,14 +93,14 @@ export default function CataloguePage() {
         <EmptyState icon={<Images size={40} />} title={t('cat.empty')} hint={t('cat.emptyHint')} action={canManage && <Button onClick={() => navigate('/catalogue/new')}>{t('cat.new')}</Button>} />
       ) : (
         <div className={cn(isDesktop && 'grid grid-cols-[16rem_minmax(0,1fr)] gap-6')}>
-          {isDesktop && <aside className="self-start rounded-2xl border border-line bg-surface p-4 shadow-card lg:sticky lg:top-20"><h2 className="mb-3 text-lg">{t('cat.filters')}</h2>{filters}</aside>}
+          {isDesktop && <aside className="self-start rounded-2xl border border-line bg-surface p-4 lg:sticky lg:top-20"><h2 className="mb-3 text-base">{t('cat.filters')}</h2>{filters}</aside>}
           <div className="min-w-0">
             <div className="mb-4 flex items-center gap-2">
               <div className="relative flex-1">
                 <Search aria-hidden="true" size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                 <Input type="search" aria-label={t('cat.search')} placeholder={t('cat.search')} value={q} onChange={(e) => setQ(e.target.value)} className="pl-10" data-testid="catalogue-search" />
               </div>
-              {!isDesktop && <Button variant="secondary" size="md" onClick={() => setSheet(true)} aria-label={t('cat.filters')} data-testid="open-filters"><SlidersHorizontal aria-hidden="true" size={18} />{!isDefault && <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />}</Button>}
+              {!isDesktop && <Button variant="secondary" size="md" onClick={() => setSheet(true)} aria-label={t('cat.filters')} data-testid="open-filters"><SlidersHorizontal aria-hidden="true" size={18} />{!isDefault && <span className="h-2 w-2 rounded-[2px] bg-primary" aria-hidden="true" />}</Button>}
             </div>
             <p className="num mb-3 text-sm text-muted" data-testid="catalogue-count">{t('cat.shown', { n: shown.length })}</p>
             {shown.length === 0

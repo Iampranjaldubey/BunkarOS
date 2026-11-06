@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Pencil } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -50,12 +50,12 @@ export default function ItemDetailPage() {
       <PageHeader title={item.kind === 'finished' ? `${item.name} · ${t('cat.legacy')}` : item.name} back={() => navigate('/stock')} right={canManage && <Button size="md" variant="secondary" onClick={() => navigate(`/stock/${id}/edit`)}><Pencil aria-hidden="true" size={16} />{t('action.edit')}</Button>} />
       <PageGrid asideSticky aside={
         <div className="flex flex-col gap-3">
-          <StatTile label={t('stock.balance')} tone={low ? 'given' : 'received'} value={<Qty q={balance} item={item} />} testid="item-balance" />
-          {low && <Badge tone="danger">{t('stock.low')}</Badge>}
+          <StatTile label={t('stock.balance')} tone={low ? 'given' : 'neutral'} value={<Qty q={balance} item={item} />} testid="item-balance" />
+          {low && <Badge tone="given" className="self-start">{t('stock.low')}</Badge>}
           {item.lowStockQty > 0 && <p className="text-sm text-muted">{t('stock.lowQty')}: <span className="num">{formatQty(item.lowStockQty, item.unit)}</span></p>}
           <div className="grid grid-cols-2 gap-2">
-            <Button size="md" variant="success" onClick={() => navigate(`/stock/move/in?item=${id}`)}>{t('stock.in')}</Button>
-            <Button size="md" variant="danger" onClick={() => navigate(`/stock/move/out?item=${id}`)}>{t('stock.out')}</Button>
+            <Button size="md" variant="secondary" onClick={() => navigate(`/stock/move/in?item=${id}`)}><ArrowDownToLine aria-hidden="true" size={18} className="text-received" />{t('stock.in')}</Button>
+            <Button size="md" variant="secondary" onClick={() => navigate(`/stock/move/out?item=${id}`)}><ArrowUpFromLine aria-hidden="true" size={18} className="text-given" />{t('stock.out')}</Button>
             <Button size="md" variant="secondary" onClick={() => navigate(`/stock/move/adjust?item=${id}`)}>{t('stock.adjust')}</Button>
             {item.kind === 'finished' && <Button size="md" variant="secondary" onClick={() => navigate(`/stock/move/finished?item=${id}`)}>{t('stock.finishedIn')}</Button>}
           </div>
@@ -64,16 +64,16 @@ export default function ItemDetailPage() {
       } main={
         <Card>
           <div className="mb-3 flex items-center justify-between"><CardTitle className="mb-0">{t('stock.ledger')}</CardTitle><MonthPicker month={month} onChange={setMonth} /></div>
-          <div className="mb-3 grid grid-cols-4 gap-2 text-center">
+          <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line text-center md:grid-cols-4">
             {[[t('stock.opening'), ledger.opening, 'text-ink'], [t('stock.totalIn'), ledger.in, 'text-received'], [t('stock.totalOut'), ledger.out, 'text-given'], [t('stock.closing'), ledger.closing, 'text-ink']].map(([l, v, c]) => (
-              <div key={String(l)} className="rounded-xl bg-surface-2 p-2"><p className={`num text-lg font-bold ${c}`}>{formatQty(Number(v), item.unit)}</p><p className="text-xs text-muted">{l}</p></div>
+              <div key={String(l)} className="bg-surface px-2 py-2.5"><p className={`num text-lg font-medium ${Number(v) === 0 ? 'text-muted' : c}`}>{formatQty(Number(v), item.unit)}</p><p className="text-sm text-muted">{l}</p></div>
             ))}
           </div>
           {ledger.moves.length === 0 ? <p className="text-sm text-muted">{t('common.empty')}</p> : (
             <ul className="divide-y divide-line">
               {[...ledger.moves].reverse().map((m) => (
                 <li key={m.recId} className="flex items-center gap-3 py-2">
-                  <div className="min-w-0 flex-1"><p className="text-sm text-ink">{kindLabel(m)}{refOf(m) ? ` · ${refOf(m)}` : ''}{m.note ? ` · ${m.note}` : ''}</p><p className="text-xs text-muted">{formatDay(m.day, lang, 'short')} · {names.users.get(m.by) ?? ''}</p></div>
+                  <div className="min-w-0 flex-1"><p className="text-sm text-ink">{kindLabel(m)}{refOf(m) ? ` · ${refOf(m)}` : ''}{m.note ? ` · ${m.note}` : ''}</p><p className="text-sm text-muted">{formatDay(m.day, lang, 'short')} · {names.users.get(m.by) ?? ''}</p></div>
                   <span className={`num font-medium ${m.qty < 0 ? 'text-given' : 'text-received'}`}>{m.qty > 0 ? '+' : '−'}{formatQty(Math.abs(m.qty), item.unit)}</span>
                 </li>
               ))}

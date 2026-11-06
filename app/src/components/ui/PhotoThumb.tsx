@@ -15,10 +15,10 @@ export function PhotoThumb({ id, alt, size = 56, initials, className }: {
     return () => { live = false; };
   }, [id]);
   const style = { width: size, height: size };
-  if (url) return <img src={url} alt={alt} style={style} className={cn('rounded-xl object-cover bg-bg', className)} />;
+  if (url) return <img src={url} alt={alt} style={style} className={cn('rounded-xl object-cover bg-surface-2', className)} />;
   return (
     <span role="img" aria-label={alt} style={style}
-      className={cn('inline-grid place-items-center rounded-xl bg-bg text-muted font-bold', className)}>
+      className={cn('inline-grid place-items-center rounded-xl bg-surface-2 text-ink-2 font-display font-medium', className)}>
       {initials ? initials.slice(0, 2).toUpperCase() : <ImageOff aria-hidden="true" size={size / 2.5} />}
     </span>
   );

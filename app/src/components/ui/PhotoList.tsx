@@ -48,7 +48,7 @@ export function PhotoList({ value, onChange, max, label, hint, error }: PhotoLis
           <li key={id} className="relative" data-testid="photo-list-item">
             <PhotoThumb id={id} alt={t('cat.photoN', { n: i + 1 })} size={88} className="border border-line" />
             <button type="button" onClick={() => onChange(value.filter((x) => x !== id))} aria-label={t('cat.removePhoto', { n: i + 1 })}
-              className="absolute -right-2 -top-2 grid h-11 w-11 place-items-center rounded-full border border-line bg-surface text-given shadow-card">
+              className="absolute -right-2 -top-2 grid h-11 w-11 place-items-center rounded-xl border border-line bg-surface text-given shadow-float">
               <X aria-hidden="true" size={18} />
             </button>
           </li>
@@ -56,7 +56,7 @@ export function PhotoList({ value, onChange, max, label, hint, error }: PhotoLis
         {!full && (
           <li>
             <button type="button" onClick={() => inputRef.current?.click()} disabled={busy}
-              className="flex h-[88px] w-[88px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line bg-bg text-sm text-muted focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink">
+              className="flex h-[88px] w-[88px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line-strong bg-surface-2/50 text-sm text-muted focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink">
               <ImagePlus aria-hidden="true" size={24} />{busy ? t('common.loading') : t('cat.addPhoto')}
             </button>
           </li>

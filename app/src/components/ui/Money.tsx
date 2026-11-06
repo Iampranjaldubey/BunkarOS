@@ -27,18 +27,11 @@ const flowCls: Record<MoneyFlow, string> = {
   neutral: 'text-ink',
 };
 
-/** Big formatted INR amount with given/received colouring. */
-export function Money({
-  paise,
-  flow = 'neutral',
-  withPaise = false,
-  signed = false,
-  size = 'lg',
-  className,
-}: MoneyProps) {
+/** Formatted INR amount; colour only when money goes out (red) or comes in (green). Zero is muted. */
+export function Money({ paise, flow = 'neutral', withPaise = false, signed = false, size = 'lg', className }: MoneyProps) {
   const sign = signed && flow === 'given' ? '−' : signed && flow === 'received' ? '+' : '';
   return (
-    <span className={cn('num font-bold tracking-tight', sizeCls[size], flowCls[flow], className)}>
+    <span className={cn('num font-medium', sizeCls[size], paise === 0 ? 'text-muted' : flowCls[flow], className)}>
       {sign}
       {formatINR(Math.abs(paise), { paise: withPaise })}
     </span>
@@ -56,9 +49,9 @@ export interface BigNumberProps {
 export function BigNumber({ value, unit, label, className }: BigNumberProps) {
   return (
     <span className={cn('inline-flex flex-col', className)}>
-      <span className="num text-3xl font-bold tracking-tight text-ink">
+      <span className="num text-3xl font-medium text-ink">
         {value}
-        {unit && <span className="ml-1 text-xl font-medium text-muted">{unit}</span>}
+        {unit && <span className="ml-1 text-xl font-normal text-muted">{unit}</span>}
       </span>
       {label && <span className="text-sm text-muted">{label}</span>}
     </span>

@@ -24,7 +24,8 @@ import { formatDay } from '../../domain/dates';
 import { todayIST } from '../../domain/ids';
 import { useCan } from '../../app/useCan';
 import { useT } from '../../i18n';
-import { StatusBadge, DueLine } from './shared';
+import { StatusBadge, DueLine, OrderProgress } from './shared';
+import { StatRow } from '../../components/ui/Feedback';
 import { OrderCatalogueCard } from '../catalogue/OrderCatalogue';
 
 export default function OrderDetailPage() {
@@ -70,16 +71,17 @@ export default function OrderDetailPage() {
             <p className="text-sm text-muted">{t('order.receivedOn')}: {formatDay(v.order.receivedOn, lang, 'short')} · {t('order.dueDate')}: {formatDay(v.order.dueDate, lang, 'short')}</p>
             {v.order.notes && <p className="mt-2 text-sm text-ink">{v.order.notes}</p>}
           </Card>
-          <div className="grid grid-cols-2 gap-3">
-            <StatTile label={t('order.delivered')} tone="received" value={<span className="num">{v.deliveredQty}/{v.order.qty}</span>} testid="order-delivered" />
-            <StatTile label={t('order.pending')} tone={v.pendingQty > 0 ? 'given' : 'neutral'} value={<span className="num">{v.pendingQty}</span>} testid="order-pending" />
-          </div>
+          <StatRow className="grid-cols-2">
+            <StatTile label={t('order.delivered')} value={<span className="num">{v.deliveredQty}/{v.order.qty}</span>} testid="order-delivered" />
+            <StatTile label={t('order.pending')} tone={v.pendingQty > 0 ? 'given' : 'neutral'} value={<span className={`num ${v.pendingQty === 0 ? 'text-muted' : ''}`}>{v.pendingQty}</span>} testid="order-pending" />
+          </StatRow>
+          <OrderProgress v={v} className="h-2.5" />
           {canSeePrice && v.amountPendingPaise !== undefined && <StatTile label={t('order.amountPending')} value={formatINR(v.amountPendingPaise)} />}
           {canManage && v.status !== 'delivered' && (
             <div className="flex flex-col gap-2">
               {v.status === 'new' && <Button onClick={() => void setStatus('in_production')}><Play aria-hidden="true" size={18} />{t('order.start')}</Button>}
               {v.status === 'in_production' && <Button onClick={() => void setStatus('finished')}><CheckCircle2 aria-hidden="true" size={18} />{t('order.finish')}</Button>}
-              <Button variant="success" onClick={() => setDeliverOpen(true)}><Truck aria-hidden="true" size={18} />{t('order.deliver')}</Button>
+              <Button variant={v.status === 'new' || v.status === 'in_production' ? 'secondary' : 'primary'} onClick={() => setDeliverOpen(true)}><Truck aria-hidden="true" size={18} />{t('order.deliver')}</Button>
             </div>
           )}
           <OrderCatalogueCard recs={recs} orderId={id} canManage={canManage} open={v.pendingQty > 0} />
@@ -95,10 +97,10 @@ export default function OrderDetailPage() {
             <ol className="relative ml-2 border-l border-line pl-4">
               {timeline.map((it) => (
                 <li key={it.recId} className="mb-4">
-                  <span className={`absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full ${it.kind === 'delivery' ? 'bg-received' : it.kind === 'status' ? 'bg-primary' : 'bg-muted'}`} aria-hidden="true" />
+                  <span className={`absolute -left-[7px] mt-1.5 h-3 w-3 rotate-45 rounded-[2px] ring-4 ring-surface ${it.kind === 'delivery' ? 'bg-received' : it.kind === 'status' ? 'bg-primary' : 'bg-line-strong'}`} aria-hidden="true" />
                   <p className="text-ink">{it.kind === 'status' ? <Badge tone="info">{t(`order.status.${it.status}`)}</Badge> : it.kind === 'delivery' ? <><span className="num font-medium">{it.qty}</span> {t('order.delivered')}</> : it.text}</p>
                   {it.kind !== 'note' && it.text && <p className="text-sm text-ink">{it.text}</p>}
-                  <p className="text-xs text-muted">{formatDay(it.day, lang, 'short')} · {names.users.get(it.by) ?? ''}</p>
+                  <p className="text-sm text-muted">{formatDay(it.day, lang, 'short')} · {names.users.get(it.by) ?? ''}</p>
                 </li>
               ))}
             </ol>

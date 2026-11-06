@@ -9,13 +9,13 @@ export interface EmptyStateProps {
   className?: string;
 }
 
-/** Friendly empty screen that invites the next action. */
+/** Empty screen that invites the next action. */
 export function EmptyState({ icon, title, hint, action, className }: EmptyStateProps) {
   return (
-    <div className={cn('flex flex-col items-center gap-3 px-6 py-12 text-center', className)}>
-      {icon && <div className="text-muted" aria-hidden="true">{icon}</div>}
-      <p className="text-xl text-ink">{title}</p>
-      {hint && <p className="max-w-xs text-base text-muted">{hint}</p>}
+    <div className={cn('flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line-strong px-6 py-12 text-center', className)}>
+      {icon && <div className="text-muted [&_svg]:stroke-[1.5]" aria-hidden="true">{icon}</div>}
+      <p className="text-lg font-medium text-ink">{title}</p>
+      {hint && <p className="max-w-sm text-base text-ink-2">{hint}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );
@@ -30,28 +30,27 @@ export interface StatTileProps {
   testid?: string;
 }
 
-const toneCls = {
-  neutral: 'bg-surface border-line',
-  given: 'bg-given/5 border-given/20',
-  received: 'bg-ok/5 border-ok/20',
-  info: 'bg-primary/5 border-primary/20',
-};
-
-/** Compact labelled statistic for home/digest grids. */
+/**
+ * A ledger cell: label, then the figure. Colour lives in a small marker and in money-out / money-in figures,
+ * not on the card's background (SPEC-M17). Use inside <StatRow> for a ruled row of cells.
+ */
 export function StatTile({ label, value, tone = 'neutral', className, testid }: StatTileProps) {
+  const fig = { neutral: 'text-ink', given: 'text-given', received: 'text-received', info: 'text-primary' }[tone];
   return (
-    <div data-testid={testid} className={cn('rounded-2xl border p-4 shadow-card', toneCls[tone], className)}>
-      <div className="num text-2xl font-bold text-ink">{value}</div>
-      <div className="mt-1 text-sm text-muted">{label}</div>
+    <div data-testid={testid} className={cn('min-w-0 rounded-2xl border border-line bg-surface px-4 py-3 md:px-5 md:py-4', className)}>
+      <div className="mb-1 text-sm text-muted">{label}</div>
+      <div className={cn('num text-2xl font-medium leading-tight', fig)}>{value}</div>
     </div>
   );
 }
 
-export function Skeleton({ className }: { className?: string }) {
+/** Ruled row of ledger cells: hairlines between them, one border around (a bahi-khata line). */
+export function StatRow({ children, className, testid }: { children: ReactNode; className?: string; testid?: string }) {
   return (
-    <div
-      aria-hidden="true"
-      className={cn('animate-pulse rounded-2xl bg-line/60', className)}
-    />
+    <div data-testid={testid} className={cn('grid gap-px overflow-hidden rounded-2xl border border-line bg-line [&>*]:rounded-none [&>*]:border-0', className)}>{children}</div>
   );
+}
+
+export function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden="true" className={cn('rounded-2xl bg-surface-2', className)} />;
 }

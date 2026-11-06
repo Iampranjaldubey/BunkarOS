@@ -65,7 +65,7 @@ export default function AdvanceNewPage() {
       {!picked ? <p className="text-sm text-muted">{t('ctx.pickWorker')}</p> : (
         <>
           <p className="font-medium text-ink">{picked.name}</p>
-          <div className="my-3 rounded-xl bg-given-soft/60 p-3"><p className="text-sm text-muted">{t('wages.outstanding')}</p><p className="num text-2xl font-bold text-given" data-testid="ctx-balance">{formatINR(balance)}</p></div>
+          <div className="my-3 rounded-xl bg-given-soft/60 p-3"><p className="text-sm text-muted">{t('wages.outstanding')}</p><p className="num text-2xl font-medium text-given" data-testid="ctx-balance">{formatINR(balance)}</p></div>
           <p className="mb-1 text-sm font-medium text-muted">{t('ctx.lastAdvances')}</p>
           {recent.length === 0 ? <p className="text-sm text-muted">{t('ctx.none')}</p> : (
             <ul className="divide-y divide-line text-sm">

@@ -69,7 +69,7 @@ export function PreviewShareSheet({
         </dd>
       </dl>
       <p className="text-sm text-muted">{t('share.preview')}</p>
-      <pre className="mt-1 whitespace-pre-wrap rounded-2xl border border-line bg-bg p-3 text-base text-ink font-sans">
+      <pre className="mt-1 whitespace-pre-wrap rounded-xl border border-line bg-surface-2/60 p-3 text-base text-ink font-sans">
         {text}
       </pre>
     </Sheet>

@@ -98,8 +98,8 @@ export default function StockMovePage() {
           <p className="font-medium text-ink">{item.name}</p>
           <div className="my-3 rounded-xl bg-surface-2 p-3">
             <p className="text-sm text-muted">{t('ctx.stockNow')}</p>
-            <p className="text-2xl font-bold" data-testid="ctx-stock"><Qty q={balance} item={item} className={item.lowStockQty > 0 && balance <= item.lowStockQty ? 'text-given' : 'text-ink'} /></p>
-            {item.lowStockQty > 0 && <p className="mt-1 text-xs text-muted">{t('home.lowLevel')}: {formatQty(item.lowStockQty, item.unit)}</p>}
+            <p className="text-2xl font-medium" data-testid="ctx-stock"><Qty q={balance} item={item} className={item.lowStockQty > 0 && balance <= item.lowStockQty ? 'text-given' : 'text-ink'} /></p>
+            {item.lowStockQty > 0 && <p className="mt-1 text-sm text-muted">{t('home.lowLevel')}: {formatQty(item.lowStockQty, item.unit)}</p>}
           </div>
           <p className="mb-1 text-sm font-medium text-muted">{t('ctx.lastMoves')}</p>
           {recentMoves.length === 0 ? <p className="text-sm text-muted">{t('ctx.none')}</p> : (

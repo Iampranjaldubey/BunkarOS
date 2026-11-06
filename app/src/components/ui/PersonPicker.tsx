@@ -48,26 +48,26 @@ function PersonTile({
       aria-pressed={selected}
       onClick={() => onSelect(person.id)}
       className={cn(
-        'flex flex-col items-center gap-2 rounded-2xl border p-3 text-center transition-colors',
+        'flex flex-col items-center gap-2 rounded-2xl border p-3 text-center transition-[background-color,border-color,transform] duration-150 active:scale-[0.98]',
         'focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink',
-        selected ? 'border-primary bg-primary/5' : 'border-line bg-surface hover:bg-bg',
+        selected ? 'border-primary bg-primary-soft' : 'border-line bg-surface hover:border-line-strong hover:bg-surface-2/60',
       )}
     >
-      <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-bg">
+      <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-surface-2">
         {url ? (
           <img src={url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <User aria-hidden="true" className="text-muted" size={28} />
+          <span aria-hidden="true" className="font-display text-2xl font-medium text-ink-2">{person.name.trim().charAt(0).toUpperCase() || <User className="text-muted" size={28} />}</span>
         )}
       </span>
       <span className="text-base font-medium leading-tight text-ink">{person.name}</span>
-      {person.subtitle && <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">{person.subtitle}</span>}
+      {person.subtitle && <span className="text-sm text-muted">{person.subtitle}</span>}
       {person.fatherName && (
-        <span className="text-xs text-muted">
+        <span className="text-sm text-muted">
           {t('person.father')}: {person.fatherName}
         </span>
       )}
-      {person.village && <span className="text-xs text-muted">{person.village}</span>}
+      {person.village && <span className="text-sm text-muted">{person.village}</span>}
     </button>
   );
 }

@@ -164,7 +164,7 @@ export default function WagePayPage() {
             <span className={`num font-medium ${tone === 'given' ? 'text-given' : tone === 'received' ? 'text-received' : 'text-ink'}`}>{signedINR(l.amountPaise)}</span>
             {!payment && isOwner && key && (
               <button type="button" onClick={() => openEdit(key)} aria-label={t('wages.changeLine', { line: lineKeyName(key, t) })} title={t('wages.change')}
-                className="no-print inline-flex h-11 w-11 items-center justify-center rounded-xl text-muted hover:bg-surface-2 hover:text-primary"><Pencil aria-hidden="true" size={16} /></button>
+                className="no-print inline-flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-primary-soft hover:text-primary"><Pencil aria-hidden="true" size={16} strokeWidth={1.75} /></button>
             )}
           </dd>
         </div>
@@ -183,11 +183,11 @@ export default function WagePayPage() {
       <p className="num mb-2 text-sm text-muted" data-testid="wage-counts">
         P {view.present} · H {view.half} · A {view.absent}{view.payType === 'daily' && view.offDays ? ` · ${t('wages.offDays')} ${view.offDays}` : ''}{showOt ? ` · OT ${view.otHours}h` : ''}{view.payType === 'monthly' && view.perDayPaise ? ` · ${t('wages.perDay')} ${formatINR(view.perDayPaise)}` : ''}
       </p>
-      {!payment && unmarked > 0 && <p className="mb-2 rounded-lg bg-warn-soft px-3 py-1.5 text-sm text-warn">{t('wages.unmarkedWarn', { n: unmarked })}</p>}
-      {!payment && isOwner && <p className="no-print mb-1 text-xs text-muted">{t('wages.overrideHint')}</p>}
+      {!payment && unmarked > 0 && <p className="mb-3 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-warn">{t('wages.unmarkedWarn', { n: unmarked })}</p>}
+      {!payment && isOwner && <p className="no-print mb-1 text-sm text-muted">{t('wages.overrideHint')}</p>}
       <dl className="divide-y divide-line" data-testid="wage-lines">
         {view.lines.map(lineRow)}
-        <div className="flex items-center justify-between py-3"><dt className="text-lg font-medium text-ink">{payment ? t('wages.paid') : t('wages.net')}</dt><dd className="num text-3xl font-bold text-ink" data-testid="wage-paid">{formatINR(view.paidPaise)}</dd></div>
+        <div className="flex items-center justify-between border-t-2 border-line-strong pt-3 pb-1"><dt className="text-lg font-medium text-ink">{payment ? t('wages.paid') : t('wages.net')}</dt><dd className="num font-display text-4xl font-medium text-ink" data-testid="wage-paid">{formatINR(view.paidPaise)}</dd></div>
       </dl>
       {negativeNet && <p role="alert" className="mb-2 rounded-lg bg-given-soft px-3 py-1.5 text-sm font-medium text-given" data-testid="negative-net">{t('wages.negativeNet')} ({signedINR(live.netPaise)})</p>}
       <p className="text-sm text-muted">{t('wages.afterRecover')}: <span className="num font-medium text-ink" data-testid="wage-balance-after">{formatINR(balanceAfter)}</span></p>
@@ -228,7 +228,7 @@ export default function WagePayPage() {
       <Field label={`${t('wages.recover')} — ${t('wages.outstanding')}: ${formatINR(outstanding)}`}>
         {({ id }) => <Input id={id} inputMode="decimal" value={recover ?? String(live.advanceRecoveredPaise / 100)} disabled={outstanding === 0 || Boolean(overrides.advance_recovered)} onChange={(e) => setRecover(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}
       </Field>
-      <div className="mb-4"><p className="mb-1.5 text-sm font-medium text-muted">{t('wages.mode')}</p>
+      <div className="mb-4"><p className="mb-1.5 text-base font-medium text-ink">{t('wages.mode')}</p>
         <SegmentedControl<PayMode> label={t('wages.mode')} value={mode} onChange={setMode} options={[{ value: 'cash', label: t('common.cash') }, { value: 'upi', label: t('common.upi') }]} /></div>
       <DateField value={day} onChange={setDay} />
       {hadReversed && (

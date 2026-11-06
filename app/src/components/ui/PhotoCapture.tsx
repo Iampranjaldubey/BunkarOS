@@ -95,7 +95,7 @@ export function PhotoCapture({
           aria-invalid={Boolean(error) || undefined}
           aria-describedby={errId}
           className={cn(
-            'flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-bg text-muted',
+            'flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-surface-2/50 text-ink-2 transition-colors hover:bg-surface-2',
             'focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink',
             error ? 'border-given text-given' : 'border-line',
           )}

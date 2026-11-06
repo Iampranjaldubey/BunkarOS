@@ -13,17 +13,22 @@ export function PaySummary({ w }: { w: WorkerP }) {
 }
 export function JobBadge({ w }: { w: WorkerP }) {
   const { t } = useT();
-  return <Badge tone="info">{t(`worker.job.${w.jobTitle}`)}</Badge>;
+  return <Badge tone="neutral">{t(`worker.job.${w.jobTitle}`)}</Badge>;
 }
-/** Avatar: the worker's photo when one is stored, else coloured initials. */
+/** Dye colours for initials, picked by name so a worker keeps the same colour on every phone. */
+// Indigo, madder, walnut, sage, lac, deep indigo: hand-dye colours far enough apart to tell people apart.
+const AVATAR_DYES = ['#2f3f91', '#a8392b', '#6b4a2f', '#4f6136', '#7b2d4a', '#1d2760'];
+
+/** Avatar: the worker's photo when one is stored, else initials on a dye colour (SPEC-M17). */
 export function Avatar({ name, size = 40, photoId }: { name: string; size?: number; photoId?: string }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => { let live = true; if (photoId) void photoUrl(photoId).then((u) => { if (live) setUrl(u); }); else setUrl(null); return () => { live = false; }; }, [photoId]);
   const initial = name.trim().charAt(0).toUpperCase() || '?';
-  const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
-  if (url) return <img src={url} alt="" aria-hidden="true" style={{ width: size, height: size }} className="shrink-0 rounded-full object-cover" />;
+  let h = 2166136261; for (const c of name) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } // FNV-1a
+  const dye = AVATAR_DYES[(h >>> 0) % AVATAR_DYES.length];
+  if (url) return <img src={url} alt="" aria-hidden="true" style={{ width: size, height: size }} className="shrink-0 rounded-xl object-cover" />;
   return (
-    <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center rounded-full font-display text-lg text-white"
-      style={{ width: size, height: size, background: `hsl(${hue} 45% 42%)` }}>{initial}</span>
+    <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center rounded-xl font-display font-medium text-[#efe6d2]"
+      style={{ width: size, height: size, background: dye, fontSize: Math.round(size * 0.42) }}>{initial}</span>
   );
 }

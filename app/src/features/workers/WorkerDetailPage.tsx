@@ -5,7 +5,8 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { StatTile, EmptyState } from '../../components/ui/Feedback';
+import { StatTile, StatRow, EmptyState } from '../../components/ui/Feedback';
+import { cn } from '../../lib/utils';
 import { PageGrid } from '../../components/ui/PageGrid';
 import { ConfirmSheet } from '../../components/ui/Sheet';
 import { PreviewShareSheet } from '../../components/ui/PreviewShareSheet';
@@ -91,10 +92,10 @@ export default function WorkerDetailPage() {
                 {w.phone && <p className="num text-sm text-muted">{w.phone}</p>}
               </div>
             </Card>
-            <div className="grid grid-cols-2 gap-3">
-              <StatTile label={t('worker.balance')} tone={balance > 0 ? 'given' : 'neutral'} value={formatINR(balance)} testid="worker-balance" />
-              <StatTile label={t('worker.lastPayment')} value={last ? formatINR(last.payload.paidPaise) : t('worker.noPayment')} />
-            </div>
+            <StatRow className="grid-cols-2">
+              <StatTile label={t('worker.balance')} tone={balance > 0 ? 'given' : 'neutral'} value={<span className={cn(balance === 0 && 'text-muted')}>{formatINR(balance)}</span>} testid="worker-balance" />
+              <StatTile label={t('worker.lastPayment')} value={last ? formatINR(last.payload.paidPaise) : <span className="text-base text-muted">{t('worker.noPayment')}</span>} />
+            </StatRow>
             <Button variant="secondary" onClick={() => navigate(`/advances/new?worker=${w.entityId}`)}><Wallet aria-hidden="true" size={18} />{t('worker.advances')}</Button>
             <Card>
               <CardTitle>{t('worker.advances')}</CardTitle>
@@ -102,7 +103,7 @@ export default function WorkerDetailPage() {
                 <ul className="divide-y divide-line">
                   {advances.slice(0, 8).map((a) => (
                     <li key={a.recId} className="flex items-center justify-between py-2 text-sm">
-                      <span className="text-muted">{formatDay(a.day, lang, 'short')} · {t(`common.${a.mode}`)}{a.note ? ` · ${a.note}` : ''}</span>
+                      <span className="text-ink-2">{formatDay(a.day, lang, 'short')} · {t(`common.${a.mode}`)}{a.note ? ` · ${a.note}` : ''}</span>
                       <span className="num font-medium text-given">{formatINR(a.amountPaise)}</span>
                     </li>
                   ))}
@@ -111,12 +112,12 @@ export default function WorkerDetailPage() {
             </Card>
             {canManage && w.active && (
               <Card data-testid="worker-link-card">
-                <CardTitle className="flex items-center gap-2"><Link2 aria-hidden="true" size={18} />{t('worker.link')}</CardTitle>
-                <div className="mb-3 flex items-center justify-between rounded-xl bg-surface-2 p-3">
-                  <div><p className="text-xs text-muted">{t('worker.accessCode')}</p><p className="num text-2xl font-bold tracking-[0.3em] text-ink" data-testid="worker-access-code">{w.accessCode ?? '—'}</p></div>
+                <CardTitle className="flex items-center gap-2"><Link2 aria-hidden="true" size={18} strokeWidth={1.75} className="text-muted" />{t('worker.link')}</CardTitle>
+                <div className="mb-3 flex items-center justify-between rounded-xl border border-line bg-surface-2/60 p-3">
+                  <div><p className="text-sm text-muted">{t('worker.accessCode')}</p><p className="num font-display text-2xl font-medium tracking-[0.2em] text-ink" data-testid="worker-access-code">{w.accessCode ?? '—'}</p></div>
                   <Button size="md" variant="ghost" onClick={() => void regenerateCode()} aria-label={t('worker.newCode')}><RefreshCw aria-hidden="true" size={16} />{t('worker.newCode')}</Button>
                 </div>
-                <p className="mb-3 text-xs text-muted">{t('worker.accessCodeHint')}</p>
+                <p className="mb-3 text-sm text-muted">{t('worker.accessCodeHint')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <Button size="md" disabled={linkBusy} onClick={() => void sendLink()} data-testid="send-link"><Link2 aria-hidden="true" size={16} />{t('worker.sendLink')}</Button>
                   <Button size="md" variant="secondary" disabled={linkBusy} onClick={() => void copyLink()} data-testid="copy-link"><Copy aria-hidden="true" size={16} />{t('worker.copyLink')}</Button>
@@ -132,20 +133,20 @@ export default function WorkerDetailPage() {
             <div className="mb-3 flex items-center justify-between">
               <CardTitle className="mb-0">{t('att.month')}</CardTitle>
               <div className="flex items-center gap-1">
-                <button type="button" onClick={() => setMonth(prevMonth(month))} aria-label={t('action.back')} className="tap-48 rounded-xl text-muted hover:bg-surface-2"><ChevronLeft aria-hidden="true" /></button>
+                <button type="button" onClick={() => setMonth(prevMonth(month))} aria-label={t('action.back')} className="tap-48 inline-flex items-center justify-center rounded-xl text-ink-2 transition-colors hover:bg-surface-2"><ChevronLeft aria-hidden="true" strokeWidth={1.75} /></button>
                 <span className="min-w-32 text-center font-medium text-ink">{formatMonth(month, lang)}</span>
-                <button type="button" onClick={() => setMonth(nextMonth(month))} disabled={month >= monthOf(today)} aria-label={t('action.next')} className="tap-48 rounded-xl text-muted hover:bg-surface-2 disabled:opacity-30"><ChevronRight aria-hidden="true" /></button>
+                <button type="button" onClick={() => setMonth(nextMonth(month))} disabled={month >= monthOf(today)} aria-label={t('action.next')} className="tap-48 inline-flex items-center justify-center rounded-xl text-ink-2 transition-colors hover:bg-surface-2 disabled:opacity-30"><ChevronRight aria-hidden="true" strokeWidth={1.75} /></button>
               </div>
             </div>
-            <div className={`mb-3 grid ${rules.overtimeEnabled || w.payType === 'daily' ? 'grid-cols-4' : 'grid-cols-3'} gap-2 text-center`}>
+            <div className={`mb-4 grid ${rules.overtimeEnabled || w.payType === 'daily' ? 'grid-cols-4' : 'grid-cols-3'} gap-px overflow-hidden rounded-xl border border-line bg-line text-center`}>
               {[['att.present', att.present, 'text-received'], ['att.half', att.half, 'text-accent-ink'], ['att.absent', att.absent, 'text-given'], ...(rules.overtimeEnabled ? [['att.ot', `${att.otHours}h`, 'text-ink']] : w.payType === 'daily' ? [['att.paidOff', paidOff.length, 'text-received']] : [])].map(([k, v, c]) => (
-                <div key={String(k)} className="rounded-xl bg-surface-2 p-2"><p className={`num text-xl font-bold ${c}`}>{v}</p><p className="text-xs text-muted">{t(String(k))}</p></div>
+                <div key={String(k)} className="bg-surface px-2 py-2.5"><p className={`num text-xl font-medium ${v === 0 ? 'text-muted' : c}`}>{v}</p><p className="text-sm text-muted">{t(String(k))}</p></div>
               ))}
             </div>
             <MonthGrid att={att} today={today} holidays={settings?.holidays} showOt={rules.overtimeEnabled} paidOff={paidOff} />
             {w.payType === 'piece' && pieces && <p className="mt-2 text-sm text-ink">{t('att.pieces')}: <span className="num font-medium">{pieces.count}</span> · {formatINR(pieces.amountPaise)}</p>}
             {last && <p className="mt-2 text-sm text-muted">{t('worker.lastPayment')}: {formatMonth(last.payload.month, lang)} · {formatINR(last.payload.paidPaise)} · {t('common.by', { name: names.users.get(last.by) ?? '' })}</p>}
-            <Link to={`/wages/${month}/${w.entityId}`} className="mt-3 inline-block text-sm font-medium text-primary">{t('nav.wages')} →</Link>
+            <Link to={`/wages/${month}/${w.entityId}`} className="-mx-2 mt-2 inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-medium text-primary transition-colors hover:bg-primary-soft">{t('nav.wages')}<ChevronRight aria-hidden="true" size={16} /></Link>
           </Card>
         }
       />

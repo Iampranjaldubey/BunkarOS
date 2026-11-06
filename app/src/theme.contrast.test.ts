@@ -22,10 +22,13 @@ const ratio = (a: string, b: string) => { const x = lum(a); const y = lum(b); re
 
 // [text, background]
 const PAIRS: [string, string][] = [
-  ['ink', 'bg'], ['ink', 'surface'], ['ink', 'surface-2'], ['muted', 'surface'], ['muted', 'bg'],
-  ['on-fill', 'primary'], ['on-fill', 'ok'], ['on-fill', 'given'],
-  ['primary', 'surface'], ['primary', 'primary-soft'], ['given', 'surface'], ['received', 'surface'],
+  ['ink', 'bg'], ['ink', 'surface'], ['ink', 'surface-2'], ['muted', 'surface'], ['muted', 'bg'], ['muted', 'surface-2'],
+  ['ink-2', 'bg'], ['ink-2', 'surface'], ['ink-2', 'surface-2'],
+  ['on-fill', 'primary'], ['on-fill', 'primary-dark'], ['on-fill', 'ok'], ['on-fill', 'given'], ['on-fill', 'received'],
+  ['on-accent', 'accent'],
+  ['primary', 'surface'], ['primary', 'bg'], ['primary', 'primary-soft'], ['given', 'surface'], ['received', 'surface'],
   ['accent-ink', 'surface'], ['accent-ink', 'accent-soft'], ['warn', 'warn-soft'], ['given', 'given-soft'], ['received', 'received-soft'],
+  ['ink', 'primary-soft'], ['ink', 'accent-soft'],
 ];
 
 describe('theme contrast (WCAG AA 4.5:1)', () => {
@@ -36,7 +39,10 @@ describe('theme contrast (WCAG AA 4.5:1)', () => {
     });
   }
   it('the dark block defines on-fill (dark ink on light fills)', () => {
-    expect(dark['on-fill']).toBe('#0f1419');
+    expect(dark['on-fill']).toBe('#161411');
     expect(light['on-fill']).toBe('#ffffff');
+  });
+  it('every token is defined in both themes', () => {
+    for (const [fg, bg] of PAIRS) { expect(light[fg], fg).toBeTruthy(); expect(light[bg], bg).toBeTruthy(); }
   });
 });

@@ -42,10 +42,10 @@ export default function WorkerJoinPage() {
 
   return (
     <WorkerShell header={<div><p className="text-sm text-muted">{t('app.name')}</p><h1 className="text-2xl">{t('wj.title')}</h1></div>}>
-      <div className="mb-4 flex items-center gap-2" aria-hidden="true">{[1, 2, 3].map((n) => <span key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? 'bg-primary' : 'bg-line'}`} />)}</div>
+      <div className="mb-4 flex items-center gap-2" aria-hidden="true">{[1, 2, 3].map((n) => <span key={n} className={`h-1.5 flex-1 rounded-[2px] transition-colors duration-300 ${n <= step ? 'bg-primary' : 'bg-line-strong/60'}`} />)}</div>
       {step === 1 && (
         <Card className="md:p-6">
-          <div className="mb-4 flex items-center gap-3"><span className="rounded-2xl bg-primary-soft p-3 text-primary"><Store aria-hidden="true" size={28} /></span><p className="text-base text-ink">{t('wj.hint')}</p></div>
+          <div className="mb-4 flex items-center gap-3"><span className="rounded-xl bg-surface-2 p-3 text-ink-2"><Store aria-hidden="true" size={26} strokeWidth={1.6} /></span><p className="text-base text-ink">{t('wj.hint')}</p></div>
           <label htmlFor="shop-code" className="mb-1.5 block text-sm font-medium text-muted">{t('wj.shopCode')}</label>
           <Input id="shop-code" inputMode="numeric" maxLength={6} autoFocus value={shopCode} aria-invalid={Boolean(err) || undefined}
             onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setShopCode(v); setErr(''); if (v.length === 6) void lookup(v); }}
@@ -58,12 +58,12 @@ export default function WorkerJoinPage() {
       {step === 2 && shop && (
         <Card className="md:p-6">
           <p className="mb-1 text-sm text-muted">{t('wp.shop')}: <span className="font-medium text-ink">{shop.unitName}</span></p>
-          <h2 className="mb-3 text-xl">{t('wj.pick')}</h2>
+          <h2 className="mb-3 text-lg">{t('wj.pick')}</h2>
           {shop.workers.length === 0 ? <p className="text-muted">{t('wj.noWorkers')}</p> : (
             <ul className="grid grid-cols-2 gap-2 md:grid-cols-3">
               {shop.workers.map((w) => (
-                <li key={w.workerId}><button type="button" onClick={() => setWorkerId(w.workerId)} className="flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-3 text-center hover:bg-surface-2 focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink">
-                  <Avatar name={w.name} size={44} /><span className="font-medium text-ink">{w.name}</span><span className="text-xs text-muted">{t(`worker.job.${w.jobTitle}`)}</span></button></li>
+                <li key={w.workerId}><button type="button" onClick={() => setWorkerId(w.workerId)} className="flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-3 text-center transition-[background-color,border-color,transform] hover:border-line-strong hover:bg-surface-2/60 active:scale-[0.98] focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-ink">
+                  <Avatar name={w.name} size={44} /><span className="font-medium text-ink">{w.name}</span><span className="text-sm text-muted">{t(`worker.job.${w.jobTitle}`)}</span></button></li>
               ))}
             </ul>
           )}

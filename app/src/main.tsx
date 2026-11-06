@@ -4,10 +4,11 @@ import '@fontsource/mukta/devanagari-400.css';
 import '@fontsource/mukta/latin-400.css';
 import '@fontsource/mukta/devanagari-500.css';
 import '@fontsource/mukta/latin-500.css';
-import '@fontsource/mukta/devanagari-700.css';
-import '@fontsource/mukta/latin-700.css';
-import '@fontsource/tiro-devanagari-hindi/devanagari-400.css';
-import '@fontsource/tiro-devanagari-hindi/latin-400.css';
+import '@fontsource/mukta/devanagari-600.css';
+import '@fontsource/mukta/latin-600.css';
+// SPEC-M17: Eczar (drawn for Devanagari and Latin together) for page titles and the unit name.
+import '@fontsource/eczar/devanagari-500.css';
+import '@fontsource/eczar/latin-500.css';
 import './index.css';
 try { const th = localStorage.getItem('bunkar.theme'); if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th; } catch { /* ignore */ }
 import App from './App.tsx';

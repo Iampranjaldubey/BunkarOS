@@ -35,6 +35,7 @@ Neon's free restore history is only 6 hours. Take a backup every week and before
 
 ```bash
 umask 077
+export PGSSLROOTCERT=system   # psql, pg_dump and pg_restore need this for sslmode=verify-full
 pg_dump "$DATABASE_URL" -Fc -f "bunkar-$(date +%F).dump"                                          # back up
 pg_restore --no-owner --no-privileges -d "$TARGET_DATABASE_URL" bunkar-YYYY-MM-DD.dump            # restore
 ```

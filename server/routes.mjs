@@ -75,10 +75,21 @@ async function bearerAuth(db, req) {
   const m = h.match(/^Bearer\s+(.+)$/);
   return m ? verifyToken(db, m[1]) : null;
 }
-function clientIp(req) {
-  if (TRUST_PROXY) { const fwd = req.headers['x-forwarded-for']; if (typeof fwd === 'string' && fwd.length) return fwd.split(',')[0].trim(); }
-  return req.socket?.remoteAddress || 'unknown';
+/**
+ * The address the rate limits key on. Proxies append to X-Forwarded-For, so its first entry is whatever the client sent:
+ * use the header Cloudflare sets itself, else the last entry, which the nearest proxy wrote.
+ */
+export function clientIpFrom(headers, socketAddress, trustProxy) {
+  if (trustProxy) {
+    const cf = headers['cf-connecting-ip'];
+    if (typeof cf === 'string' && cf.trim()) return cf.trim();
+    const fwd = headers['x-forwarded-for'];
+    const last = typeof fwd === 'string' ? fwd.split(',').map((p) => p.trim()).filter(Boolean).pop() : undefined;
+    if (last) return last;
+  }
+  return socketAddress || 'unknown';
 }
+const clientIp = (req) => clientIpFrom(req.headers, req.socket?.remoteAddress, TRUST_PROXY);
 function makeRateLimiter(max, windowMs) {
   const hits = new Map(); let lastSweep = Date.now();
   const sweep = (now) => { for (const [k, arr] of hits) { const live = arr.filter((t) => now - t < windowMs); if (live.length) hits.set(k, live); else hits.delete(k); } lastSweep = now; };

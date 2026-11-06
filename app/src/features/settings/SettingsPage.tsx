@@ -23,7 +23,9 @@ import { getUnitMeta, useSession } from '../../app/session';
 import { authedFetch } from '../../sync';
 import { useT } from '../../i18n';
 import { useEffect } from 'react';
-import { useCan } from '../../app/useCan';
+import { useCan, useOrg } from '../../app/useCan';
+import { MODULES } from '../../domain/modules';
+import { Dot } from '../../components/ui/Badge';
 
 type Theme = 'auto' | 'light' | 'dark';
 function getTheme(): Theme { try { return (localStorage.getItem('bunkar.theme') as Theme) || 'auto'; } catch { return 'auto'; } }
@@ -41,6 +43,7 @@ export default function SettingsPage() {
   const users = useMemo(() => listUsers(recs), [recs]);
   const allowed = useCan();
   const isOwner = role === 'owner' && allowed('settings.edit');
+  const org = useOrg();
 
   const [workingDays, setWorkingDays] = useState<string>('');
   const [photoAbove, setPhotoAbove] = useState<string>('');
@@ -107,7 +110,7 @@ export default function SettingsPage() {
       <Card className="mb-4 lg:mb-0">
         <CardTitle>{t('settings.language')}</CardTitle>
         <LanguageSwitch className="mb-4" />
-        <p className="mb-1 text-sm font-medium text-muted">{t('settings.theme')}</p>
+        <p className="mb-1.5 text-base font-medium text-ink">{t('settings.theme')}</p>
         <SegmentedControl<Theme> label={t('settings.theme')} value={theme} onChange={(v) => { setTheme(v); applyTheme(v); }}
           options={[{ value: 'auto', label: t('settings.theme.auto') }, { value: 'light', label: t('settings.theme.light') }, { value: 'dark', label: t('settings.theme.dark') }]} />
       </Card>
@@ -136,15 +139,28 @@ export default function SettingsPage() {
         {holidays.length === 0 ? <p className="text-sm text-muted">{t('settings.holidaysEmpty')}</p> : (
           <ul className="flex flex-wrap gap-2">
             {holidays.map((d) => (
-              <li key={d} data-testid={`holiday-${d}`} className="flex items-center gap-1 rounded-full border border-line bg-surface-2 py-1 pl-3 pr-1 text-sm text-ink">
+              <li key={d} data-testid={`holiday-${d}`} className="flex items-center gap-1 rounded-lg border border-line bg-surface-2/60 py-1 pl-3 pr-1 text-sm text-ink">
                 <span className="num">{formatDay(d, lang, 'medium')}</span>
                 {isOwner ? (
-                  <button type="button" onClick={() => void removeHoliday(d)} aria-label={t('settings.holidayRemove', { day: formatDay(d, lang, 'medium') })} className="tap-48 -my-2 rounded-full text-muted hover:bg-surface hover:text-given"><X aria-hidden="true" size={16} /></button>
+                  <button type="button" onClick={() => void removeHoliday(d)} aria-label={t('settings.holidayRemove', { day: formatDay(d, lang, 'medium') })} className="tap-48 -my-2 inline-flex items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-given"><X aria-hidden="true" size={16} /></button>
                 ) : <span className="pr-2" />}
               </li>
             ))}
           </ul>
         )}
+      </Card>
+
+      <Card className="mb-4 lg:mb-0" data-testid="modules-card">
+        <CardTitle>{t('m18.yourModules')}</CardTitle>
+        <ul className="grid gap-x-6 sm:grid-cols-2">
+          {MODULES.map((m) => (
+            <li key={m} className="flex min-h-11 items-center justify-between gap-3 border-b border-line py-2 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0">
+              <span className="text-ink">{t(`m18.mod.${m}`)}</span>
+              <Dot tone={org.modules[m] ? 'received' : 'neutral'}>{org.modules[m] ? t('m18.on') : t('m18.off')}</Dot>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-sm text-muted">{t('m18.yourModulesHint')}</p>
       </Card>
 
       {settings && <WageRulesCard key={JSON.stringify(unitRules(settings))} settings={settings} isOwner={isOwner} />}
@@ -165,10 +181,10 @@ export default function SettingsPage() {
       </Card>
 
       {shopCode && (
-        <Card className="mb-4 lg:mb-0 bg-primary-soft/40" data-testid="shop-code-card">
+        <Card className="mb-4 lg:mb-0" data-testid="shop-code-card">
           <CardTitle>{t('settings.shopCode')}</CardTitle>
           <div className="flex items-center gap-3">
-            <p className="num text-4xl font-bold tracking-[0.25em] text-ink" data-testid="shop-code">{shopCode}</p>
+            <p className="num font-display text-4xl font-medium tracking-[0.2em] text-ink" data-testid="shop-code">{shopCode}</p>
             <button type="button" onClick={() => void copy(shopCode)} aria-label={t('settings.copy')} className="tap-48 rounded-xl text-primary hover:bg-primary-soft"><Copy aria-hidden="true" size={20} /></button>
           </div>
           <p className="mt-1 text-sm text-muted">{t('settings.shopCodeHint')}</p>
@@ -179,8 +195,8 @@ export default function SettingsPage() {
           <CardTitle>{t('settings.joinInfo')}</CardTitle>
           <p className="mb-3 text-sm text-muted">{t('settings.joinHint')}</p>
           {[['setup.unitCode', meta.unitId], ['setup.unitKey', meta.unitKey]].map(([k, v]) => (
-            <div key={k} className="mb-2 flex items-center gap-2 rounded-xl bg-surface-2 p-3">
-              <div className="min-w-0 flex-1"><p className="text-xs text-muted">{t(k)}</p><p className="num truncate font-mono text-sm text-ink" data-testid={k === 'setup.unitCode' ? 'join-unit-id' : 'join-unit-key'}>{v}</p></div>
+            <div key={k} className="mb-2 flex items-center gap-2 rounded-xl border border-line bg-surface-2/60 p-3">
+              <div className="min-w-0 flex-1"><p className="text-sm text-muted">{t(k)}</p><p className="num truncate font-mono text-sm text-ink" data-testid={k === 'setup.unitCode' ? 'join-unit-id' : 'join-unit-key'}>{v}</p></div>
               <button type="button" onClick={() => void copy(v)} aria-label={t('settings.copy')} className="tap-48 rounded-xl text-primary hover:bg-primary-soft"><Copy aria-hidden="true" size={20} /></button>
             </div>
           ))}

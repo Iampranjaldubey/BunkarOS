@@ -46,5 +46,26 @@ Status: TODO · DOING · BLOCKED · DONE. Spec ids in `SPECS.md`. Evidence requi
 | 27 | M13 stage 2 | "See wages" toggle together with server-side wage redaction and forced resync | LATER | not before stage 1 is built; no toggle shown until then |
 | 28 | M16 | Server integrity (locked-month reversals, wage net/rounding/paid limits, stock below zero only with owner override, same-day undo by server date, photo ids per unit) + paid month from the saved snapshot | DONE | server 30/30 (integrity.test 4 new) · vitest 40/40 (paidview 6, photo 409) · e2e 27/27 ×3 · tsc 0 · lint 0 errors / 53 warnings · build OK · seed 34 accepted / 0 rejected; docs/run-summary.md |
 
+## Round 4 — Visual redesign (user MCQ 2026-11-05, SPEC-M17, D-007; built 2026-11-06, not committed)
+| # | Spec | Deliverable | Status | Evidence |
+|---|---|---|---|---|
+| 29 | M17 | Baseline + deps: React 19.3.1, @fontsource/eczar 5.3.0 (motion and @number-flow/react tried and removed; Tiro removed) | DONE | baseline before change: tsc 0 · lint 0 errors / 55 warnings · vitest 13 files / 75 |
+| 30 | M17 | Design system: tokens (both themes), fonts, logo + favicon + PWA icons + theme colour | DONE | contrast test 27 pairs × 2 themes pass |
+| 31 | M17 | Carpet pieces: guard border, knot cell, naksha grid, drawn rug, woven progress | DONE | screenshots docs/screenshots/m17/after |
+| 32 | M17 | UI kit + shell (side menu, top bar, bottom bar, sheets, toasts, tags, inputs) | DONE | e2e 20/21 sweeps + 44 px audit pass |
+| 33 | M17 | Screens: login/setup, home, attendance, workers, wages + pay, advances, stock, orders, catalogue, month, log, settings, more, worker page, admin, slip | DONE | 36 before / 36 after screenshots in docs/screenshots/m17 |
+| 34 | M17 | Motion: knot tie, ripple, weave-in, rolling figures, page rise; reduced motion | DONE | reduced motion: longest animation and transition 0.01 ms (normal: 360 / 200 ms) |
+| 35 | M17 | Verify | DONE | tsc 0 · lint 0 errors / 55 warnings · vitest 76/76 · server 40/40 · build OK (precache 127 / 1403 KiB) · JS +7.8 KB gz · e2e final full run 40/41, the 1 failure (22 desktop OT keyboard step) passed 3/3 on repeat; 12 passed 2/2 after removing <ViewTransition>; 10, 11 passed 6/6 after the print fix |
+
 ## Blocked
-- Push to GitHub: needs the user's "yes" and ShubhamKang write access on Pranjal's repo (Git Credential Manager will prompt in the browser).
+- (none) — `desktop-first` was pushed by the user and merged into `main` via PR #1 on 2026-11-02 (merge commit 9dd1d69).
+
+## Round 5 — Platform base (SPEC-M18, P-001; approved 2026-11-06; built 2026-11-06, not committed)
+| # | Spec | Deliverable | Status | Evidence |
+|---|---|---|---|---|
+| 36 | M18 | Server: units columns, invites, platform_events, row-level security, industries + module map | DONE | server 46/46 (platform.test AC1: unfiltered query sees only its unit; forged insert refused by the database) |
+| 37 | M18 | Server: module_off, org_paused, org in sync, invite-only creation, founders' API (create, invite, modules, status, usage) | DONE | platform.test AC2–AC6 pass; admin unit page has no records; worker_links stay filtered in code (looked up by token before the unit is known) |
+| 38 | M18 | App: org from sync, modules in can() and menus / Home / report / export / worker page, paused banner, join by invite | DONE | vitest modules.test 3, org.test 2 (offline org); e2e 14 AC8 module off + AC9 paused |
+| 39 | M18 | Industry packs: carpet = today; bags v0 (words, job titles, materials, sizes, drawn bag, stitch line) | DONE | e2e 14 AC7 (bag words, jobs, cm, drawn bag, stitch line); e2e 15 bags sweep: no carpet word on 18 routes × 3 languages |
+| 40 | M18 | Founders' console: organisations, new organisation, modules, people, changes, packs | DONE | e2e 14 AC7 (3-step wizard), e2e 08 usage only; e2e 15 console sweep (overflow, 44/48 px) |
+| 41 | M18 | Tests: server AC1–AC6, e2e AC7–AC10 (fixtures, 08 admin, new 14-platform, 15-platform-sweep), seed script, README | DONE | server 46/46; seed carpet + bags 56 accepted / 0 rejected each; README updated |

@@ -26,6 +26,21 @@ Terms:
   - No separate "who operates this unit" switch. A unit with no operator login is operated by the owner. A unit may have more than one operator, as today; the operator toggles apply to all of them together (decided 2026-11-02, D-005).
   - "Calculations are suggestions" applies to wage figures for now (D-004). Stock balances and order counts are sums of entries; they are corrected with entries (adjustment, reversal), not overridden.
 
+## P-001 More industries on one platform
+
+- **Status:** direction decided by owner (2026-11-06, multiple-choice answers). Design is a draft: `docs/platform-exploration.md`. Spec SPEC-M18 is not written yet.
+- **Decision:**
+  - The platform grows from carpet to more industries, under one brand. The name changes later.
+  - Only the founders create organisations.
+  - Second industry: bag making, with a partner who has no personal ties to the team.
+  - Bags start with all six modules on; the partner's feature list decides what turns off.
+  - Founders' admin, for now: create an organisation, set its industry and modules, send the owner's invite. No access to the organisation's data.
+  - Part of the Sitare goal, now.
+- **Answers to `docs/platform-exploration.md` §9 (owner 2026-11-06):** database-level isolation now; paused = can log in and read, can't add entries; invite-only creation, existing units keep working; founders' console in English; bags signature = running-stitch line plus a drawn bag; build the platform base now (SPEC-M18).
+- **Founders' data view (owner 2026-11-06):** usage only. The business data views of SPEC-M09 are removed.
+- **Open:** bag pay models; the partner's feature list.
+- **Brief:** `.kiro/steering/product.md` still describes carpet only. Update it once SPEC-M18 is approved.
+
 ## Unit settings
 
 ### D-001 Overtime enabled
@@ -213,6 +228,22 @@ Terms:
     - Taking back an "added" entry is refused when those carpets are no longer in stock (sold, delivered, reserved or written off first).
     - The grid also filters by a selling-price range; it is shown only to users who see prices.
     - Photos taken on one phone are fetched from the server by the other phones of the unit when online and kept for offline viewing.
+
+## Look and feel
+
+### D-007 Visual redesign "Loom and register"
+- **Status:** decided by owner (2026-11-05, multiple-choice answers). Spec: SPECS.md SPEC-M17.
+- **Decision:**
+  - Redesign the whole interface, phone and desktop web, from zero. Features, data and rules stay.
+  - Brand colour: indigo (neel). Red stays for money or stock going out and green for coming in.
+  - Name on the logo and login: बुनकर / Bunkar for now. CarpetOps vs Bunkar stays open (brief §1).
+  - Home title: the day and the unit name, no greeting.
+  - Carpets without photos are drawn in code; partner photos can replace them later.
+  - New libraries allowed: `motion`, `@number-flow/react`; React 19.2 → 19.3. While building, neither library was needed and both were removed (SPEC-M17 Motion); React 19.3.1 and the font Eczar were added.
+  - One pass over all screens, reviewed at the end.
+- **Details assumed (needs confirmation):**
+  - The worker's own page keeps "नमस्ते, {name}" as its heading. It is a personal page opened from WhatsApp, and decision 4A was about the owner's Home.
+  - Fonts: Mukta stays for the interface; Eczar replaces Tiro Devanagari Hindi for titles.
 
 ## Data-model differences
 

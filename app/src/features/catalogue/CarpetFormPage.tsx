@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { usePack } from '../../industries/usePack';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card } from '../../components/ui/Card';
@@ -36,6 +37,7 @@ export default function CarpetFormPage() {
 
 function CarpetForm({ existing, recs }: { existing?: CarpetP; recs: Rec[] }) {
   const { t } = useT();
+  const pack = usePack(); // SPEC-M18: a new entry starts in the pack's size unit (bags: cm)
   const navigate = useNavigate();
   const toast = useToast();
   const allowed = useCan();
@@ -44,7 +46,7 @@ function CarpetForm({ existing, recs }: { existing?: CarpetP; recs: Rec[] }) {
 
   const [photoIds, setPhotoIds] = useState<string[]>(existing?.photoIds ?? []);
   const [design, setDesign] = useState(existing?.design ?? '');
-  const [length, setLength] = useState(milliText(existing?.lengthMilli)); const [width, setWidth] = useState(milliText(existing?.widthMilli)); const [unit, setUnit] = useState<SizeUnit>(existing?.sizeUnit ?? 'ft');
+  const [length, setLength] = useState(milliText(existing?.lengthMilli)); const [width, setWidth] = useState(milliText(existing?.widthMilli)); const [unit, setUnit] = useState<SizeUnit>(existing?.sizeUnit ?? pack.sizeUnit);
   const [mode, setMode] = useState<CarpetMode>(existing?.mode ?? 'quantity');
   const [qty, setQty] = useState('1'); const [tag, setTag] = useState(existing?.tag ?? '');
   const [material, setMaterial] = useState(existing?.materialNotes ?? ''); const [cost, setCost] = useState(paiseText(existing?.costPaise)); const [price, setPrice] = useState(paiseText(existing?.pricePaise)); const [notes, setNotes] = useState(existing?.notes ?? '');

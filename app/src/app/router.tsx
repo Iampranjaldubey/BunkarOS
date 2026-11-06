@@ -1,7 +1,8 @@
 import { lazy } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
+import type { ModuleId } from '../sync/types';
 import { AppLayout } from './AppLayout';
-import { RequireSession, RequireCan } from './guards';
+import { RequireSession, RequireCan, RequireModule } from './guards';
 import SetupPage from './SetupPage';
 import LoginPage from './LoginPage';
 
@@ -35,9 +36,12 @@ const AdminUnitsPage = lazy(() => import('../admin/AdminUnitsPage'));
 const AdminUnitPage = lazy(() => import('../admin/AdminUnitPage'));
 
 const guard = (action: Parameters<typeof RequireCan>[0]['action'], el: React.ReactNode) => <RequireCan action={action}>{el}</RequireCan>;
+/** SPEC-M18: screens of a module the platform can switch off. */
+const mod = (m: ModuleId, el: React.ReactNode) => <RequireModule module={m}>{el}</RequireModule>;
 
 export const router = createBrowserRouter([
   { path: '/setup', element: <SetupPage /> },
+  { path: '/join/:token', element: <SetupPage /> }, // SPEC-M18 §4: the owner's invite link
   { path: '/login', element: <LoginPage /> },
   // Public worker pages (SPEC-M07): no session.
   { path: '/w', element: <WorkerHomePage /> },
@@ -46,6 +50,8 @@ export const router = createBrowserRouter([
   // Platform admin (SPEC-M09): founders only, separate key.
   { path: '/admin', element: <AdminUnitsPage /> },
   { path: '/admin/units/:unitId', element: <AdminUnitPage /> },
+  { path: '/admin/new', lazy: () => import('../admin/AdminNewOrgPage').then((m) => ({ Component: m.default })) },
+  { path: '/admin/industries', lazy: () => import('../admin/AdminIndustriesPage').then((m) => ({ Component: m.default })) },
   {
     path: '/',
     element: (<RequireSession><AppLayout /></RequireSession>),
@@ -58,25 +64,25 @@ export const router = createBrowserRouter([
       { path: 'workers/new', element: guard('worker.manage', <WorkerFormPage />) },
       { path: 'workers/:id', element: <WorkerDetailPage /> },
       { path: 'workers/:id/edit', element: guard('worker.manage', <WorkerFormPage />) },
-      { path: 'attendance', element: <AttendancePage /> }, // viewable by all; marking needs "add entries" (SPEC-M13)
-      { path: 'advances/new', element: guard('advance.give', <AdvanceNewPage />) },
-      { path: 'wages', element: guard('wages.view', <WagesPage />) },
-      { path: 'wages/:month/:workerId', element: guard('wages.view', <WagePayPage />) },
-      { path: 'stock', element: <StockPage /> },
-      { path: 'stock/new', element: guard('item.manage', <ItemFormPage />) },
-      { path: 'stock/move/:kind', element: guard('stock.move', <StockMovePage />) },
-      { path: 'stock/:id', element: <ItemDetailPage /> },
-      { path: 'stock/:id/edit', element: guard('item.manage', <ItemFormPage />) },
-      { path: 'orders', element: <OrdersPage /> },
-      { path: 'orders/new', element: guard('order.manage', <OrderFormPage />) },
-      { path: 'orders/:id', element: <OrderDetailPage /> },
-      { path: 'orders/:id/edit', element: guard('order.manage', <OrderFormPage />) },
-      { path: 'buyers', element: guard('order.manage', <BuyersPage />) },
-      { path: 'catalogue', element: <CataloguePage /> },                       // SPEC-M15
-      { path: 'catalogue/new', element: guard('carpet.manage', <CarpetFormPage />) },
-      { path: 'catalogue/:id', element: <CarpetDetailPage /> },
-      { path: 'catalogue/:id/edit', element: guard('carpet.manage', <CarpetFormPage />) },
-      { path: 'month', element: guard('wages.view', <MonthPage />) },
+      { path: 'attendance', element: mod('attendance', <AttendancePage />) }, // viewable by all; marking needs "add entries" (SPEC-M13)
+      { path: 'advances/new', element: mod('advances', guard('advance.give', <AdvanceNewPage />)) },
+      { path: 'wages', element: mod('wages', guard('wages.view', <WagesPage />)) },
+      { path: 'wages/:month/:workerId', element: mod('wages', guard('wages.view', <WagePayPage />)) },
+      { path: 'stock', element: mod('stock', <StockPage />) },
+      { path: 'stock/new', element: mod('stock', guard('item.manage', <ItemFormPage />)) },
+      { path: 'stock/move/:kind', element: mod('stock', guard('stock.move', <StockMovePage />)) },
+      { path: 'stock/:id', element: mod('stock', <ItemDetailPage />) },
+      { path: 'stock/:id/edit', element: mod('stock', guard('item.manage', <ItemFormPage />)) },
+      { path: 'orders', element: mod('orders', <OrdersPage />) },
+      { path: 'orders/new', element: mod('orders', guard('order.manage', <OrderFormPage />)) },
+      { path: 'orders/:id', element: mod('orders', <OrderDetailPage />) },
+      { path: 'orders/:id/edit', element: mod('orders', guard('order.manage', <OrderFormPage />)) },
+      { path: 'buyers', element: mod('orders', guard('order.manage', <BuyersPage />)) },
+      { path: 'catalogue', element: mod('catalogue', <CataloguePage />) },                       // SPEC-M15
+      { path: 'catalogue/new', element: mod('catalogue', guard('carpet.manage', <CarpetFormPage />)) },
+      { path: 'catalogue/:id', element: mod('catalogue', <CarpetDetailPage />) },
+      { path: 'catalogue/:id/edit', element: mod('catalogue', guard('carpet.manage', <CarpetFormPage />)) },
+      { path: 'month', element: guard('log.view', <MonthPage />) }, // every section follows its module (SPEC-M18),
     ],
   },
   { path: '*', element: <SetupPage /> },

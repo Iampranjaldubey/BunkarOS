@@ -1,16 +1,19 @@
 import type { ReactNode } from 'react';
 import { LanguageSwitch } from '../components/ui/LanguageSwitch';
+import { Signature } from '../industries/ui';
 
-/** Public worker chrome: no app navigation, no login words; language switch only. */
-export function WorkerShell({ children, header }: { children: ReactNode; header?: ReactNode }) {
+/** Public worker chrome: no app navigation, no login words; language switch only. The guard border runs under the header (SPEC-M17). */
+export function WorkerShell({ children, header, industry }: { children: ReactNode; header?: ReactNode; industry?: string }) {
   return (
     <div className="min-h-dvh bg-bg">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-primary-soft to-transparent" aria-hidden="true" />
-      <header className="relative mx-auto flex max-w-md items-start justify-between gap-3 px-4 pt-4 md:max-w-2xl">
-        <div className="min-w-0 flex-1">{header}</div>
-        <LanguageSwitch />
-      </header>
-      <main className="relative mx-auto max-w-md px-4 pb-10 pt-4 md:max-w-2xl">{children}</main>
+      <div className="border-b border-line bg-surface">
+        <header className="mx-auto flex max-w-md items-start justify-between gap-3 px-4 pb-4 pt-4 md:max-w-2xl">
+          <div className="min-w-0 flex-1">{header}</div>
+          <LanguageSwitch />
+        </header>
+        <Signature industry={industry} />
+      </div>
+      <main className="rise-in mx-auto max-w-md px-4 pb-10 pt-4 md:max-w-2xl">{children}</main>
     </div>
   );
 }

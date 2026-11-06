@@ -6,14 +6,15 @@ import { Button } from '../../components/ui/Button';
 import { MORE } from '../../components/ui/nav-items';
 import { useSession } from '../../app/session';
 import { useT } from '../../i18n';
-import { useCan } from '../../app/useCan';
+import { useCanSee, useModule } from '../../app/useCan';
 
 /** Phone "More" menu: every destination not on the bottom bar, plus logout. */
 export default function MorePage() {
   const { t } = useT();
   const { role, user, logout } = useSession();
-  const allowed = useCan();
-  const items = MORE.filter((it) => !it.action || allowed(it.action));
+  const on = useModule();
+  const see = useCanSee();
+  const items = MORE.filter((it) => (!it.module || on(it.module)) && (!it.action || see(it.action)));
   return (
     <section>
       <PageHeader title={t('nav.more')} />
@@ -21,10 +22,10 @@ export default function MorePage() {
         {items.map((it) => {
           const Icon = it.icon;
           return (
-            <Link key={it.to} to={it.to} className="flex min-h-14 items-center gap-3 px-4 py-3 text-base font-medium text-ink hover:bg-surface-2">
-              <span className="rounded-xl bg-primary-soft p-2 text-primary"><Icon aria-hidden="true" size={22} /></span>
+            <Link key={it.to} to={it.to} className="flex min-h-14 items-center gap-3 px-4 py-3 text-base text-ink transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-surface-2/70">
+              <Icon aria-hidden="true" size={20} strokeWidth={1.6} className="shrink-0 text-muted" />
               <span className="flex-1">{t(it.labelKey)}</span>
-              <ChevronRight aria-hidden="true" className="text-muted" />
+              <ChevronRight aria-hidden="true" size={18} className="text-muted" />
             </Link>
           );
         })}

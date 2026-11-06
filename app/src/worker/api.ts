@@ -2,6 +2,8 @@
 import type { Rec, WorkerP } from '../db/types';
 
 export interface WorkerData {
+  /** SPEC-M18: what the platform allows the unit (tabs follow its modules). */
+  org?: { industry: string; modules: Partial<Record<'attendance' | 'wages' | 'advances' | 'stock' | 'orders' | 'catalogue', boolean>>; status: string };
   unitName: string; shopCode: string; ownerPhone: string; worker: WorkerP; workerId: string; records: Rec[]; fetchedAt: string;
 }
 const TOKEN_KEY = 'bunkar.worker.token';

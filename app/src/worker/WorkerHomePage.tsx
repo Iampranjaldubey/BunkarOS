@@ -23,6 +23,7 @@ import { MonthGrid } from '../features/workers/MonthGrid';
 import { WorkerShell } from './WorkerShell';
 import { cachedWorkerData, fetchWorkerData, forgetWorker, getWorkerToken, type WorkerData } from './api';
 import { cn } from '../lib/utils';
+import { effectiveModules } from '../domain/modules';
 
 type Tab = 'month' | 'pay' | 'advance' | 'profile';
 const TABS: { v: Tab; key: string; icon: React.ReactNode }[] = [
@@ -39,7 +40,9 @@ export default function WorkerHomePage() {
   const token = getWorkerToken();
   const [data, setData] = useState<WorkerData | null>(() => cachedWorkerData());
   const [state, setState] = useState<'loading' | 'ok' | 'stale' | 'revoked' | 'error'>(data ? 'ok' : 'loading');
-  const [tab, setTab] = useState<Tab>('month');
+  const tabOn = (x: Tab) => { const m = effectiveModules(data?.org?.modules); return x === 'month' ? m.attendance : x === 'pay' ? m.wages : x === 'advance' ? m.advances : true; };
+  const [tabPick, setTab] = useState<Tab>('month');
+  const tab: Tab = tabOn(tabPick) ? tabPick : (TABS.find((x) => tabOn(x.v))?.v ?? 'profile');
   const [month, setMonth] = useState(monthOf(todayIST()));
   const [openPay, setOpenPay] = useState<string | null>(null);
   const [confirmForget, setConfirmForget] = useState(false);
@@ -98,16 +101,16 @@ export default function WorkerHomePage() {
     : { present: att.present, half: att.half, absent: att.absent, otHours: att.otHours };
 
   return (
-    <WorkerShell header={
+    <WorkerShell industry={data.org?.industry} header={
       <div className="flex items-center gap-3">
         <Avatar name={worker.name} size={48} />
         <div className="min-w-0"><p className="truncate text-sm text-muted">{data.unitName}</p><h1 className="truncate text-2xl">{t('wp.hello', { name: worker.name })}</h1></div>
       </div>
     }>
-      <p className="mb-3 text-xs text-muted">{state === 'stale' ? t('wp.offline') + ' · ' : ''}{t('wp.updated', { time: formatTime(data.fetchedAt, lang) })}</p>
-      <div className="mb-4 grid grid-cols-4 gap-1 rounded-2xl border border-line bg-surface p-1" role="tablist" aria-label={t('wp.title')}>
-        {TABS.map((x) => (
-          <button key={x.v} role="tab" aria-selected={tab === x.v} onClick={() => setTab(x.v)} className={cn('flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-medium', tab === x.v ? 'bg-primary text-on-fill' : 'text-muted hover:bg-surface-2')}>{x.icon}<span>{t(x.key)}</span></button>
+      <p className="mb-3 text-sm text-muted">{state === 'stale' ? t('wp.offline') + ' · ' : ''}{t('wp.updated', { time: formatTime(data.fetchedAt, lang) })}</p>
+      <div className="mb-4 grid grid-flow-col auto-cols-fr gap-1 rounded-2xl border border-line bg-surface-2 p-1" role="tablist" aria-label={t('wp.title')}>
+        {TABS.filter((x) => tabOn(x.v)).map((x) => (
+          <button key={x.v} role="tab" aria-selected={tab === x.v} onClick={() => setTab(x.v)} className={cn('flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border text-sm font-medium transition-colors [&_svg]:stroke-[1.75]', tab === x.v ? 'border-line bg-surface text-ink [&_svg]:text-primary' : 'border-transparent text-muted hover:text-ink')}>{x.icon}<span>{t(x.key)}</span></button>
         ))}
       </div>
 
@@ -118,15 +121,15 @@ export default function WorkerHomePage() {
             <span className="text-lg font-medium text-ink">{formatMonth(month, lang)}</span>
             <button type="button" onClick={() => setMonth(nextMonth(month))} disabled={month >= monthOf(today)} aria-label={t('action.next')} className="tap-48 rounded-xl text-muted hover:bg-surface-2 disabled:opacity-30"><ChevronRight aria-hidden="true" /></button>
           </div>
-          <Card className="bg-primary-soft/60">
+          <Card>
             <p className="text-sm text-muted">{estimate.paid ? t('wp.paid') : t('wp.expected')}</p>
-            <p className="num text-4xl font-bold text-ink" data-testid="wp-estimate">{formatINR(estimate.view.paidPaise)}</p>
+            <p className="num font-display text-4xl font-medium text-ink" data-testid="wp-estimate">{formatINR(estimate.view.paidPaise)}</p>
             {!estimate.paid && estimate.s.advanceRecoveredPaise > 0 && <p className="mt-1 text-sm text-muted">{t('wp.afterAdvance')} · {t('wp.advanceCut')}: {formatINR(estimate.s.advanceRecoveredPaise)}</p>}
-            <p className="mt-1 text-xs text-muted">{estimate.paid ? t('wp.paidOn', { date: formatDay(estimate.paid.day, lang, 'medium') }) : t('wp.expectedHint')}</p>
+            <p className="mt-1 text-sm text-muted">{estimate.paid ? t('wp.paidOn', { date: formatDay(estimate.paid.day, lang, 'medium') }) : t('wp.expectedHint')}</p>
           </Card>
-          <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="grid grid-flow-col auto-cols-fr gap-px overflow-hidden rounded-2xl border border-line bg-line text-center">
             {[[t('wp.present'), monthCounts.present, 'text-received'], [t('wp.half'), monthCounts.half, 'text-accent-ink'], [t('wp.absent'), monthCounts.absent, 'text-given'], ...(showOt(estimate.paid?.payload.otPaise) ? [[t('wp.ot'), `${monthCounts.otHours}h`, 'text-ink']] : [])].map(([l, v, c]) => (
-              <div key={String(l)} className="rounded-2xl border border-line bg-surface p-2" data-testid={`wp-count-${String(l)}`}><p className={`num text-2xl font-bold ${c}`}>{v}</p><p className="text-xs text-muted">{l}</p></div>
+              <div key={String(l)} className="bg-surface px-2 py-3" data-testid={`wp-count-${String(l)}`}><p className={`num text-2xl font-medium ${v === 0 ? 'text-muted' : c}`}>{v}</p><p className="text-sm text-muted">{l}</p></div>
             ))}
           </div>
           {worker.payType === 'piece' && pieces && <p className="text-sm text-ink">{t('wp.pieces')}: <span className="num font-medium">{pieces.count}</span> · {formatINR(pieces.amountPaise)}</p>}
@@ -139,21 +142,21 @@ export default function WorkerHomePage() {
           {byYear.length === 0 && <Card className="text-center text-muted">{t('wp.noPay')}</Card>}
           {byYear.map(([year, list]) => (
             <Card key={year}>
-              <div className="mb-2 flex items-center justify-between"><CardTitle className="mb-0">{year}</CardTitle><span className="num text-lg font-bold text-received" data-testid={`year-total-${year}`}>{formatINR(list.reduce((s, p) => s + p.payload.paidPaise, 0))}</span></div>
-              <p className="mb-2 text-xs text-muted">{t('wp.yearTotal', { year })}</p>
+              <div className="mb-2 flex items-center justify-between"><CardTitle className="mb-0">{year}</CardTitle><span className="num text-lg font-medium text-received" data-testid={`year-total-${year}`}>{formatINR(list.reduce((s, p) => s + p.payload.paidPaise, 0))}</span></div>
+              <p className="mb-2 text-sm text-muted">{t('wp.yearTotal', { year })}</p>
               <ul className="divide-y divide-line">
                 {list.map((p) => (
                   <li key={p.id}>
                     <button type="button" onClick={() => setOpenPay(openPay === p.id ? null : p.id)} className="flex w-full items-center gap-3 py-3 text-left" aria-expanded={openPay === p.id}>
-                      <div className="flex-1"><p className="font-medium text-ink">{formatMonth(p.payload.month, lang)}</p><p className="text-xs text-muted">{t('wp.paidOn', { date: formatDay(p.day, lang, 'short') })} · {t(`common.${p.payload.mode}`)}</p></div>
-                      <span className="num text-lg font-bold text-ink">{formatINR(p.payload.paidPaise)}</span>
+                      <div className="flex-1"><p className="font-medium text-ink">{formatMonth(p.payload.month, lang)}</p><p className="text-sm text-muted">{t('wp.paidOn', { date: formatDay(p.day, lang, 'short') })} · {t(`common.${p.payload.mode}`)}</p></div>
+                      <span className="num text-lg font-medium text-ink">{formatINR(p.payload.paidPaise)}</span>
                       <ChevronDown aria-hidden="true" className={cn('text-muted transition-transform', openPay === p.id && 'rotate-180')} size={18} />
                     </button>
                     {openPay === p.id && (
                       <dl className="mb-3 rounded-xl bg-surface-2 p-3 text-sm">
-                        <p className="num mb-1 text-xs text-muted">P {p.payload.snapshot.present} · H {p.payload.snapshot.half} · A {p.payload.snapshot.absent}{showOt(p.payload.otPaise) ? ` · OT ${p.payload.snapshot.otHours}h` : ''}</p>
-                        {slipLines(p.payload).map(([l, v, changed], i) => <div key={i} className="flex justify-between py-0.5" data-testid="wp-slip-line"><dt className="text-ink">{l}{changed && <span className="ml-1 rounded-full bg-accent-soft px-2 text-xs font-medium text-accent-ink" data-testid="wp-owner-changed">{t('wp.ownerChanged')}</span>}</dt><dd className={`num ${v < 0 ? 'text-given' : 'text-ink'}`}>{signedINR(v)}</dd></div>)}
-                        <div className="mt-1 flex justify-between border-t border-line pt-1 font-bold"><dt>{t('wp.paid')}</dt><dd className="num">{formatINR(p.payload.paidPaise)}</dd></div>
+                        <p className="num mb-1 text-sm text-muted">P {p.payload.snapshot.present} · H {p.payload.snapshot.half} · A {p.payload.snapshot.absent}{showOt(p.payload.otPaise) ? ` · OT ${p.payload.snapshot.otHours}h` : ''}</p>
+                        {slipLines(p.payload).map(([l, v, changed], i) => <div key={i} className="flex justify-between py-0.5" data-testid="wp-slip-line"><dt className="text-ink">{l}{changed && <span className="ml-1 rounded-md bg-accent-soft px-1.5 text-sm font-medium text-accent-ink" data-testid="wp-owner-changed">{t('wp.ownerChanged')}</span>}</dt><dd className={`num ${v < 0 ? 'text-given' : 'text-ink'}`}>{signedINR(v)}</dd></div>)}
+                        <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold"><dt>{t('wp.paid')}</dt><dd className="num">{formatINR(p.payload.paidPaise)}</dd></div>
                       </dl>
                     )}
                   </li>
@@ -166,10 +169,10 @@ export default function WorkerHomePage() {
 
       {tab === 'advance' && (
         <div className="flex flex-col gap-4">
-          <Card className={balance > 0 ? 'bg-given-soft/50' : ''}><p className="text-sm text-muted">{t('wp.balance')}</p><p className={`num text-4xl font-bold ${balance > 0 ? 'text-given' : 'text-ink'}`} data-testid="wp-balance">{formatINR(balance)}</p></Card>
+          <Card><p className="text-sm text-muted">{t('wp.balance')}</p><p className={`num font-display text-4xl font-medium ${balance > 0 ? 'text-given' : 'text-muted'}`} data-testid="wp-balance">{formatINR(balance)}</p></Card>
           <Card>
             {advances.length === 0 ? <p className="text-muted">{t('wp.noAdvance')}</p> : (
-              <ul className="divide-y divide-line">{advances.map((a) => <li key={a.recId} className="flex items-center justify-between py-3"><div><p className="text-ink">{formatDay(a.day, lang, 'medium')}</p><p className="text-xs text-muted">{t('wp.taken')} · {t(`common.${a.mode}`)}{a.note ? ` · ${a.note}` : ''}</p></div><span className="num text-lg font-bold text-given">{formatINR(a.amountPaise)}</span></li>)}</ul>
+              <ul className="divide-y divide-line">{advances.map((a) => <li key={a.recId} className="flex items-center justify-between py-3"><div><p className="text-ink">{formatDay(a.day, lang, 'medium')}</p><p className="text-sm text-muted">{t('wp.taken')} · {t(`common.${a.mode}`)}{a.note ? ` · ${a.note}` : ''}</p></div><span className="num text-lg font-medium text-given">{formatINR(a.amountPaise)}</span></li>)}</ul>
             )}
           </Card>
         </div>
@@ -178,15 +181,15 @@ export default function WorkerHomePage() {
       {tab === 'profile' && (
         <div className="flex flex-col gap-4">
           <Card>
-            <div className="mb-3 flex items-center gap-3"><Avatar name={worker.name} size={56} /><div><p className="text-xl font-medium text-ink">{worker.name}</p><Badge tone="info">{t(`worker.job.${worker.jobTitle}`)}</Badge></div></div>
+            <div className="mb-3 flex items-center gap-3"><Avatar name={worker.name} size={56} /><div><p className="text-xl font-medium text-ink">{worker.name}</p><Badge tone="neutral">{t(`worker.job.${worker.jobTitle}`)}</Badge></div></div>
             <dl className="divide-y divide-line text-base">
               {[[t('wp.payType'), t(`worker.payType.${worker.payType}`)], [t('wp.rate'), `${formatINR(rate)} / ${rateUnit}`], ...(rules.overtimeEnabled ? [[t('wp.otRate'), `${formatINR(worker.otRatePaise)} / h`]] : []), [t('wp.joined'), formatDay(worker.joinedOn, lang, 'medium')], [t('wp.phone'), worker.phone ?? '—'], [t('wp.shop'), data.unitName]].map(([k, v]) => (
                 <div key={String(k)} className="flex justify-between gap-3 py-2"><dt className="text-muted">{k}</dt><dd className="num text-right font-medium text-ink">{v}</dd></div>
               ))}
             </dl>
           </Card>
-          {data.ownerPhone && <a href={waMeLink(data.ownerPhone, t('wp.askText', { name: worker.name }))} target="_blank" rel="noreferrer" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-received px-5 text-lg font-medium text-on-fill shadow-card"><MessageCircle aria-hidden="true" />{t('wp.ask')}</a>}
-          <button type="button" onClick={() => setConfirmForget(true)} className="text-sm text-muted underline">{t('wp.notMyPhone')}</button>
+          {data.ownerPhone && <a href={waMeLink(data.ownerPhone, t('wp.askText', { name: worker.name }))} target="_blank" rel="noreferrer" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-received px-5 text-lg font-medium text-on-fill transition-transform active:scale-[0.98]"><MessageCircle aria-hidden="true" />{t('wp.ask')}</a>}
+          <button type="button" onClick={() => setConfirmForget(true)} className="min-h-11 text-sm text-muted underline underline-offset-4 hover:text-ink">{t('wp.notMyPhone')}</button>
           <ConfirmSheet open={confirmForget} onClose={() => setConfirmForget(false)} onConfirm={() => { forgetWorker(); navigate('/w/join', { replace: true }); }} title={t('wp.notMyPhone')} message={t('wp.notMyPhoneHint')} />
         </div>
       )}

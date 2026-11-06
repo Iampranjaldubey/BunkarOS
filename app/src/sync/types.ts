@@ -10,15 +10,21 @@ export interface SyncStateView {
   authState: 'ok' | 'needs_login';
   /** SPEC-M13: true while the device clears and re-pulls its data because the owner changed what it may see. */
   resyncing?: boolean;
+  /** SPEC-M18: the organisation's industry, modules and status from the last sync (kept for offline use). */
+  org?: OrgInfo;
 }
 /** What the server removed for this token (SPEC-M13). Owner: everything visible. */
 export interface SyncView { seePrices: boolean }
+/** SPEC-M18: what the platform allows this unit. Set by the founders, never by the owner. */
+export type ModuleId = 'attendance' | 'wages' | 'advances' | 'stock' | 'orders' | 'catalogue';
+export interface OrgInfo { industry: string; modules: Record<ModuleId, boolean>; status: 'invited' | 'active' | 'paused' }
 export interface SyncResponse {
   accepted: string[];
   rejected: { id: string; reason: string }[];
   records: Rec[];
   cursor: number;
   view?: SyncView;
+  org?: OrgInfo;
 }
 export interface SyncDb {
   records: {

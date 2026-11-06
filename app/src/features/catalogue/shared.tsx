@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Ban, Bookmark, ImageOff, PackageCheck, ShoppingBag, Truck, type LucideIcon } from 'lucide-react';
+import { Ban, Bookmark, PackageCheck, ShoppingBag, Truck, type LucideIcon } from 'lucide-react';
+import { ProductArt } from '../../industries/ui';
 import { Badge } from '../../components/ui/Badge';
 import { photoUrl } from '../../db/photos';
 import { countFor, type CarpetStatus, type CarpetView } from '../../domain/catalogue';
@@ -20,7 +21,7 @@ export function StatusChip({ status, n }: { status: CarpetStatus; n?: number }) 
   const { tone, icon: Icon } = META[status];
   return (
     <Badge tone={tone} data-testid={`status-${status}`}>
-      <Icon aria-hidden="true" size={12} />
+      <Icon aria-hidden="true" size={14} strokeWidth={1.75} />
       {n !== undefined ? t('cat.count', { n, status: t(`cat.st.${status}`) }) : t(`cat.st.${status}`)}
     </Badge>
   );
@@ -37,8 +38,11 @@ export function StatusChips({ v, className }: { v: CarpetView; className?: strin
   );
 }
 
-/** Cover photo (the first one) filling its box; a quiet placeholder when there is none. */
-export function CarpetPhoto({ id, alt, className }: { id?: string; alt: string; className?: string }) {
+/**
+ * Cover photo (the first one) filling its box. Without a photo the carpet is drawn in code from its design
+ * and size (SPEC-M17, decision 5C), so the catalogue always shows carpets.
+ */
+export function CarpetPhoto({ id, alt, className, design, length, width, seed }: { id?: string; alt: string; className?: string; design?: string; length?: number; width?: number; seed?: string }) {
   const [loaded, setLoaded] = useState<{ id: string; url: string | null } | null>(null);
   useEffect(() => {
     let live = true;
@@ -46,6 +50,7 @@ export function CarpetPhoto({ id, alt, className }: { id?: string; alt: string; 
     return () => { live = false; };
   }, [id]);
   const url = id && loaded?.id === id ? loaded.url : null;
-  if (url) return <img src={url} alt={alt} className={cn('h-full w-full bg-bg object-cover', className)} data-testid="carpet-photo" />;
-  return <span role="img" aria-label={alt} className={cn('grid h-full w-full place-items-center bg-bg text-muted', className)}><ImageOff aria-hidden="true" size={28} /></span>;
+  if (url) return <img src={url} alt={alt} className={cn('h-full w-full bg-surface-2 object-cover', className)} data-testid="carpet-photo" />;
+  if (id && !loaded) return <span role="img" aria-label={alt} className={cn('block h-full w-full bg-surface-2', className)} />;
+  return <ProductArt design={design ?? alt} length={length} width={width} seed={seed} label={alt} className={className} />;
 }

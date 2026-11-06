@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { usePack } from '../../industries/usePack';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { FormActions } from '../../components/ui/FormActions';
@@ -19,17 +20,17 @@ import { parseQty, formatQty } from '../../domain/qty';
 import { uuid } from '../../domain/ids';
 import { useT } from '../../i18n';
 
-const UNITS: ItemUnit[] = ['kg', 'pcs', 'litre', 'metre'];
 
 export default function ItemFormPage() {
-  const { t } = useT();
+  const pack = usePack(); // SPEC-M18: units and material suggestions come from the industry pack
+  const { t, lang } = useT();
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
   const recs = useRecords();
   const existing = useMemo(() => (id ? listItems(recs, false).find((i) => i.entityId === id) : undefined), [recs, id]);
   // kind is 'finished' only for an existing legacy item (DM-004).
-  const [name, setName] = useState(''); const [kind, setKind] = useState<ItemKind>('raw'); const [unit, setUnit] = useState<ItemUnit>('kg'); const [low, setLow] = useState('');
+  const [name, setName] = useState(''); const [kind, setKind] = useState<ItemKind>('raw'); const [unit, setUnit] = useState<ItemUnit>(pack.itemUnits[0]); const [low, setLow] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({}); const [busy, setBusy] = useState(false);
   useEffect(() => { if (existing) { setName(existing.name); setKind(existing.kind); setUnit(existing.unit); setLow(existing.lowStockQty ? formatQty(existing.lowStockQty, existing.unit) : ''); } }, [existing]);
 
@@ -58,8 +59,9 @@ export default function ItemFormPage() {
             ? <p className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted" data-testid="item-legacy"><Badge tone="neutral">{t('cat.legacy')}</Badge>{t('stock.finished')} · {t('cat.legacyHint')}</p>
             : <p className="mb-4 text-sm text-muted" data-testid="item-kind-raw">{t('stock.kind.raw')} · <Link to="/catalogue/new" className="font-medium text-primary underline-offset-2 hover:underline">{t('cat.new')}</Link></p>}
           <FormGrid>
-            <Field label={t('stock.name')} required error={errors.name} className="lg:col-span-2">{({ id, describedBy, invalid }) => <Input id={id} value={name} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setName(e.target.value)} autoFocus placeholder={kind === 'finished' ? 'Kashan 8x10' : undefined} />}</Field>
-            <Field label={t('stock.unit')}>{({ id }) => <Select id={id} value={unit} onChange={(e) => setUnit(e.target.value as ItemUnit)}>{UNITS.map((u) => <option key={u} value={u}>{t(`stock.unit.${u}`)}</option>)}</Select>}</Field>
+            <Field label={t('stock.name')} required error={errors.name} className="lg:col-span-2">{({ id, describedBy, invalid }) => <Input id={id} value={name} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setName(e.target.value)} autoFocus list={kind === 'raw' ? 'pack-materials' : undefined} placeholder={kind === 'finished' ? 'Kashan 8x10' : undefined} />}</Field>
+            <datalist id="pack-materials">{pack.materials[lang].map((m) => <option key={m} value={m} />)}</datalist>
+            <Field label={t('stock.unit')}>{({ id }) => <Select id={id} value={unit} onChange={(e) => setUnit(e.target.value as ItemUnit)}>{[...pack.itemUnits, ...(pack.itemUnits.includes(unit) ? [] : [unit])].map((u) => <option key={u} value={u}>{t(`stock.unit.${u}`)}</option>)}</Select>}</Field>
             <Field label={t('stock.lowQty')} hint={t('stock.lowQtyHint')} error={errors.low}>{({ id, describedBy, invalid }) => <Input id={id} inputMode="decimal" value={low} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setLow(e.target.value.replace(/[^\d.]/g, ''))} className="num" />}</Field>
           </FormGrid>
           <FormActions>

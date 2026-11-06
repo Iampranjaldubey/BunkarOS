@@ -25,11 +25,16 @@ import { formatINR, rupeesToPaise } from '../../domain/money';
 import { useT } from '../../i18n';
 import { Avatar } from '../workers/shared';
 import { cn } from '../../lib/utils';
+import { Knot } from '../../components/carpet/Carpet';
+
+/** SPEC-M17: a saved mark ties like a knot (CSS) and buzzes once on phones that support it. */
+const buzz = () => { try { if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) navigator.vibrate?.(10); } catch { /* not supported */ } };
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const STATUSES: { v: AttendanceStatus; key: string; short: string; cls: string; tone: 'received' | 'warn' | 'given' }[] = [
-  { v: 'present', key: 'att.present', short: 'P', cls: 'bg-received text-on-fill border-received', tone: 'received' },
-  { v: 'half', key: 'att.half', short: 'H', cls: 'bg-accent text-ink border-accent', tone: 'warn' },
-  { v: 'absent', key: 'att.absent', short: 'A', cls: 'bg-given text-on-fill border-given', tone: 'given' },
+  { v: 'present', key: 'att.present', short: 'P', cls: 'knot-p border-received', tone: 'received' },
+  { v: 'half', key: 'att.half', short: 'H', cls: 'knot-h border-accent', tone: 'warn' },
+  { v: 'absent', key: 'att.absent', short: 'A', cls: 'knot-a border-given', tone: 'given' },
 ];
 const KEY_TO_STATUS: Record<string, AttendanceStatus> = { p: 'present', '1': 'present', h: 'half', '2': 'half', a: 'absent', '3': 'absent' };
 const MAX_OT = 12;
@@ -65,6 +70,9 @@ export default function AttendancePage() {
   const isSunday = weekday(day) === 0;
   const shown = isDesktop && onlyUnmarked ? workers.filter((w) => !idx.get(markKey(w.entityId, day))) : workers;
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  const [tied, setTied] = useState('');
+  const tieCount = useRef(0);
+  const tiedNow = (w: WorkerP, v: AttendanceStatus) => tied.startsWith(`${w.entityId}|${v}|`);
 
   const mark = async (w: WorkerP, status: AttendanceStatus, otHours?: number) => {
     if (locked) { if (monthLocked) toast.show(t('valid.locked'), 'error'); return; }
@@ -73,9 +81,12 @@ export default function AttendancePage() {
     if (prev && prev.status === status && prev.otHours === hours) return;
     if (prev) await reverse(prev.recId, 'edited');
     await addRecord<AttendanceP>('attendance', { workerId: w.entityId, status, otHours: status === 'absent' ? 0 : hours }, { day, replaces: prev?.recId });
+    if (!prev || prev.status !== status) { tieCount.current += 1; setTied(`${w.entityId}|${status}|${tieCount.current}`); buzz(); }
   };
+  /** "सब हाज़िर": the marks ripple down the unmarked rows, one knot after another (40 ms apart, none under reduced motion). */
   const allPresent = async () => {
-    for (const w of workers) if (!idx.get(markKey(w.entityId, day))) await mark(w, 'present', 0);
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    for (const w of workers) if (!idx.get(markKey(w.entityId, day))) { await mark(w, 'present', 0); if (!still) await sleep(40); }
     toast.show(t('att.saved'), 'success');
   };
   const savePieces = async () => {
@@ -87,9 +98,17 @@ export default function AttendancePage() {
   };
   const openPieces = (w: WorkerP) => { setPieceFor(w); setPieceRate(String((w.pieceRatePaise ?? 0) / 100)); };
 
-  const focusRow = (id: string | undefined) => {
+  /**
+   * Move focus to a row. `from`: the row the key was pressed on. After a mark is saved, focus moves on only if it is
+   * still there; if the user already moved (↑ / ↓ / mouse) in the meantime, a late move would pull them back to the
+   * wrong worker and the next key would mark that worker.
+   */
+  const focusRow = (id: string | undefined, from?: Element | null) => {
     if (!id) return;
-    requestAnimationFrame(() => (rowRefs.current.get(id) ?? rowRefs.current.values().next().value)?.focus());
+    requestAnimationFrame(() => {
+      if (from && document.activeElement !== from) return;
+      (rowRefs.current.get(id) ?? rowRefs.current.values().next().value)?.focus();
+    });
   };
   /** Row keys: P/H/A or 1/2/3 mark (then next row), + / − change OT by 0.5 h, ↑ / ↓ move. */
   const onRowKey = (e: React.KeyboardEvent, w: WorkerP, i: number) => {
@@ -101,7 +120,8 @@ export default function AttendancePage() {
       e.preventDefault();
       if (locked) { if (monthLocked) toast.show(t('valid.locked'), 'error'); return; }
       const nextId = shown[i + 1]?.entityId ?? (onlyUnmarked ? undefined : w.entityId);
-      void mark(w, status).then(() => focusRow(nextId));
+      const from = e.currentTarget;
+      void mark(w, status).then(() => focusRow(nextId, from));
       return;
     }
     if (k === '+' || k === '=' || k === '-' || k === '−' || k === '_') {
@@ -119,15 +139,22 @@ export default function AttendancePage() {
 
   const notes = (
     <>
-      {monthLocked && <p role="alert" className="mb-3 rounded-xl bg-warn-soft px-4 py-2 text-sm font-medium text-warn">{t('att.locked')}</p>}
+      {monthLocked && <p role="alert" className="mb-3 rounded-xl border border-warn/30 bg-warn-soft px-4 py-2.5 text-sm font-medium text-warn">{t('att.locked')}</p>}
       {(isHoliday || isSunday) && (
-        <p className="mb-3 flex items-center gap-2 rounded-xl bg-accent-soft px-4 py-2 text-sm font-medium text-accent-ink" data-testid="day-off-note">
+        <p className="mb-3 inline-flex items-center gap-2 rounded-lg bg-accent-soft px-3 py-1.5 text-sm font-medium text-accent-ink" data-testid="day-off-note">
           <CalendarOff aria-hidden="true" size={16} />{isHoliday ? t('att.holiday') : t('att.sunday')}
         </p>
       )}
     </>
   );
-  const counts = <p className="num text-lg font-medium text-ink">{t('att.marked', { marked: roll.marked, total: roll.total })} · <span className="text-received">P {roll.present}</span> · <span className="text-accent-ink">H {roll.half}</span> · <span className="text-given">A {roll.absent}</span></p>;
+  const counts = (
+    <p className="num flex flex-wrap items-center gap-x-3 gap-y-1 text-lg font-medium text-ink">
+      <span>{t('att.marked', { marked: roll.marked, total: roll.total })}</span>
+      <span className="inline-flex items-center gap-1.5 text-base font-normal text-ink-2"><Knot state="present" size={12} />P {roll.present}</span>
+      <span className="inline-flex items-center gap-1.5 text-base font-normal text-ink-2"><Knot state="half" size={12} />H {roll.half}</span>
+      <span className="inline-flex items-center gap-1.5 text-base font-normal text-ink-2"><Knot state="absent" size={12} />A {roll.absent}</span>
+    </p>
+  );
   const allPresentBtn = roll.marked < roll.total && !locked && <Button size="md" variant="success" onClick={() => void allPresent()}><Check aria-hidden="true" size={18} />{t('att.allPresent')}</Button>;
   const empty = <EmptyState icon={<Users size={40} />} title={t('att.empty')} action={<Button onClick={() => navigate('/workers/new')}>{t('worker.new')}</Button>} />;
   const pieceSheet = (
@@ -143,10 +170,10 @@ export default function AttendancePage() {
       <section>
         <PageHeader title={t('att.title')} />
         {notes}
-        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-line bg-surface p-3 shadow-card" data-testid="attendance-toolbar">
+        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-line bg-surface p-3" data-testid="attendance-toolbar">
           <div className="flex items-center gap-1">
             <button type="button" className={iconBtn} aria-label={t('att.prevDay')} title={t('att.prevDay')} onClick={() => setDay(addDays(day, -1))}><ChevronLeft aria-hidden="true" /></button>
-            <input type="date" aria-label={t('common.date')} value={day} max={today} onChange={(e) => e.target.value && setDay(e.target.value)} className="num min-h-11 rounded-xl border border-line bg-surface px-3 text-base text-ink" />
+            <input type="date" aria-label={t('common.date')} value={day} max={today} onChange={(e) => e.target.value && setDay(e.target.value)} className="num min-h-11 rounded-xl border border-line-strong bg-surface px-3 text-base text-ink" />
             <button type="button" className={iconBtn} aria-label={t('att.nextDay')} title={t('att.nextDay')} disabled={day >= today} onClick={() => setDay(addDays(day, 1))}><ChevronRight aria-hidden="true" /></button>
             <Button size="md" variant="ghost" disabled={day === today} onClick={() => setDay(today)}>{t('common.today')}</Button>
           </div>
@@ -155,22 +182,22 @@ export default function AttendancePage() {
             {counts}
           </div>
           <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-2 text-base text-ink hover:bg-surface-2">
-            <input type="checkbox" checked={onlyUnmarked} onChange={(e) => setOnlyUnmarked(e.target.checked)} className="h-5 w-5 accent-[var(--color-primary)]" />{t('att.onlyUnmarked')}
+            <input type="checkbox" checked={onlyUnmarked} onChange={(e) => setOnlyUnmarked(e.target.checked)} className="h-5 w-5" />{t('att.onlyUnmarked')}
           </label>
           {allPresentBtn}
         </div>
         {workers.length === 0 ? empty : (
           <>
             <p className="mb-2 flex items-center gap-2 text-sm text-muted" id="att-key-hint"><Keyboard aria-hidden="true" size={16} />{ot ? t('att.keyHint') : t('att.keyHintNoOt')}</p>
-            <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-card">
+            <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
               <table className="w-full border-collapse text-base" data-testid="attendance-table" aria-describedby="att-key-hint">
                 <thead>
-                  <tr className="text-left text-sm text-muted">
-                    <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colWorker')}</th>
-                    <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colMark')}</th>
-                    {ot && <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colOt')}</th>}
-                    <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colPieces')}</th>
-                    <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('att.colState')}</th>
+                  <tr className="bg-surface-2/60 text-left text-sm text-muted">
+                    <th scope="col" className="border-b border-line px-4 py-2.5 font-medium">{t('att.colWorker')}</th>
+                    <th scope="col" className="border-b border-line px-4 py-2.5 font-medium">{t('att.colMark')}</th>
+                    {ot && <th scope="col" className="border-b border-line px-4 py-2.5 font-medium">{t('att.colOt')}</th>}
+                    <th scope="col" className="border-b border-line px-4 py-2.5 font-medium">{t('att.colPieces')}</th>
+                    <th scope="col" className="border-b border-line px-4 py-2.5 font-medium">{t('att.colState')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -183,17 +210,17 @@ export default function AttendancePage() {
                       <tr key={w.entityId} tabIndex={0} data-att-row data-testid={`att-row-${w.entityId}`}
                         ref={(el) => { if (el) rowRefs.current.set(w.entityId, el); else rowRefs.current.delete(w.entityId); }}
                         onKeyDown={(e) => onRowKey(e, w, i)}
-                        className="even:bg-bg/60 focus-visible:outline focus-visible:outline-3 focus-visible:-outline-offset-2 focus-visible:outline-accent-ink">
+                        className="transition-colors hover:bg-surface-2/50 focus-visible:bg-primary-soft/40 focus-visible:outline focus-visible:outline-3 focus-visible:-outline-offset-2 focus-visible:outline-accent-ink">
                         <td className="border-b border-line px-4 py-2">
                           <div className="flex items-center gap-3"><Avatar name={w.name} photoId={w.photoId} size={36} />
-                            <div className="min-w-0"><p className="truncate font-medium text-ink">{w.name}</p><p className="text-xs text-muted">{t(`worker.job.${w.jobTitle}`)}{w.payType === 'piece' ? ` · ${t('worker.payType.piece')}` : ''}</p></div></div>
+                            <div className="min-w-0"><p className="truncate font-medium text-ink">{w.name}</p><p className="text-sm text-muted">{t(`worker.job.${w.jobTitle}`)}{w.payType === 'piece' ? ` · ${t('worker.payType.piece')}` : ''}</p></div></div>
                         </td>
                         <td className="border-b border-line px-4 py-2">
                           <div className="inline-flex gap-1.5" role="radiogroup" aria-label={w.name}>
                             {STATUSES.map((s) => (
                               <button key={s.v} type="button" role="radio" aria-checked={m?.status === s.v} aria-label={`${t(s.key)} (${s.short})`} disabled={locked} onClick={() => void mark(w, s.v)}
-                                className={cn('inline-flex min-h-11 min-w-24 items-center justify-center gap-2 rounded-xl border px-3 text-base font-semibold transition-colors', m?.status === s.v ? s.cls : 'border-line bg-surface text-muted hover:bg-surface-2 hover:text-ink')}>
-                                {t(s.key)}<kbd className={cn('rounded border px-1 text-xs font-medium', m?.status === s.v ? 'border-on-fill/40' : 'border-line')} aria-hidden="true">{s.short}</kbd>
+                                className={cn('knot min-h-11 min-w-24 gap-2 rounded-xl border px-3 text-base font-medium transition-colors', m?.status === s.v ? cn(s.cls, tiedNow(w, s.v) && 'knot-tie') : 'border-line-strong bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink')}>
+                                {t(s.key)}<kbd className={cn('rounded-[4px] border px-1 font-sans text-xs font-medium', m?.status === s.v ? 'border-current/30 opacity-80' : 'border-line-strong text-muted')} aria-hidden="true">{s.short}</kbd>
                               </button>
                             ))}
                           </div>
@@ -216,7 +243,7 @@ export default function AttendancePage() {
                         <td className="border-b border-line px-4 py-2">
                           <div className="flex flex-wrap items-center gap-1.5">
                             {st ? <Badge tone={st.tone}>{t(st.key)}</Badge> : <Badge tone="neutral">{t('att.notMarked')}</Badge>}
-                            {ot && m && m.otHours > 0 && <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">OT {m.otHours}h</span>}
+                            {ot && m && m.otHours > 0 && <span className="num rounded-md bg-primary-soft px-2 py-0.5 text-sm font-medium text-primary">OT {m.otHours}h</span>}
                           </div>
                         </td>
                       </tr>
@@ -235,11 +262,11 @@ export default function AttendancePage() {
   return (
     <section>
       <PageHeader title={t('att.title')} right={
-        <input type="date" aria-label={t('common.date')} value={day} max={today} onChange={(e) => e.target.value && setDay(e.target.value)} className="num min-h-11 rounded-xl border border-line bg-surface px-3 text-base text-ink" />
+        <input type="date" aria-label={t('common.date')} value={day} max={today} onChange={(e) => e.target.value && setDay(e.target.value)} className="num min-h-11 rounded-xl border border-line-strong bg-surface px-3 text-base text-ink" />
       } />
       {notes}
-      <Card className="mb-4 flex items-center gap-3 bg-primary-soft">
-        <div className="flex-1">
+      <Card className="mb-4 flex flex-wrap items-center gap-3 p-4">
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-muted">{formatDay(day, lang, 'long')}</p>
           {counts}
         </div>
@@ -250,16 +277,16 @@ export default function AttendancePage() {
           {workers.map((w) => {
             const m = idx.get(markKey(w.entityId, day));
             return (
-              <li key={w.entityId} className="rounded-2xl border border-line bg-surface p-3 shadow-card" data-att-row data-testid={`att-row-${w.entityId}`}>
+              <li key={w.entityId} className="rounded-2xl border border-line bg-surface p-3" data-att-row data-testid={`att-row-${w.entityId}`}>
                 <div className="flex items-center gap-3">
                   <Avatar name={w.name} photoId={w.photoId} />
-                  <div className="min-w-0 flex-1"><p className="truncate font-medium text-ink">{w.name}</p><p className="text-xs text-muted">{t(`worker.job.${w.jobTitle}`)}{w.payType === 'piece' ? ` · ${t('worker.payType.piece')}` : ''}</p></div>
-                  {ot && m && m.otHours > 0 && <span className="num rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">OT {m.otHours}h</span>}
+                  <div className="min-w-0 flex-1"><p className="truncate font-medium text-ink">{w.name}</p><p className="text-sm text-muted">{t(`worker.job.${w.jobTitle}`)}{w.payType === 'piece' ? ` · ${t('worker.payType.piece')}` : ''}</p></div>
+                  {ot && m && m.otHours > 0 && <span className="num rounded-md bg-primary-soft px-2 py-0.5 text-sm font-medium text-primary">OT {m.otHours}h</span>}
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label={w.name}>
                   {STATUSES.map((s) => (
                     <button key={s.v} type="button" role="radio" aria-checked={m?.status === s.v} aria-label={`${t(s.key)} (${s.short})`} disabled={locked} onClick={() => void mark(w, s.v)}
-                      className={cn('tap-48 rounded-xl border text-base font-semibold transition-colors', m?.status === s.v ? s.cls : 'border-line bg-surface text-muted hover:bg-surface-2')}>
+                      className={cn('knot tap-48 rounded-xl border text-lg font-semibold transition-colors', m?.status === s.v ? cn(s.cls, tiedNow(w, s.v) && 'knot-tie') : 'border-line-strong bg-surface text-ink-2 hover:bg-surface-2')}>
                       <span className="md:hidden">{s.short}</span><span className="hidden md:inline">{t(s.key)}</span>
                     </button>
                   ))}
@@ -275,7 +302,7 @@ export default function AttendancePage() {
                   </div>
                 )}
                 {w.payType === 'piece' && !locked && (
-                  <button type="button" onClick={() => openPieces(w)} className="mt-2 text-sm font-medium text-primary">{t('att.addPieces')} →</button>
+                  <button type="button" onClick={() => openPieces(w)} className="-mx-2 mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"><Plus aria-hidden="true" size={16} />{t('att.addPieces')}</button>
                 )}
               </li>
             );

@@ -9,18 +9,22 @@ Hindi-first, phone-first, offline-capable PWA for small carpet units in Bhadohi:
 ## Run locally
 
 ```bash
-docker compose up -d db            # Postgres 16 on :5432 (bunkar/bunkar)
-cd server && npm ci && npm start   # API on http://localhost:8791
-cd app && npm ci && npm run dev    # app on http://localhost:5174 (proxies /api → :8791)
+docker compose up -d db                                         # Postgres 16 on :5432 (bunkar/bunkar)
+cd server && npm ci && ADMIN_KEYS="dev:<long-random-key>" npm start  # API on http://localhost:8791
+cd app && npm ci && npm run dev                                 # app on http://localhost:5174 (proxies /api → :8791)
 ```
 
-First open → **create a unit** (name, owner, 4-digit PIN). Add staff in Settings. A second phone joins with the unit code + key from Settings.
+Organisations are created by the founders (SPEC-M18). Open **http://localhost:5174/admin**, sign in with the name and key from `ADMIN_KEYS`, choose **New organisation** (business, industry, modules, owner), and send the owner the invite link or 8-character code. The owner opens `/join/<link>` (or types the code on `/setup`) and sets a 4-digit PIN. Add staff in Settings. A second phone joins with the unit code + key from Settings. Creating a unit without an invite is refused.
+
+The Playwright suite starts its own servers on :5174 and :8795; while it runs, start the dev app on another port (`npx vite --port 5175`).
 
 ### Demo data
 
 ```bash
-cd server && node seed-demo.mjs    # prints unit code, key and PIN 1234
+cd server && SEED_ADMIN="dev:<long-random-key>" node seed-demo.mjs                 # carpet demo unit
+cd server && SEED_ADMIN="dev:<long-random-key>" node seed-demo.mjs --industry bags  # bags demo unit
 ```
+Each prints the unit code, key and PIN 1234.
 
 ## Tests
 
@@ -51,13 +55,13 @@ The page never shows login/logout vocabulary; "यह मेरा फ़ोन 
 
 ## Platform admin (founders)
 
-`/admin` is a read-only view of every unit on the server: owner, shop code, logins, workers (with their worker codes, for support), this month's wage sheet, stock, orders, usage per user and the last entries. It needs admin keys on the server:
+`/admin` is the founders' console (SPEC-M18): every organisation with its industry, status and this month's use; create an organisation and invite its owner; switch modules; pause or resume; a changes log of every founder action. Founders see usage only, never an organisation's workers, wages, stock or entries. It needs admin keys on the server:
 
 ```bash
 ADMIN_KEYS="shubham:<long-random-key>,pranjal:<long-random-key>" node index.mjs   # locally
 ```
 
-On Render add the same `ADMIN_KEYS` environment variable. Without it the admin login answers 403. Admin tokens are separate from unit logins and can never write unit data.
+On Render add the same `ADMIN_KEYS` environment variable. Without it the admin login answers 403 and no organisation can be created. Admin tokens are separate from unit logins and can never write a unit's records. Every unit request runs under Postgres row-level security as the limited role `bunkar_app` (created at start-up when the database user may create roles).
 
 ## How it works
 

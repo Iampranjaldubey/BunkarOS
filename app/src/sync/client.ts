@@ -18,7 +18,7 @@
 import { useSyncExternalStore } from 'react';
 import { db } from '../db/db';
 import type { Rec, PhotoRow } from '../db/types';
-import type { SyncResponse, SyncStateView, SyncView } from './types';
+import type { OrgInfo, SyncResponse, SyncStateView, SyncView } from './types';
 import { getDeviceId } from '../lib/session-store';
 import { setOnLocalWrite } from '../db/repo';
 import { setRemotePhotoLoader } from '../db/photos';
@@ -233,6 +233,7 @@ export async function bootstrapUsers(): Promise<number> {
     });
     if (!res.ok) return 0;
     const data = (await res.json()) as SyncResponse;
+    await applyOrg(data.org);
     let count = 0;
     for (const incoming of data.records) {
       if (incoming.type !== 'user') continue;
@@ -396,6 +397,22 @@ export async function scrubPinHashes(): Promise<number> {
   return n;
 }
 
+// ---------------- organisation (SPEC-M18) ----------------
+const ORG_KEY = 'bunkar.org';
+/** Keep the platform's word on industry, modules and status; the screens follow it. */
+export async function applyOrg(org: OrgInfo | undefined): Promise<void> {
+  if (!org || typeof org.industry !== 'string' || !org.modules) return;
+  const cur = state.org;
+  if (cur && JSON.stringify(cur) === JSON.stringify(org)) return;
+  await metaSet(ORG_KEY, org);
+  setState({ org });
+}
+/** Load the last known organisation (offline start). */
+export async function loadOrg(): Promise<void> {
+  const org = await metaGet<OrgInfo>(ORG_KEY);
+  if (org && !state.org) setState({ org });
+}
+
 // ---------------- forced resync (SPEC-M13) ----------------
 const VIEW_KEY = 'sync.view';
 const sameView = (a: SyncView, b: SyncView) => a.seePrices === b.seePrices;
@@ -465,6 +482,7 @@ async function drainPull(
     if (res.status === 401) await throwFor401(res);
     if (!res.ok) break;
     const data = (await res.json()) as SyncResponse;
+    await applyOrg(data.org);
     if (await applyView(data.view)) { more = true; continue; } // view changed mid-drain: start again from 0
     await applyPulled(data);
     // Short page → caught up. Full page → there may be more.
@@ -531,6 +549,7 @@ async function syncCycle(): Promise<void> {
     const authorId = auth?.userId;
     let data = await pushPending(creds, token, authorId);
     // SPEC-M13: a changed view resets the local data first; the pull below then starts from 0.
+    if (data) await applyOrg(data.org);
     const reset = data ? await applyView(data.view) : false;
     if (data && !reset) await applyPulled(data);
 
@@ -601,6 +620,7 @@ async function loadRemotePhoto(id: string): Promise<Blob | null> {
 export function startAutoSync(): () => void {
   if (!isBrowser || autoStarted) return () => undefined;
   autoStarted = true;
+  void loadOrg();
   setOnLocalWrite(syncSoon);
   setRemotePhotoLoader(loadRemotePhoto);
 

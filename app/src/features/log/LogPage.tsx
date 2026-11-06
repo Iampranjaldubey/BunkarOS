@@ -84,12 +84,14 @@ export default function LogPage() {
     </div>
   );
   const byName = (id: string) => names.users.get(id) ?? id.slice(0, 8);
+  // SPEC-M18: refusals the owner can act on get a sentence; others keep the server's code.
+  const reasonText = (code: string) => { const k = `reject.${code}`; const v = t(k); return v === k ? code : v; };
   const badges = (r: Rec) => {
     const rev = reversedBy.get(r.id);
     return (
       <>
         {r.replaces && <Badge tone="info">{t('common.edited')}</Badge>}
-        {rev && <Badge tone="danger">{t('common.reversed')}</Badge>}
+        {rev && <Badge tone="given">{t('common.reversed')}</Badge>}
         {r.sync === 'rejected' && <Badge tone="danger">{t('common.rejected')}</Badge>}
       </>
     );
@@ -100,7 +102,7 @@ export default function LogPage() {
     </span>
   );
   const undoBtn = (r: Rec) => canReverse(r) && (
-    <button type="button" onClick={() => setTarget(r)} aria-label={t('log.reverse')} title={t('log.reverse')} className="tap-48 inline-flex items-center justify-center rounded-xl text-muted hover:bg-surface-2 hover:text-given lg:h-11 lg:min-h-0 lg:w-11 lg:min-w-0"><Undo2 aria-hidden="true" /></button>
+    <button type="button" onClick={() => setTarget(r)} aria-label={t('log.reverse')} title={t('log.reverse')} className="tap-48 inline-flex items-center justify-center rounded-xl text-muted transition-colors hover:bg-given-soft hover:text-given lg:h-11 lg:min-h-0 lg:w-11 lg:min-w-0"><Undo2 aria-hidden="true" size={20} strokeWidth={1.75} /></button>
   );
 
   return (
@@ -108,15 +110,15 @@ export default function LogPage() {
       <PageHeader title={t('log.title')} right={isDesktop ? <><span className="num text-sm text-muted">{t('log.shown', { n: rows.length })}</span>{filters}</> : undefined} />
       {!isDesktop && <div className="mb-3">{filters}</div>}
       {rows.length === 0 ? <EmptyState title={t('log.empty')} /> : isDesktop ? (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-card">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full border-collapse text-base" data-testid="log-table">
             <thead>
-              <tr className="text-left text-sm text-muted">
-                <th scope="col" className="w-44 border-b border-line px-4 py-3 font-medium">{t('log.colWhen')}</th>
-                <th scope="col" className="w-40 border-b border-line px-4 py-3 font-medium">{t('log.colType')}</th>
-                <th scope="col" className="border-b border-line px-4 py-3 font-medium">{t('log.colWhat')}</th>
-                <th scope="col" className="w-44 border-b border-line px-4 py-3 font-medium">{t('log.colBy')}</th>
-                <th scope="col" className="w-16 border-b border-line px-2 py-3"><span className="visually-hidden">{t('log.reverse')}</span></th>
+              <tr className="bg-surface-2/60 text-left text-sm text-muted">
+                <th scope="col" className="w-44 border-b border-line px-4 py-2.5 font-medium">{t('log.colWhen')}</th>
+                <th scope="col" className="w-40 border-b border-line px-4 py-2.5 font-medium">{t('log.colType')}</th>
+                <th scope="col" className="border-b border-line px-4 py-2.5 font-medium">{t('log.colWhat')}</th>
+                <th scope="col" className="w-44 border-b border-line px-4 py-2.5 font-medium">{t('log.colBy')}</th>
+                <th scope="col" className="w-16 border-b border-line px-2 py-2.5"><span className="visually-hidden">{t('log.reverse')}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -124,7 +126,7 @@ export default function LogPage() {
                 const rev = reversedBy.get(r.id);
                 const d = describeRecord(r, names, t, lang, byId);
                 return (
-                  <tr key={r.id} className={cn('align-top even:bg-bg/60', rev && 'text-muted')} data-testid="log-row">
+                  <tr key={r.id} className={cn('align-top', rev && 'text-muted')} data-testid="log-row">
                     <td className="border-b border-line px-4 py-2.5 text-sm">
                       <span className="num block text-ink">{formatDay(r.day, lang, 'short')}</span>
                       <span className="num block text-muted">{formatTime(r.at, lang)}{r.day !== istDay(r.at) ? ` · ${t('log.enteredOn', { day: formatDay(istDay(r.at), lang, 'short') })}` : ''}</span>
@@ -134,7 +136,7 @@ export default function LogPage() {
                       <p className={cn('text-ink', rev && 'text-muted line-through')}>{d.text}</p>
                       <div className="mt-1 flex flex-wrap gap-1.5">{badges(r)}</div>
                       {rev && <p className="mt-1 text-sm text-given">{t('log.reason')}: {rev.payload.reason} — {t('common.by', { name: byName(rev.by) })}</p>}
-                      {r.rejectReason && <p className="mt-1 text-sm text-given">{r.rejectReason}</p>}
+                      {r.rejectReason && <p className="mt-1 text-sm text-given" data-testid="reject-reason">{reasonText(r.rejectReason)}</p>}
                     </td>
                     <td className="border-b border-line px-4 py-2.5 text-sm text-ink">{byName(r.by)}</td>
                     <td className="border-b border-line px-2 py-1.5 text-right">{undoBtn(r) || lockMark(r)}</td>
@@ -163,7 +165,7 @@ export default function LogPage() {
                       {r.day !== istDay(r.at) && ` (${t('log.day')}: ${formatDay(r.day, lang, 'short')})`}
                     </p>
                     {rev && <p className="mt-1 text-sm text-given">{t('log.reason')}: {rev.payload.reason} — {t('common.by', { name: byName(rev.by) })}</p>}
-                    {r.rejectReason && <p className="mt-1 text-sm text-given">{r.rejectReason}</p>}
+                    {r.rejectReason && <p className="mt-1 text-sm text-given" data-testid="reject-reason">{reasonText(r.rejectReason)}</p>}
                   </div>
                   <div className="self-start">{undoBtn(r) || lockMark(r)}</div>
                 </Card>
@@ -175,7 +177,7 @@ export default function LogPage() {
       <Sheet open={Boolean(target)} onClose={() => setTarget(null)} title={t('log.reverse')}
         footer={<Button block variant="danger" disabled={!reason.trim()} onClick={() => void doReverse()}>{t('action.reverse')}</Button>}>
         {target && <p className="mb-3 text-ink">{describeRecord(target, names, t, lang, byId).text}</p>}
-        <label className="mb-1 block text-sm font-medium text-muted" htmlFor="rev-reason">{t('log.reverseWhy')}</label>
+        <label className="mb-1.5 block text-base font-medium text-ink" htmlFor="rev-reason">{t('log.reverseWhy')}</label>
         <Textarea id="rev-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
       </Sheet>
     </section>

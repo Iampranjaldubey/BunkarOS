@@ -1,7 +1,7 @@
 // SPEC-M11: PIN hashes never leave the server; photos need a user login.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startTestServer, bootstrapUnit, makeRec, sync, authHeaders, UNIT_KEY, PIN } from './helpers.mjs';
+import { startTestServer, bootstrapUnit, makeRec, sync, authHeaders, UNIT_KEY, PIN, createOrg, claim } from './helpers.mjs';
 
 let srv, unitId, ownerId, token;
 test.before(async () => {
@@ -75,8 +75,8 @@ test('AC2: a token from another unit cannot read this unit\'s photos', async () 
   const r = await fetch(`${srv.base}/api/photos/sec1`, { headers: { 'x-unit-id': unitId, 'x-unit-key': UNIT_KEY, Authorization: `Bearer ${other.token}` } });
   assert.equal(r.status, 401);
   // Bootstrap unit (no users yet) still accepts unit-key-only photos.
-  const fresh = 'unit-fresh-' + Date.now();
-  await fetch(`${srv.base}/api/units`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unitId: fresh, unitKey: UNIT_KEY, name: 'Fresh' }) });
+  const { unitId: fresh, invite } = await createOrg(srv.base, { name: 'Fresh' });
+  assert.equal((await claim(srv.base, invite)).status, 200);
   const put = await fetch(`${srv.base}/api/photos/fresh1`, { method: 'PUT', headers: { ...authHeaders(fresh, UNIT_KEY), 'Content-Type': 'image/jpeg' }, body: Buffer.from([0xff, 0xd8]) });
   assert.equal(put.status, 200);
 });

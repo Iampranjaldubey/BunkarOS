@@ -1,4 +1,5 @@
 // Ephemeral server on a fresh Postgres schema per test file.
+import './env.mjs';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { createServer } from '../index.mjs';
 
@@ -33,10 +34,34 @@ export async function addStaff(base, unitId, ownerId, ownerToken, staffId = 'u-s
   const tok = await fetch(`${base}/api/auth/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unitId, unitKey: UNIT_KEY, userId: staffId, pin: '1234' }) });
   return { staffId, staffToken: (await tok.json()).token };
 }
-/** Create unit + owner user + setting; return {unitId, ownerId, token}. */
-export async function bootstrapUnit(base, { pinHash, pinSalt } = {}) {
-  const unitId = 'unit-' + randomBytes(4).toString('hex');
-  await fetch(`${base}/api/units`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unitId, unitKey: UNIT_KEY, name: 'Test Unit' }) });
+// SPEC-M18: units are created by a founder and claimed with an invite. Tests use a fixed founder key.
+export const TEST_ADMIN = { name: 'tester', key: 'test-founder-key-0001' };
+/** Founder token for tests; adds TEST_ADMIN to ADMIN_KEYS when it is missing. */
+export async function founderToken(base) {
+  const cur = process.env.ADMIN_KEYS || '';
+  if (!cur.split(',').some((p) => p.startsWith(TEST_ADMIN.name + ':'))) process.env.ADMIN_KEYS = [cur, `${TEST_ADMIN.name}:${TEST_ADMIN.key}`].filter(Boolean).join(',');
+  const r = await fetch(`${base}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(TEST_ADMIN) });
+  return (await r.json()).token;
+}
+export const adminHeaders = (token) => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` });
+/** A founder creates an organisation; returns {unitId, invite}. */
+export async function createOrg(base, body = {}) {
+  const tok = await founderToken(base);
+  const r = await fetch(`${base}/api/admin/orgs`, { method: 'POST', headers: adminHeaders(tok), body: JSON.stringify({ name: 'Test Unit', industry: 'carpet', lang: 'hi', ownerName: 'Owner', ownerPhone: '9999999999', ...body }) });
+  const b = await r.json();
+  if (r.status !== 201) throw new Error('create org failed: ' + JSON.stringify(b));
+  return { unitId: b.unitId, invite: b.invite, adminToken: tok };
+}
+/** Claim an invite with a unit key; returns the claim response. */
+export async function claim(base, invite, unitKey = UNIT_KEY) {
+  const r = await fetch(`${base}/api/invites/claim`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: invite.token, unitKey }) });
+  return { status: r.status, body: await r.json() };
+}
+/** Create unit (founder + invite) + owner user + setting; return {unitId, ownerId, token, adminToken}. */
+export async function bootstrapUnit(base, { pinHash, pinSalt, industry = 'carpet', modules } = {}) {
+  const { unitId, invite, adminToken } = await createOrg(base, { industry, ...(modules ? { modules } : {}) });
+  const c = await claim(base, invite);
+  if (c.status !== 200) throw new Error('claim failed: ' + JSON.stringify(c.body));
   const ownerId = 'u-' + randomBytes(4).toString('hex');
   const setting = makeRec('setting', { entityId: 'unit', unitName: 'Test Unit', ownerPhone: '9999999999', lang: 'hi', workingDaysPerMonth: 26, photoRequiredAbovePaise: 200000, holidays: [] }, { unitId, by: ownerId });
   const user = makeRec('user', { entityId: ownerId, name: 'Owner', phone: '9999999999', role: 'owner', pinHash: pinHash || PIN.hash, pinSalt: pinSalt || PIN.salt, active: true }, { unitId, by: ownerId });
@@ -44,7 +69,7 @@ export async function bootstrapUnit(base, { pinHash, pinSalt } = {}) {
   if (r.body.rejected.length) throw new Error('bootstrap rejected: ' + JSON.stringify(r.body.rejected));
   const tok = await fetch(`${base}/api/auth/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ unitId, unitKey: UNIT_KEY, userId: ownerId, pin: '1234' }) });
   const tb = await tok.json();
-  return { unitId, ownerId, token: tb.token };
+  return { unitId, ownerId, token: tb.token, adminToken };
 }
 // PIN 1234 hashed with PBKDF2-SHA256 100k / salt below (computed in pin.test).
 import { pbkdf2Sync } from 'node:crypto';

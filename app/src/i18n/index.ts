@@ -57,7 +57,19 @@ function interpolate(str: string, vars?: Record<string, string | number>): strin
   return str.replace(/\{(\w+)\}/g, (_, k: string) => (k in vars ? String(vars[k]) : `{${k}}`));
 }
 
+// SPEC-M18: the organisation's industry pack can override words (bags: बैग instead of कालीन). Set from the sync `org`.
+type PackWords = Partial<Record<Lang, Dict>>;
+let packWords: PackWords = {};
+let packId = 'carpet';
+const packListeners = new Set<() => void>();
+export function setPackWords(id: string, words: PackWords): void {
+  if (id === packId) return;
+  packId = id; packWords = words;
+  for (const l of packListeners) l();
+}
 export function translate(lang: Lang, key: string, vars?: Record<string, string | number>): string {
+  const own = packWords[lang]?.[key];
+  if (own !== undefined) return interpolate(own, vars);
   const raw = dictFor(lang)[key] ?? DICTS.hi![key] ?? key;
   return interpolate(raw, vars);
 }
@@ -76,6 +88,8 @@ const LangContext = createContext<LangContextValue | null>(null);
 export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => getLang());
   const [ready, setReady] = useState<boolean>(() => Boolean(DICTS[getLang()]));
+  const [pack, setPack] = useState(packId);
+  useEffect(() => { const on = () => setPack(packId); packListeners.add(on); return () => { packListeners.delete(on); }; }, []);
 
   useEffect(() => {
     if (!DICTS[lang]) void loadLang(lang).then(() => setReady(true));
@@ -88,7 +102,8 @@ export function LangProvider({ children }: { children: ReactNode }) {
     else setLangState(l);
   }, []);
 
-  const value = useMemo<LangContextValue>(() => ({ lang, setLang, t: (key, vars) => translate(lang, key, vars) }), [lang, setLang]);
+  // `pack` is in the deps so every screen re-renders with the industry's words when the org arrives.
+  const value = useMemo<LangContextValue>(() => ({ lang, setLang, t: (key, vars) => translate(lang, key, vars) }), [lang, setLang, pack]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!ready) return null;
   return createElement(LangContext.Provider, { value }, children);
 }

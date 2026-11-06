@@ -69,7 +69,8 @@ export type SlipSection =
 export interface OperatorPerms { addEntries: boolean; editPast: boolean; seeWages: boolean; seePrices: boolean; export: boolean; }
 
 export type PayType = 'monthly' | 'daily' | 'piece';
-export type JobTitle = 'weaver' | 'finisher' | 'helper' | 'other';
+// SPEC-M18: carpet uses weaver; bags use cutter, stitcher, packer. Each industry pack lists its own.
+export type JobTitle = 'weaver' | 'finisher' | 'helper' | 'other' | 'cutter' | 'stitcher' | 'packer';
 export interface WorkerP {
   entityId: string; name: string; phone?: string; jobTitle: JobTitle;
   payType: PayType;
@@ -83,7 +84,7 @@ export interface WorkerP {
 }
 
 export type ItemKind = 'raw' | 'finished';
-export type ItemUnit = 'kg' | 'pcs' | 'litre' | 'metre';
+export type ItemUnit = 'kg' | 'pcs' | 'litre' | 'metre' | 'roll'; // 'roll' for fabric (SPEC-M18 bags)
 export interface ItemP {
   entityId: string; name: string; kind: ItemKind; unit: ItemUnit;
   lowStockQty: number;       // thousandths; 0 = no flag

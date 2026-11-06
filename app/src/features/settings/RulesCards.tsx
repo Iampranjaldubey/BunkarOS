@@ -12,17 +12,10 @@ import { formatMonth } from '../../domain/dates';
 import { monthOf, todayIST } from '../../domain/ids';
 import { useT } from '../../i18n';
 import { cn } from '../../lib/utils';
+import { Switch } from '../../components/ui/Switch';
 import { slipContent } from '../wages/lines';
 import { SlipPaper } from '../wages/SlipPaper';
 
-function Switch({ checked, onChange, label, disabled, testid }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean; testid?: string }) {
-  return (
-    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)} data-testid={testid}
-      className={cn('relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border transition-colors disabled:opacity-50', checked ? 'border-primary bg-primary' : 'border-line bg-surface-2')}>
-      <span aria-hidden="true" className={cn('inline-block h-6 w-6 rounded-full bg-surface shadow-card transition-transform', checked ? 'translate-x-7' : 'translate-x-1')} />
-    </button>
-  );
-}
 
 /** Example A (docs/wage-examples.md) as a stored payment, for the slip preview. */
 function samplePayment(overtime: boolean): WagePaymentP {
@@ -71,8 +64,8 @@ export function WageRulesCard({ settings, isOwner }: { settings: SettingP; isOwn
             <legend className="mb-2 font-medium text-ink">{t('settings.offDayPolicy')}</legend>
             <div className="flex flex-col gap-2" role="radiogroup" aria-label={t('settings.offDayPolicy')}>
               {OFF_DAY_POLICIES.map((p) => (
-                <label key={p} className={cn('flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border p-3', policy === p ? 'border-primary bg-primary-soft' : 'border-line')}>
-                  <input type="radio" name="offDayPolicy" value={p} checked={policy === p} disabled={!isOwner} onChange={() => setPolicy(p)} className="mt-1 h-5 w-5 accent-[var(--color-primary)]" />
+                <label key={p} className={cn('flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors', policy === p ? 'border-primary bg-primary-soft' : 'border-line hover:border-line-strong')}>
+                  <input type="radio" name="offDayPolicy" value={p} checked={policy === p} disabled={!isOwner} onChange={() => setPolicy(p)} className="mt-1 h-5 w-5" />
                   <span><span className="block font-medium text-ink">{t(`settings.policy.${p}`)}</span><span className="block text-sm text-muted">{t(`settings.policy.${p}.ex`)}</span></span>
                 </label>
               ))}
@@ -87,8 +80,8 @@ export function WageRulesCard({ settings, isOwner }: { settings: SettingP; isOwn
                 return (
                   <li key={k}>
                     <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 hover:bg-surface-2">
-                      <input type="checkbox" checked={fixed || (!otOnly && slip[k])} disabled={!isOwner || fixed || otOnly} onChange={(e) => setSlip({ ...slip, [k]: e.target.checked })} className="h-5 w-5 accent-[var(--color-primary)]" />
-                      <span className="text-ink">{t(`slip.opt.${k}`)}{fixed && <span className="ml-1 text-xs text-muted">({t('settings.slipFixed')})</span>}{otOnly && <span className="ml-1 text-xs text-muted">({t('settings.overtimeOnlyWhenOn')})</span>}</span>
+                      <input type="checkbox" checked={fixed || (!otOnly && slip[k])} disabled={!isOwner || fixed || otOnly} onChange={(e) => setSlip({ ...slip, [k]: e.target.checked })} className="h-5 w-5" />
+                      <span className="text-ink">{t(`slip.opt.${k}`)}{fixed && <span className="ml-1 text-sm text-muted">({t('settings.slipFixed')})</span>}{otOnly && <span className="ml-1 text-sm text-muted">({t('settings.overtimeOnlyWhenOn')})</span>}</span>
                     </label>
                   </li>
                 );
@@ -98,9 +91,9 @@ export function WageRulesCard({ settings, isOwner }: { settings: SettingP; isOwn
           {isOwner && <Button className="mt-4" block disabled={!dirty} onClick={() => void save()} data-testid="save-rules">{t('settings.saveRules')}</Button>}
         </div>
         <div className="min-w-0">
-          <p className="mb-2 text-sm font-medium text-muted">{t('settings.slipPreview')}</p>
+          <p className="mb-2 text-sm text-muted">{t('settings.slipPreview')}</p>
           {/* A4 at about 40 %: 210 × 297 mm → ~318 × 450 px */}
-          <div className="relative h-[450px] w-[318px] max-w-full overflow-hidden rounded-xl border border-line bg-white shadow-card" aria-hidden="true">
+          <div className="relative h-[450px] w-[318px] max-w-full overflow-hidden rounded-xl border border-line bg-white" aria-hidden="true">
             <div className="origin-top-left scale-[0.4]"><SlipPaper c={preview} testid="slip-preview" /></div>
           </div>
         </div>

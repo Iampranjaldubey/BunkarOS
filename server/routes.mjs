@@ -3,12 +3,15 @@ import { needsCatalogue, loadCatalogue, catalogueCheck, apply as applyCatalogue 
 import { getUnit, insertUnit, getRecordById, insertRecord, recordsSince, userRecordsSince, putPhoto, getPhoto,
   userRecordCount, latestUser, userRole, lockedMonths, paidPairs, recordsOfType,
   getUnitByShortCode, ensureShortCode, latestWorker, activeWorkers, workerRecords,
-  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, adminUnitRecords, publicRec, stockBalances,
+  activeWorkerLink, createWorkerLink, revokeWorkerLinks, getWorkerLink, adminUnits, publicRec, stockBalances,
+  withUnit, withAdmin, insertInvitedUnit, createInvite, cancelInvites, findInvite, claimInvite, latestInvite, setOrgFields,
+  addPlatformEvent, platformEvents, adminUsage,
   latestSetting, latestByEntity, correctionHistory, PRICE_FIELDS } from './db.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { hashUnitKey, verifyUnitKey } from './auth.mjs';
 import { evaluate, stockMove, operatorPerms } from './rules.mjs';
 import { signToken, verifyToken, verifyPinServer, signAdminToken, verifyAdminToken } from './token.mjs';
+import { INDUSTRIES, MODULES, STATUSES, isIndustry, effectiveModules, cleanModules, moduleOfType } from './industries.mjs';
 import { serveStatic } from './static.mjs';
 
 const BODY_LIMIT = Math.round(2.5 * 1024 * 1024);
@@ -20,6 +23,7 @@ const PHOTO_MIME_ALLOW = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const WORKER_RATE_MAX = Number(process.env.WORKER_RATE_MAX) > 0 ? Number(process.env.WORKER_RATE_MAX) : 60; // /api/w/* per IP per minute
 const CLAIM_RATE_MAX = Number(process.env.CLAIM_RATE_MAX) > 0 ? Number(process.env.CLAIM_RATE_MAX) : 10;   // code guesses per IP per minute
 const ADMIN_RATE_MAX = Number(process.env.ADMIN_RATE_MAX) > 0 ? Number(process.env.ADMIN_RATE_MAX) : 10;   // admin login attempts per IP per minute
+const INVITE_RATE_MAX = Number(process.env.INVITE_RATE_MAX) > 0 ? Number(process.env.INVITE_RATE_MAX) : 20; // invite lookups + claims per IP per minute (SPEC-M18)
 
 /** ADMIN_KEYS="shubham:<key>,pranjal:<key>" → Map(name → key). Empty map = admin disabled. */
 function adminKeys() {
@@ -86,6 +90,7 @@ export function makeHandler(db, opts = {}) {
   const workerLimiter = makeRateLimiter(WORKER_RATE_MAX, RATE_WINDOW_MS);
   const claimLimiter = makeRateLimiter(CLAIM_RATE_MAX, RATE_WINDOW_MS);
   const adminLimiter = makeRateLimiter(ADMIN_RATE_MAX, RATE_WINDOW_MS);
+  const inviteLimiter = makeRateLimiter(INVITE_RATE_MAX, RATE_WINDOW_MS);
   const staticDir = opts.staticDir;
   return async function handler(req, res) {
     try {
@@ -102,6 +107,16 @@ export function makeHandler(db, opts = {}) {
       if (req.method === 'GET' && path === '/api/admin/units') return await handleAdminUnits(db, req, res);
       const adminUnit = path.match(/^\/api\/admin\/units\/([^/]+)$/);
       if (adminUnit && req.method === 'GET') return await handleAdminUnit(db, req, res, decodeURIComponent(adminUnit[1]));
+      // SPEC-M18: founders create organisations, invite owners, switch modules and status. Every action is logged.
+      if (req.method === 'GET' && path === '/api/admin/industries') return await handleAdminIndustries(db, req, res);
+      if (req.method === 'POST' && path === '/api/admin/orgs') return await handleAdminCreateOrg(db, req, res);
+      const adminAct = path.match(/^\/api\/admin\/units\/([^/]+)\/(org|invite|events)$/);
+      if (adminAct && req.method === 'POST' && adminAct[2] === 'org') return await handleAdminSetOrg(db, req, res, decodeURIComponent(adminAct[1]));
+      if (adminAct && req.method === 'POST' && adminAct[2] === 'invite') return await handleAdminInvite(db, req, res, decodeURIComponent(adminAct[1]));
+      if (adminAct && req.method === 'GET' && adminAct[2] === 'events') return await handleAdminEvents(db, req, res, decodeURIComponent(adminAct[1]));
+      // SPEC-M18 §4: the owner opens an invite (public, rate-limited) and claims it with the phone's new unit key.
+      if (req.method === 'POST' && path === '/api/invites/lookup') { if (!inviteLimiter(clientIp(req))) return sendError(res, 429, 'rate_limited', req); return await handleInviteLookup(db, req, res); }
+      if (req.method === 'POST' && path === '/api/invites/claim') { if (!inviteLimiter(clientIp(req))) return sendError(res, 429, 'rate_limited', req); return await handleInviteClaim(db, req, res); }
       if (req.method === 'POST' && path === '/api/worker-links') return await handleWorkerLink(db, req, res);
       if (req.method === 'POST' && path === '/api/worker-links/revoke') return await handleWorkerLinkRevoke(db, req, res);
       // Public worker endpoints (SPEC-M07): shop lookup, claim by code, data by token.
@@ -136,9 +151,9 @@ async function handleCreateUnit(db, req, res) {
     if (verifyUnitKey(unitKey, existing.salt, existing.key_hash)) return sendJson(res, 200, { ok: true, unitId, created: false, shortCode: await ensureShortCode(db, unitId) }, req);
     return sendError(res, 409, 'unit_exists', req);
   }
-  const { salt, hash } = hashUnitKey(unitKey);
-  const shortCode = await insertUnit(db, { unitId, keyHash: hash, salt, name: typeof name === 'string' && name ? name : unitId, createdAt: new Date().toISOString() });
-  return sendJson(res, 201, { ok: true, unitId, created: true, shortCode }, req);
+  // SPEC-M18 §4: new organisations are created by the founders and claimed with an invite (POST /api/invites/claim).
+  void name; void insertUnit;
+  return sendError(res, 403, 'invite_required', req);
 }
 
 async function handleAuthToken(db, req, res, limiter) {
@@ -152,16 +167,23 @@ async function handleAuthToken(db, req, res, limiter) {
   if (!unit) return sendError(res, 401, 'unauthorized', req);
   const { userId, pin } = body;
   if (typeof userId !== 'string' || typeof pin !== 'string') return sendError(res, 400, 'invalid', req);
-  const user = await latestUser(db, unit.unit_id, userId);
+  const user = await withUnit(db, unit.unit_id, (u) => latestUser(u, unit.unit_id, userId));
   if (!user || user.active !== true || !verifyPinServer(pin, user.pinHash, user.pinSalt)) return sendError(res, 401, 'unauthorized', req);
   const { token, exp } = await signToken(db, { unitId: unit.unit_id, userId });
   return sendJson(res, 200, { ok: true, token, exp }, req);
 }
 
-async function handleSync(db, req, res) {
-  const unit = await authUnit(db, req);
+async function handleSync(db0, req, res) {
+  const unit = await authUnit(db0, req);
   if (!unit) return sendError(res, 401, 'unauthorized', req);
   const body = await readJson(req, BODY_LIMIT);
+  // SPEC-M18 §5: everything below reads and writes inside one transaction scoped to this unit (row-level security).
+  const out = await withUnit(db0, unit.unit_id, (db) => syncUnit(db, req, unit, body));
+  return sendJson(res, out.status, out.body, req);
+}
+
+async function syncUnit(db, req, unit, body) {
+  const org = orgOf(unit);
   const incoming = Array.isArray(body.records) ? body.records : [];
   const since = Number.isFinite(body.since) ? Number(body.since) : 0;
   const limit = Number.isFinite(body.limit) && body.limit > 0 ? Math.min(Number(body.limit), PULL_LIMIT) : PULL_LIMIT;
@@ -172,9 +194,9 @@ async function handleSync(db, req, res) {
   if (hasUsers) {
     const token = await bearerAuth(db, req);
     if (!token || token.unitId !== unitId) {
-      if (incoming.length > 0) return sendError(res, 401, 'needs_login', req);
+      if (incoming.length > 0) return { status: 401, body: { ok: false, error: 'needs_login' } };
       const rows = await userRecordsSince(db, unitId, since, limit);
-      return sendJson(res, 200, { accepted: [], rejected: [], records: rows.map((r) => publicRec(r.rec)), cursor: since }, req);
+      return { status: 200, body: { accepted: [], rejected: [], records: rows.map((r) => publicRec(r.rec)), cursor: since, org } };
     }
     auth = { userId: token.userId, role: await userRole(db, unitId, token.userId) };
   }
@@ -225,6 +247,11 @@ async function handleSync(db, req, res) {
       const existing = await getRecordById(db, rec.id);
       if (existing) { accepted.push(rec.id); ctx.batch.ids.add(rec.id); continue; }
     }
+    // SPEC-M18 §3: a paused organisation reads but writes nothing (the phone keeps the entries).
+    if (org.status !== 'active') { rejected.push({ id: rec?.id, reason: 'org_paused' }); continue; }
+    // SPEC-M18 §2: records of a module that is off, and reversals of them, are refused; their data stays.
+    const mod = moduleOfType(rec?.type === 'reversal' ? ctx.targets?.get(rec?.payload?.targetId)?.type : rec?.type);
+    if (mod && !org.modules[mod]) { rejected.push({ id: rec?.id, reason: 'module_off' }); continue; }
     // SPEC-M11: phones no longer hold PIN hashes. A `user` record without them is an edit:
     // keep the stored hash/salt. A brand-new user must bring both.
     let toCheck = rec;
@@ -252,7 +279,7 @@ async function handleSync(db, req, res) {
       if (why) { rejected.push({ id: rec.id, reason: why }); continue; }
     }
     const stored = { ...toCheck, sync: 'synced' }; delete stored.rejectReason;
-    await insertRecord(db, { id: rec.id, unitId, type: rec.type, rec: stored });
+    if (!(await insertRecord(db, { id: rec.id, unitId, type: rec.type, rec: stored }))) { rejected.push({ id: rec.id, reason: 'duplicate_id' }); continue; }
     accepted.push(rec.id); ctx.batch.ids.add(rec.id);
     if (rec.type === 'period_lock') ctx.locked.add(rec.payload.month);
     // Keep the batch view current: later records in the same push see this one.
@@ -275,14 +302,14 @@ async function handleSync(db, req, res) {
 
   const pulled = await recordsSince(db, unitId, since, limit);
   const cursor = pulled.length ? pulled[pulled.length - 1].seq : since;
-  return sendJson(res, 200, { accepted, rejected, records: pulled.map((r) => publicRec(r.rec, view)), cursor, view }, req);
+  return { status: 200, body: { accepted, rejected, records: pulled.map((r) => publicRec(r.rec, view)), cursor, view, org } };
 }
 
 /** SPEC-M11: photos need the unit key and, once the unit has users, a valid user token for that unit. */
 async function photoAuth(db, req, res) {
   const unit = await authUnit(db, req);
   if (!unit) { sendError(res, 401, 'unauthorized', req); return null; }
-  if ((await userRecordCount(db, unit.unit_id)) > 0) {
+  if ((await withUnit(db, unit.unit_id, (u) => userRecordCount(u, unit.unit_id))) > 0) {
     const token = await bearerAuth(db, req);
     if (!token || token.unitId !== unit.unit_id) { sendError(res, 401, 'needs_login', req); return null; }
   }
@@ -295,7 +322,7 @@ async function handlePutPhoto(db, req, res, id) {
   if (!PHOTO_MIME_ALLOW.has(mime)) { await readBody(req, PHOTO_LIMIT).catch(() => undefined); return sendError(res, 415, 'unsupported_media_type', req); }
   const buf = await readBody(req, PHOTO_LIMIT);
   // SPEC-M16 §6: never overwrite a photo, never move it between units.
-  const result = await putPhoto(db, { id, unitId: unit.unit_id, mime, bytes: buf });
+  const result = await withUnit(db, unit.unit_id, (u) => putPhoto(u, { id, unitId: unit.unit_id, mime, bytes: buf }));
   if (result === 'taken') return sendError(res, 409, 'photo_id_taken', req);
   if (result === 'exists') return sendError(res, 409, 'photo_exists', req);
   return sendJson(res, 200, { ok: true, id }, req);
@@ -303,7 +330,7 @@ async function handlePutPhoto(db, req, res, id) {
 async function handleGetPhoto(db, req, res, id) {
   const unit = await photoAuth(db, req, res);
   if (!unit) return undefined;
-  const row = await getPhoto(db, unit.unit_id, id);
+  const row = await withUnit(db, unit.unit_id, (u) => getPhoto(u, unit.unit_id, id));
   if (!row) return sendError(res, 404, 'not_found', req);
   const mime = PHOTO_MIME_ALLOW.has(row.mime) ? row.mime : 'application/octet-stream';
   res.writeHead(200, { 'Content-Type': mime, 'Content-Length': row.bytes.length, 'Content-Disposition': 'inline; filename="photo"', 'X-Content-Type-Options': 'nosniff', ...corsHeaders(req) });
@@ -318,7 +345,7 @@ async function requireStaffOrOwner(db, req, res) {
   if (!unit) { sendError(res, 401, 'unauthorized', req); return null; }
   const token = await bearerAuth(db, req);
   if (!token || token.unitId !== unit.unit_id) { sendError(res, 401, 'needs_login', req); return null; }
-  const role = await userRole(db, unit.unit_id, token.userId);
+  const role = await withUnit(db, unit.unit_id, (u) => userRole(u, unit.unit_id, token.userId));
   if (role !== 'owner' && role !== 'staff') { sendError(res, 403, 'forbidden', req); return null; }
   return { unit, userId: token.userId, role };
 }
@@ -327,7 +354,7 @@ async function requireStaffOrOwner(db, req, res) {
 async function handleUnitMe(db, req, res) {
   const unit = await authUnit(db, req);
   if (!unit) return sendError(res, 401, 'unauthorized', req);
-  return sendJson(res, 200, { ok: true, unitId: unit.unit_id, name: unit.name, shortCode: await ensureShortCode(db, unit.unit_id) }, req);
+  return sendJson(res, 200, { ok: true, unitId: unit.unit_id, name: unit.name, shortCode: await ensureShortCode(db, unit.unit_id), org: orgOf(unit) }, req);
 }
 
 /** POST /api/worker-links {workerId, regenerate?} → {token}. Owner or staff. */
@@ -336,7 +363,7 @@ async function handleWorkerLink(db, req, res) {
   if (!who) return undefined;
   const body = await readJson(req, BODY_LIMIT);
   if (typeof body.workerId !== 'string') return sendError(res, 400, 'invalid', req);
-  const worker = await latestWorker(db, who.unit.unit_id, body.workerId);
+  const worker = await withUnit(db, who.unit.unit_id, (u) => latestWorker(u, who.unit.unit_id, body.workerId));
   if (!worker || worker.active !== true) return sendError(res, 404, 'not_found', req);
   const existing = await activeWorkerLink(db, who.unit.unit_id, body.workerId);
   if (existing && !body.regenerate) return sendJson(res, 200, { ok: true, token: existing.token, created: false }, req);
@@ -360,7 +387,8 @@ async function handleWorkerLinkRevoke(db, req, res) {
 async function handleWorkerShop(db, req, res, shortCode) {
   const unit = await getUnitByShortCode(db, shortCode);
   if (!unit) return sendError(res, 404, 'not_found', req);
-  return sendJson(res, 200, { ok: true, unitName: unit.name, workers: await activeWorkers(db, unit.unit_id) }, req);
+  if (unit.status === 'invited') return sendError(res, 404, 'not_found', req);
+  return sendJson(res, 200, { ok: true, unitName: unit.name, workers: await withUnit(db, unit.unit_id, (u) => activeWorkers(u, unit.unit_id)) }, req);
 }
 
 /** POST /api/w/claim {shopCode, workerId, code} → {token}. Verifies the worker's 4-digit access code. */
@@ -370,7 +398,7 @@ async function handleWorkerClaim(db, req, res) {
   if (typeof shopCode !== 'string' || typeof workerId !== 'string' || typeof code !== 'string') return sendError(res, 400, 'invalid', req);
   const unit = await getUnitByShortCode(db, shopCode);
   if (!unit) return sendError(res, 404, 'not_found', req);
-  const worker = await latestWorker(db, unit.unit_id, workerId);
+  const worker = await withUnit(db, unit.unit_id, (u) => latestWorker(u, unit.unit_id, workerId));
   if (!worker || worker.active !== true || typeof worker.accessCode !== 'string' || worker.accessCode !== code) return sendError(res, 401, 'wrong_code', req);
   const existing = await activeWorkerLink(db, unit.unit_id, workerId);
   if (existing) return sendJson(res, 200, { ok: true, token: existing.token }, req);
@@ -385,13 +413,12 @@ async function handleWorkerData(db, req, res, token) {
   if (!link) return sendError(res, 404, 'not_found', req);
   if (link.revoked_at) return sendError(res, 410, 'revoked', req);
   const unit = await getUnit(db, link.unit_id);
-  const worker = await latestWorker(db, link.unit_id, link.worker_id);
+  const { worker, records } = await withUnit(db, link.unit_id, async (u) => ({ worker: await latestWorker(u, link.unit_id, link.worker_id), records: await workerRecords(u, link.unit_id, link.worker_id) }));
   if (!unit || !worker) return sendError(res, 404, 'not_found', req);
   const { accessCode: _hidden, ...safeWorker } = worker; // never expose the code on the public page
-  const records = await workerRecords(db, link.unit_id, link.worker_id);
   let ownerPhone = '';
   for (const r of records) if (r.type === 'setting' && typeof r.payload?.ownerPhone === 'string') ownerPhone = r.payload.ownerPhone;
-  return sendJson(res, 200, { ok: true, unitName: unit.name, shopCode: await ensureShortCode(db, unit.unit_id), ownerPhone, worker: safeWorker, workerId: link.worker_id, records, fetchedAt: new Date().toISOString() }, req);
+  return sendJson(res, 200, { ok: true, unitName: unit.name, shopCode: await ensureShortCode(db, unit.unit_id), ownerPhone, worker: safeWorker, workerId: link.worker_id, records, org: orgOf(unit), fetchedAt: new Date().toISOString() }, req);
 }
 
 // ---------- SPEC-M09: platform admin ----------
@@ -418,13 +445,112 @@ async function handleAdminLogin(db, req, res) {
 async function handleAdminUnits(db, req, res) {
   if (!(await requireAdmin(db, req, res))) return undefined;
   const month = istDay(new Date()).slice(0, 7);
-  return sendJson(res, 200, { ok: true, month, units: await adminUnits(db, month) }, req);
+  return sendJson(res, 200, { ok: true, month, units: await withAdmin(db, (a) => adminUnits(a, month)) }, req);
 }
-/** GET /api/admin/units/:unitId → unit + all records (PIN hashes stripped). */
+/** GET /api/admin/units/:unitId → the organisation, its invite and its usage. No business data (owner 2026-11-06). */
 async function handleAdminUnit(db, req, res, unitId) {
   if (!(await requireAdmin(db, req, res))) return undefined;
   const unit = await getUnit(db, unitId);
   if (!unit) return sendError(res, 404, 'not_found', req);
-  return sendJson(res, 200, { ok: true, unit: { unitId: unit.unit_id, name: unit.name, shortCode: unit.short_code }, records: await adminUnitRecords(db, unitId) }, req);
+  const month = istDay(new Date()).slice(0, 7);
+  const usage = await withAdmin(db, (a) => adminUsage(a, unitId, month, moduleOfType));
+  return sendJson(res, 200, { ok: true, unit: { unitId: unit.unit_id, name: unit.name, shortCode: unit.short_code }, org: orgOf(unit), invite: await latestInvite(db, unitId), usage }, req);
+}
+/** GET /api/admin/industries → the industries and their default modules. */
+async function handleAdminIndustries(db, req, res) {
+  if (!(await requireAdmin(db, req, res))) return undefined;
+  return sendJson(res, 200, { ok: true, modules: MODULES, industries: Object.values(INDUSTRIES).map((i) => ({ ...i, defaultModules: effectiveModules(i.defaultModules) })) }, req);
+}
+const cleanText = (v, max = 80) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const LANGS = new Set(['hi', 'hin', 'en']);
+/** POST /api/admin/orgs {name, industry, modules?, lang, ownerName, ownerPhone} → {unitId, invite: {token, code, expiresAt}}. */
+async function handleAdminCreateOrg(db, req, res) {
+  const admin = await requireAdmin(db, req, res);
+  if (!admin) return undefined;
+  const b = await readJson(req, BODY_LIMIT);
+  const name = cleanText(b.name); const ownerName = cleanText(b.ownerName); const ownerPhone = cleanText(b.ownerPhone, 20).replace(/[^\d+]/g, '');
+  const lang = LANGS.has(b.lang) ? b.lang : 'hi';
+  if (!name || !ownerName || !/^\+?\d{10,13}$/.test(ownerPhone) || !isIndustry(b.industry)) return sendError(res, 400, 'invalid', req);
+  const modules = b.modules === undefined ? effectiveModules(INDUSTRIES[b.industry].defaultModules) : cleanModules(b.modules);
+  if (!modules) return sendError(res, 400, 'invalid_modules', req);
+  const unitId = 'u-' + randomBytes(9).toString('base64url');
+  const shortCode = await insertInvitedUnit(db, { unitId, name, industry: b.industry, modules, createdBy: admin.admin });
+  const invite = await createInvite(db, { unitId, ownerName, ownerPhone, lang, createdBy: admin.admin });
+  await addPlatformEvent(db, { actor: admin.admin, unitId, action: 'create', after: { name, industry: b.industry, modules, ownerName, ownerPhone, lang }, reason: cleanText(b.reason, 300) });
+  return sendJson(res, 201, { ok: true, unitId, shortCode, invite }, req);
+}
+/** POST /api/admin/units/:id/invite {action: 'resend' | 'cancel', reason?} → resend returns new secrets; the old invite stops working. */
+async function handleAdminInvite(db, req, res, unitId) {
+  const admin = await requireAdmin(db, req, res);
+  if (!admin) return undefined;
+  const b = await readJson(req, BODY_LIMIT);
+  const unit = await getUnit(db, unitId);
+  if (!unit) return sendError(res, 404, 'not_found', req);
+  if (unit.status !== 'invited') return sendError(res, 409, 'already_joined', req);
+  const prev = await latestInvite(db, unitId);
+  if (b.action === 'cancel') {
+    await cancelInvites(db, unitId);
+    await addPlatformEvent(db, { actor: admin.admin, unitId, action: 'invite_cancel', before: prev ? { state: prev.state } : undefined, reason: cleanText(b.reason, 300) });
+    return sendJson(res, 200, { ok: true }, req);
+  }
+  if (b.action !== 'resend' || !prev) return sendError(res, 400, 'invalid', req);
+  const invite = await createInvite(db, { unitId, ownerName: prev.ownerName, ownerPhone: prev.ownerPhone, lang: prev.lang, createdBy: admin.admin });
+  await addPlatformEvent(db, { actor: admin.admin, unitId, action: 'invite_resend', before: { state: prev.state, expiresAt: prev.expiresAt }, after: { expiresAt: invite.expiresAt }, reason: cleanText(b.reason, 300) });
+  return sendJson(res, 200, { ok: true, invite }, req);
+}
+/** POST /api/admin/units/:id/org {modules?, status?, reason} → the new org. A reason is required (SPEC-M18 §6). */
+async function handleAdminSetOrg(db, req, res, unitId) {
+  const admin = await requireAdmin(db, req, res);
+  if (!admin) return undefined;
+  const b = await readJson(req, BODY_LIMIT);
+  const reason = cleanText(b.reason, 300);
+  if (!reason) return sendError(res, 400, 'reason_required', req);
+  const unit = await getUnit(db, unitId);
+  if (!unit) return sendError(res, 404, 'not_found', req);
+  const before = orgOf(unit);
+  const fields = {};
+  if (b.modules !== undefined) { const m = cleanModules({ ...before.modules, ...b.modules }); if (!m) return sendError(res, 400, 'invalid_modules', req); fields.modules = m; }
+  if (b.status !== undefined) {
+    if (!['active', 'paused'].includes(b.status) || !STATUSES.includes(b.status)) return sendError(res, 400, 'invalid_status', req);
+    if (unit.status === 'invited') return sendError(res, 409, 'not_joined', req);
+    fields.status = b.status;
+  }
+  if (!fields.modules && !fields.status) return sendError(res, 400, 'invalid', req);
+  await setOrgFields(db, unitId, fields);
+  const after = orgOf(await getUnit(db, unitId));
+  await addPlatformEvent(db, { actor: admin.admin, unitId, action: fields.status && !fields.modules ? 'status' : fields.modules && !fields.status ? 'modules' : 'org', before, after, reason });
+  return sendJson(res, 200, { ok: true, org: after }, req);
+}
+/** GET /api/admin/units/:id/events → the founders' changes log for this organisation. */
+async function handleAdminEvents(db, req, res, unitId) {
+  if (!(await requireAdmin(db, req, res))) return undefined;
+  return sendJson(res, 200, { ok: true, events: await platformEvents(db, unitId) }, req);
+}
+/** POST /api/invites/lookup {token | code} → who and what the invite is for. */
+async function handleInviteLookup(db, req, res) {
+  const b = await readJson(req, BODY_LIMIT);
+  if (typeof b.token !== 'string' && typeof b.code !== 'string') return sendError(res, 400, 'invalid', req);
+  const inv = await findInvite(db, b.token ? { token: b.token } : { code: b.code });
+  if (!inv) return sendError(res, 404, 'invite_not_found', req);
+  if (inv.state !== 'open') return sendError(res, 410, `invite_${inv.state}`, req);
+  const unit = await getUnit(db, inv.unit_id);
+  if (!unit || unit.status !== 'invited') return sendError(res, 410, 'invite_used', req);
+  return sendJson(res, 200, { ok: true, unitName: unit.name, ownerName: inv.owner_name, ownerPhone: inv.owner_phone, lang: inv.lang, industry: unit.industry, expiresAt: inv.expires_at }, req);
+}
+/** POST /api/invites/claim {token | code, unitKey} → the unit is now this phone's; it writes the owner and settings next (bootstrap). */
+async function handleInviteClaim(db, req, res) {
+  const b = await readJson(req, BODY_LIMIT);
+  if ((typeof b.token !== 'string' && typeof b.code !== 'string') || typeof b.unitKey !== 'string' || b.unitKey.length < 22) return sendError(res, 400, 'invalid', req);
+  const inv = await findInvite(db, b.token ? { token: b.token } : { code: b.code });
+  if (!inv) return sendError(res, 404, 'invite_not_found', req);
+  if (inv.state !== 'open') return sendError(res, 410, `invite_${inv.state}`, req);
+  const { salt, hash } = hashUnitKey(b.unitKey);
+  if (!(await claimInvite(db, inv.id, inv.unit_id, { keyHash: hash, salt }))) return sendError(res, 410, 'invite_used', req);
+  const unit = await getUnit(db, inv.unit_id);
+  await addPlatformEvent(db, { actor: 'owner', unitId: inv.unit_id, action: 'joined', after: { ownerName: inv.owner_name } });
+  return sendJson(res, 200, { ok: true, unitId: unit.unit_id, name: unit.name, shortCode: unit.short_code, ownerName: inv.owner_name, ownerPhone: inv.owner_phone, lang: inv.lang, org: orgOf(unit) }, req);
 }
 function istDay(date) { const s = new Date(date.getTime() + 5.5 * 3600 * 1000); return s.toISOString().slice(0, 10); }
+
+/** SPEC-M18 §1: what the platform allows this unit, as sent to its phones. */
+function orgOf(unit) { return { industry: unit.industry || 'carpet', modules: effectiveModules(unit.modules), status: unit.status || 'active' }; }

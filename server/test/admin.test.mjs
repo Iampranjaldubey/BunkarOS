@@ -22,7 +22,7 @@ test('wrong key or unknown name → 401; right key → token', async () => {
   assert.equal((await ok.json()).name, 'shubham');
 });
 
-test('units list shows the unit with owner + worker counts; unit detail returns records without PIN hashes', async () => {
+test('units list shows the unit with owner + worker counts; unit detail shows usage only, never records (SPEC-M18)', async () => {
   const { token: at } = await (await login('pranjal', 'other-admin-key-456')).json();
   const list = await fetch(`${srv.base}/api/admin/units`, { headers: { Authorization: `Bearer ${at}` } });
   assert.equal(list.status, 200);
@@ -33,10 +33,13 @@ test('units list shows the unit with owner + worker counts; unit detail returns 
   assert.match(u.shortCode, /^\d{6}$/);
   const det = await fetch(`${srv.base}/api/admin/units/${unitId}`, { headers: { Authorization: `Bearer ${at}` } });
   assert.equal(det.status, 200);
-  const db = await det.json();
-  const user = db.records.find((r) => r.type === 'user');
-  assert.equal(user.payload.pinHash, undefined); assert.equal(user.payload.pinSalt, undefined);
-  assert.ok(db.records.some((r) => r.type === 'worker' && r.payload.accessCode === '4821'), 'admin sees worker codes for support');
+  const text = await det.text();
+  const db = JSON.parse(text);
+  assert.equal(db.records, undefined, 'no business records for founders (owner 2026-11-06)');
+  assert.equal(db.org.industry, 'carpet'); assert.equal(db.org.status, 'active');
+  assert.equal(db.usage.workers, 1); assert.equal(db.usage.logins, 1);
+  assert.ok(!text.includes('4821'), 'worker codes are not shown to founders');
+  assert.ok(!/pinHash|pinSalt/.test(text));
 });
 
 test('an admin token is not a unit token: /api/sync and /api/worker-links refuse it; no token → 401', async () => {

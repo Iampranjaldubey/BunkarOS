@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { usePack } from '../../industries/usePack';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { FormActions } from '../../components/ui/FormActions';
@@ -20,11 +21,11 @@ import { uuid, todayIST } from '../../domain/ids';
 import { useT } from '../../i18n';
 import { useCan, useUnitRules } from '../../app/useCan';
 
-const JOBS: JobTitle[] = ['weaver', 'finisher', 'helper', 'other'];
 /** 4-digit code the worker uses with the shop code to open their own page (SPEC-M07). */
 export const newAccessCode = () => String(1000 + Math.floor(Math.random() * 9000));
 
 export default function WorkerFormPage() {
+  const pack = usePack(); // SPEC-M18: job titles come from the industry pack
   const { t } = useT();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ export default function WorkerFormPage() {
   const rules = useUnitRules();
   const canRates = allowed('worker.rates');
 
-  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [job, setJob] = useState<JobTitle>('weaver');
+  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [job, setJob] = useState<JobTitle>(pack.jobs[0]);
   const [payType, setPayType] = useState<PayType>('monthly'); const [amount, setAmount] = useState(''); const [otRate, setOtRate] = useState('');
   const [joinedOn, setJoinedOn] = useState(todayIST()); const [photoId, setPhotoId] = useState<string | undefined>();
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -96,7 +97,7 @@ export default function WorkerFormPage() {
           <FormGrid>
             <Field label={t('worker.name')} required error={errors.name}>{({ id, describedBy, invalid }) => <Input id={id} value={name} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setName(e.target.value)} autoFocus />}</Field>
             <Field label={t('worker.phone')} error={errors.phone}>{({ id, describedBy, invalid }) => <Input id={id} type="tel" inputMode="numeric" value={phone} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(e) => setPhone(e.target.value)} />}</Field>
-            <Field label={t('worker.jobTitle')}>{({ id }) => <Select id={id} value={job} onChange={(e) => setJob(e.target.value as JobTitle)}>{JOBS.map((j) => <option key={j} value={j}>{t(`worker.job.${j}`)}</option>)}</Select>}</Field>
+            <Field label={t('worker.jobTitle')}>{({ id }) => <Select id={id} value={job} onChange={(e) => setJob(e.target.value as JobTitle)}>{[...pack.jobs, ...(pack.jobs.includes(job) ? [] : [job])].map((j) => <option key={j} value={j}>{t(`worker.job.${j}`)}</option>)}</Select>}</Field>
             <Field label={t('worker.joinedOn')} error={errors.joinedOn}>{({ id }) => <Input id={id} type="date" value={joinedOn} max={todayIST()} onChange={(e) => setJoinedOn(e.target.value)} className="num" />}</Field>
             <div className="mb-4 lg:col-span-2">
               <p className="mb-1.5 text-sm font-medium text-muted">{t('worker.payType')}</p>

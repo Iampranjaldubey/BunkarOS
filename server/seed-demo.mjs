@@ -1,11 +1,14 @@
 // Seed a demo unit through the public API (same path the app uses). Prints the login.
-// Usage: BASE=http://localhost:8791 node seed-demo.mjs   (defaults to localhost:8791)
+// Usage: SEED_ADMIN=name:key BASE=http://localhost:8791 node seed-demo.mjs [--industry bags]
+// SPEC-M18: units are created by a founder (ADMIN_KEYS on the server) and claimed with the invite, like a real owner.
 import { randomUUID, randomBytes, pbkdf2Sync } from 'node:crypto';
 
 const BASE = process.env.BASE || 'http://localhost:8791';
 const PIN = process.env.DEMO_PIN || '1234';
-const unitId = process.env.DEMO_UNIT_ID || 'demo-' + randomBytes(3).toString('hex');
 const unitKey = randomBytes(32).toString('base64url');
+const industry = process.argv.includes('--industry') ? process.argv[process.argv.indexOf('--industry') + 1] : 'carpet';
+const [adminName, adminKey] = String(process.env.SEED_ADMIN || '').split(':');
+if (!adminName || !adminKey) throw new Error('set SEED_ADMIN=name:key (one of the server\'s ADMIN_KEYS)');
 const IST = 5.5 * 3600 * 1000;
 const day = (offset = 0) => new Date(Date.now() + IST - offset * 86_400_000).toISOString().slice(0, 10);
 const month = day().slice(0, 7);
@@ -15,29 +18,36 @@ const ownerId = randomUUID(); const staffId = randomUUID();
 const rec = (type, payload, by = ownerId, role = 'owner', d = day()) => ({ id: randomUUID(), type, unitId, payload, by, role, device: 'seed', at: new Date().toISOString(), day: d, sync: 'pending' });
 const post = async (path, body, headers = {}) => { const r = await fetch(BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) }); return { status: r.status, body: await r.json() }; };
 
-const u = await post('/api/units', { unitId, unitKey, name: 'Ideal Carpet (Demo)' });
-if (u.status >= 300) throw new Error('unit: ' + JSON.stringify(u.body));
+const unitName = industry === 'bags' ? 'Kanpur Bags (Demo)' : 'Ideal Carpet (Demo)';
+const login = await post('/api/admin/login', { name: adminName, key: adminKey });
+if (login.status !== 200) throw new Error('admin login: ' + JSON.stringify(login.body));
+const org = await post('/api/admin/orgs', { name: unitName, industry, lang: 'hi', ownerName: 'Ramesh (Owner)', ownerPhone: '9999999999', reason: 'demo seed' }, { Authorization: 'Bearer ' + login.body.token });
+if (org.status !== 201) throw new Error('org: ' + JSON.stringify(org.body));
+const u = await post('/api/invites/claim', { token: org.body.invite.token, unitKey });
+if (u.status !== 200) throw new Error('claim: ' + JSON.stringify(u.body));
+const unitId = u.body.unitId;
 const auth = { 'x-unit-id': unitId, 'x-unit-key': unitKey };
 const boot = await post('/api/sync', { records: [
-  rec('setting', { entityId: 'unit', unitName: 'Ideal Carpet (Demo)', ownerPhone: '9999999999', lang: 'hi', workingDaysPerMonth: 26, photoRequiredAbovePaise: 200000, holidays: [] }),
+  rec('setting', { entityId: 'unit', unitName, ownerPhone: '9999999999', lang: 'hi', workingDaysPerMonth: 26, photoRequiredAbovePaise: 200000, holidays: [] }),
   rec('user', { entityId: ownerId, name: 'Ramesh (Owner)', phone: '9999999999', role: 'owner', ...hash(PIN), active: true }),
 ], since: 0 }, auth);
 if (boot.body.rejected?.length) throw new Error('bootstrap rejected ' + JSON.stringify(boot.body.rejected));
 const tok = await post('/api/auth/token', { unitId, unitKey, userId: ownerId, pin: PIN });
 const bearer = { ...auth, Authorization: 'Bearer ' + tok.body.token };
 
-const workers = [['Rafiq', 'weaver', 'monthly', 1200000], ['Salim', 'weaver', 'monthly', 1100000], ['Guddu', 'helper', 'daily', 40000], ['Meena', 'finisher', 'piece', 1500]].map(([name, jobTitle, payType, rate]) => ({
+const bags = industry === 'bags';
+const workers = (bags ? [['Imran', 'cutter', 'monthly', 1400000], ['Salim', 'stitcher', 'monthly', 1200000], ['Guddu', 'helper', 'daily', 45000], ['Meena', 'stitcher', 'piece', 1200]] : [['Rafiq', 'weaver', 'monthly', 1200000], ['Salim', 'weaver', 'monthly', 1100000], ['Guddu', 'helper', 'daily', 40000], ['Meena', 'finisher', 'piece', 1500]]).map(([name, jobTitle, payType, rate]) => ({
   entityId: randomUUID(), name, jobTitle, payType, salaryPaise: payType === 'monthly' ? rate : undefined, dailyRatePaise: payType === 'daily' ? rate : undefined, pieceRatePaise: payType === 'piece' ? rate : undefined,
   otRatePaise: payType === 'monthly' ? Math.round(rate / 26 / 8) : payType === 'daily' ? Math.round(rate / 8) : 0, joinedOn: '2026-01-01', active: true, accessCode: '1234' }));
-const items = [['Wool red', 'raw', 'kg', 10000], ['Wool beige', 'raw', 'kg', 10000], ['Cotton yarn', 'raw', 'kg', 5000], ['Dye navy', 'raw', 'litre', 2000], ['Kashan 8x10', 'finished', 'pcs', 0]].map(([name, kind, unit, low]) => ({ entityId: randomUUID(), name, kind, unit, lowStockQty: low, active: true }));
-const buyer = { entityId: randomUUID(), name: 'Sharma Exports', phone: '9811111111', city: 'Bhadohi', active: true };
-const orders = [[`ORD-001`, 'Kashan', '8x10', 20, day(-10), 500000], [`ORD-002`, 'Bokhara', '6x9', 12, day(3), 350000], [`ORD-003`, 'Gabbeh', '5x8', 8, day(-2), 280000]].map(([orderNo, design, size, qty, dueDate, pricePaise]) => ({ entityId: randomUUID(), buyerId: buyer.entityId, orderNo, design, size, qty, dueDate, pricePaise, receivedOn: day(20) }));
+const items = (bags ? [['Canvas fabric', 'raw', 'metre', 50000], ['Nylon fabric', 'raw', 'metre', 40000], ['Zips (No. 5)', 'raw', 'pcs', 200000], ['Thread', 'raw', 'kg', 2000], ['School bag 14in', 'finished', 'pcs', 0]] : [['Wool red', 'raw', 'kg', 10000], ['Wool beige', 'raw', 'kg', 10000], ['Cotton yarn', 'raw', 'kg', 5000], ['Dye navy', 'raw', 'litre', 2000], ['Kashan 8x10', 'finished', 'pcs', 0]]).map(([name, kind, unit, low]) => ({ entityId: randomUUID(), name, kind, unit, lowStockQty: low, active: true }));
+const buyer = bags ? { entityId: randomUUID(), name: 'Gupta Traders', phone: '9811111111', city: 'Kanpur', active: true } : { entityId: randomUUID(), name: 'Sharma Exports', phone: '9811111111', city: 'Bhadohi', active: true };
+const orders = (bags ? [[`ORD-001`, 'School backpack', '14in', 200, day(-10), 45000], [`ORD-002`, 'Canvas tote', '40x35cm', 120, day(3), 18000], [`ORD-003`, 'Laptop sleeve', '15in', 80, day(-2), 35000]] : [[`ORD-001`, 'Kashan', '8x10', 20, day(-10), 500000], [`ORD-002`, 'Bokhara', '6x9', 12, day(3), 350000], [`ORD-003`, 'Gabbeh', '5x8', 8, day(-2), 280000]]).map(([orderNo, design, size, qty, dueDate, pricePaise]) => ({ entityId: randomUUID(), buyerId: buyer.entityId, orderNo, design, size, qty, dueDate, pricePaise, receivedOn: day(20) }));
 
 const records = [
   rec('user', { entityId: staffId, name: 'Munshi Ji', phone: '', role: 'staff', ...hash(PIN), active: true }),
   ...workers.map((w) => rec('worker', w)), ...items.map((i) => rec('item', i)), rec('buyer', buyer), ...orders.map((o) => rec('order', o)),
-  rec('stock_in', { itemId: items[0].entityId, qty: 25000, ratePaise: 40000, supplier: 'Mirzapur Wool' }, staffId, 'staff', day(12)),
-  rec('stock_in', { itemId: items[1].entityId, qty: 18000, ratePaise: 38000, supplier: 'Mirzapur Wool' }, staffId, 'staff', day(12)),
+  rec('stock_in', { itemId: items[0].entityId, qty: 25000, ratePaise: 40000, supplier: bags ? 'Kanpur Textiles' : 'Mirzapur Wool' }, staffId, 'staff', day(12)),
+  rec('stock_in', { itemId: items[1].entityId, qty: 18000, ratePaise: 38000, supplier: bags ? 'Kanpur Textiles' : 'Mirzapur Wool' }, staffId, 'staff', day(12)),
   rec('stock_in', { itemId: items[2].entityId, qty: 6000 }, staffId, 'staff', day(9)),
   rec('stock_in', { itemId: items[3].entityId, qty: 1500 }, staffId, 'staff', day(9)),
   rec('stock_out', { itemId: items[0].entityId, qty: 17500, purpose: 'production', orderId: orders[0].entityId }, staffId, 'staff', day(5)),
@@ -51,7 +61,11 @@ const records = [
   rec('advance', { workerId: workers[1].entityId, amountPaise: 200000, mode: 'upi' }, staffId, 'staff', day(7)),
 ];
 // Finished carpet catalogue (SPEC-M15): a quantity carpet with a reservation, a tagged piece, one sold directly. No photos.
-const carpets = [
+const carpets = bags ? [
+  { entityId: randomUUID(), design: 'School backpack', lengthMilli: 30000, widthMilli: 42000, sizeUnit: 'cm', mode: 'quantity', materialNotes: 'Canvas, 2 zips, padded straps', costPaise: 28000, pricePaise: 45000, photoIds: [], active: true },
+  { entityId: randomUUID(), design: 'Leather sling', lengthMilli: 24000, widthMilli: 18000, sizeUnit: 'cm', mode: 'piece', tag: 'LS-0042', pricePaise: 120000, photoIds: [], active: true },
+  { entityId: randomUUID(), design: 'Canvas tote', lengthMilli: 40000, widthMilli: 35000, sizeUnit: 'cm', mode: 'quantity', pricePaise: 18000, photoIds: [], active: true },
+] : [
   { entityId: randomUUID(), design: 'Kashan 101', lengthMilli: 8000, widthMilli: 10000, sizeUnit: 'ft', mode: 'quantity', materialNotes: 'New Zealand wool, 100 knots', costPaise: 3000000, pricePaise: 4500000, photoIds: [], active: true },
   { entityId: randomUUID(), design: 'Bokhara', lengthMilli: 6000, widthMilli: 9000, sizeUnit: 'ft', mode: 'piece', tag: 'BH-0042', pricePaise: 2500000, photoIds: [], active: true },
   { entityId: randomUUID(), design: 'Gabbeh', lengthMilli: 1520, widthMilli: 2440, sizeUnit: 'm', mode: 'quantity', pricePaise: 1800000, photoIds: [], active: true },

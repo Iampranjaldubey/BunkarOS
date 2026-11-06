@@ -26,17 +26,34 @@ export function istPrevMonth(): { month: string; d: (n: number) => string } {
   return { month, d: (n: number) => `${month}-${String(n).padStart(2, '0')}` };
 }
 
-/** Create a unit on /setup and log in as the owner. */
-export async function setupAndLogin(page: Page, o = OWNER) {
-  await page.goto('/setup');
-  await page.getByLabel(/यूनिट \/ दुकान का नाम|Unit \/ shop name/).fill(o.unit);
-  await page.getByLabel(/मालिक का नाम|Owner name/).fill(o.name);
-  await page.getByLabel(/मालिक का फ़ोन|Owner phone/).fill(o.phone);
-  await page.getByLabel(/4 अंक का पिन बनाएँ|Create a 4-digit PIN/).fill(o.pin);
-  await page.getByLabel(/पिन दोबारा भरें|Re-enter PIN/).fill(o.pin);
-  await page.getByRole('button', { name: /यूनिट बनाएँ|Create unit/ }).click();
+// SPEC-M18: organisations are created by a founder; the owner opens the invite link and sets a PIN.
+export const FOUNDER = { name: 'shubham', key: 'e2e-admin-key-123' };
+export async function founderToken(page: Page): Promise<string> {
+  const r = await page.request.post('/api/admin/login', { data: FOUNDER });
+  return (await r.json()).token;
+}
+/** A founder creates an organisation through the API; returns its id and the invite secrets. */
+export async function createOrg(page: Page, o: { unit: string; name: string; phone: string; industry?: string; modules?: Record<string, boolean> }) {
+  const token = await founderToken(page);
+  const r = await page.request.post('/api/admin/orgs', { headers: { Authorization: `Bearer ${token}` }, data: { name: o.unit, industry: o.industry ?? 'carpet', lang: 'hi', ownerName: o.name, ownerPhone: o.phone, ...(o.modules ? { modules: o.modules } : {}) } });
+  expect(r.status()).toBe(201);
+  const b = await r.json();
+  return { unitId: b.unitId as string, invite: b.invite as { token: string; code: string }, adminToken: token };
+}
+/** The owner opens the invite link, sets the PIN and lands on the login screen. */
+export async function openInvite(page: Page, inviteToken: string, pin: string) {
+  await page.goto(`/join/${inviteToken}`);
+  await page.getByLabel(/4 अंक का पिन बनाएँ|Create a 4-digit PIN/).fill(pin);
+  await page.getByLabel(/पिन दोबारा भरें|Re-enter PIN/).fill(pin);
+  await page.getByRole('button', { name: /यूनिट खोलें|Open unit/ }).click();
   await expect(page).toHaveURL(/\/login/);
+}
+/** Create an organisation (founder API + invite link) and log in as its owner. */
+export async function setupAndLogin(page: Page, o: { unit: string; name: string; phone: string; pin: string; industry?: string } = OWNER) {
+  const org = await createOrg(page, o);
+  await openInvite(page, org.invite.token, o.pin);
   await loginAs(page, o.name, o.pin);
+  return org;
 }
 
 export async function loginAs(page: Page, name: string, pin: string) {

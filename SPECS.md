@@ -45,6 +45,8 @@ Status legend: Draft | Approved | Built.
 | SPEC-M14 | Owner override on any wage line before payment, with a reason; logged correction of a paid month | Built 2026-11-02 |
 | SPEC-M15 | Finished carpet catalogue: photos, design, size, piece tag or quantity, prices, reserve, deliver, sell directly, write off | Built 2026-11-02 (with DM-004) |
 | SPEC-M16 | Server integrity (locked-month reversals, wage amounts, stock below zero, same-day undo, photo ids) + paid month from the saved payment | Approved (user goal 2026-11-02) |
+| SPEC-M17 | Visual redesign "Loom and register": new design system, carpet moments, purposeful motion, phone + desktop web | Built 2026-11-06 (not committed) |
+| SPEC-M18 | Platform base: organisations, industries, modules, invites, row-level security, founders' console | Built 2026-11-06 (not committed) |
 
 ---
 
@@ -346,6 +348,125 @@ Status legend: Draft | Approved | Built.
   - AC4 server tests: stock out with zero stock by staff → `insufficient_stock`; by the owner without the flag → `insufficient_stock`; by the owner with flag and reason → accepted; by staff with the flag → `insufficient_stock`. In one push, in 5 kg then out 3 kg then out 3 kg → the second out is refused. Negative adjustments and deliveries from finished stock follow the same rule. e2e 04: the owner over-issues only after giving a reason.
   - AC5 server test: staff reverses their own record dated today → accepted. Their own record dated yesterday, with the reversal also dated yesterday → `forbidden_reversal`. Another user's record from today → `forbidden_reversal`.
   - AC6 server test: unit A stores photo X; unit B uploads X → 409 `photo_id_taken`; A still reads its original bytes; B reads X → 404; A re-sends the same bytes → 200; A sends other bytes → 409 `photo_exists` and the original stays. Unit test: the sync client marks a 409 photo rejected.
+
+### SPEC-M17 — Visual redesign "Loom and register" (phone + desktop web)
+- **Goal** (user 2026-11-05): redesign the whole UI from zero so it looks like it belongs to a Bhadohi carpet unit, not a template. Same features, routes, data, wage / stock / order logic and sync. Audit with the unslop skill (heydamir/unslop, CC BY 4.0): 36 screenshots, findings in WATCHINGLOGS 2026-11-05.
+- **Decisions (user MCQ 2026-11-05):** 1A add `motion` and `@number-flow/react`, React 19.2 → 19.3 (for `<ViewTransition>`); 2A indigo (neel) brand; 3A name बुनकर / Bunkar for now; 4A Home title = day + unit name (no greeting); 5C carpets drawn in code now, partner photos later; 6B all screens in one pass, review at the end. Recorded as D-007 in `docs/decisions.md`.
+- **Direction:** product = a Hindi-first register for a carpet unit's attendance, wages, wool stock and orders, used in the shed (phone) and the office (PC). Character = exact, patient, warm. World = the loom shed and the munshi's bahi-khata: undyed wool, indigo and madder dye, the naksha (knotting chart).
+- **Design system** (`index.css` tokens, both themes, AA checked by `theme.contrast.test.ts`):
+  - Surfaces: warm undyed-wool neutrals of low saturation (light bg `#f6f3ed`, card `#fffdf9`; dark bg `#161411`, card `#1e1b17`). Three text roles: ink, ink-2, muted. Hairline borders.
+  - Accent: indigo (light `#2f3f91`, dark `#a3b0f0`) for the primary action, selection and one key figure per screen.
+  - Semantic: red (madder) = money / stock going out, green = coming in (D14 rule kept), turmeric = half day / attention. Colour sits in figures, dots and selected controls, not on card backgrounds. Zeros are muted.
+  - Dye palette for moments only: indigo, madder, turmeric, walnut, ivory.
+  - Type: Mukta 400 / 500 / 600 for the interface (no 700). Eczar 500 for page titles and the unit name (drawn for Devanagari and Latin together); replaces Tiro Devanagari Hindi. Tabular figures in tables.
+  - Shape: controls 10 px radius, cards 14, panels 18, tags 6. Tags replace full pills. Flat cards; shadows only on menus and sheets.
+  - Spacing on the 4 px grid. Touch targets stay ≥ 48 px on phones, ≥ 44 px on desktop (SPEC-M12).
+- **Signature:** the guard border, a thin knotted band like a rug's minor border, drawn in SVG. Used only in: the side menu brand, the login / setup card, the printed wage slip header, the worker page header.
+- **Moments:**
+  - Naksha month grid: each day is a knot cell (present filled, half filled on the diagonal, absent empty with a mark, paid off day in turmeric, holiday / Sunday marked). Month report, worker page and the worker's own page. Letters P / H / A stay for reading and screen readers.
+  - Today's register on Home: one knot per worker for today.
+  - Drawn rugs: a carpet without a photo is drawn in code from its design name and size (border, field, medallion in dye colours), in the catalogue, carpet detail and order catalogue.
+  - Woven progress: order delivery (delivered / qty) and wages paid (paid / workers) as rows being filled.
+  - Login and setup: a large drawn rug that weaves in row by row once (desktop beside the card, phone above it).
+- **Motion** (CSS keyframes and transitions plus a small number tween; transform and opacity only; one ease-out curve `cubic-bezier(0.22, 1, 0.36, 1)`; 120–500 ms; off under `prefers-reduced-motion`):
+  - P / H / A mark: the cell tightens like a knot (scale 0.92 → 1), 10 ms vibration on Android where supported.
+  - "सब हाज़िर": marks ripple down the rows, 40 ms stagger.
+  - Naksha grid and drawn rugs weave in once when shown.
+  - Money on the Home tiles rolls to the new value (`RollingNumber`, real text, `en-IN` grouping).
+  - Each page rises in once when it opens.
+  - Sheets rise 8 px and fade; menus fade. Removed: hover lift, sidebar width animation, button shadows.
+  - Not used: per-letter text animation (breaks Devanagari conjuncts), looping effects, WebGL, glass, glows, gradients on surfaces.
+  - Tried and dropped while building (2026-11-05): NumberFlow (its shadow DOM holds all ten digits per column, so text reads and e2e checks see the wrong value); Motion (CSS covered every animation); React `<ViewTransition>` around the page (e2e 12 then failed 3 of 4 runs after a settings change; without it 4 of 4 passed). React stays on 19.3.1.
+- **Kept unchanged:** routes, `data-testid`s, accessible names and visible texts the e2e specs use (worker page heading "नमस्ते, {name}" stays: it is the worker's own page), i18n keys (new strings in all three languages), print slip content (D-003), offline behaviour.
+- **Acceptance:**
+  - AC1 typecheck 0, lint 0 errors, build OK, Vitest all pass (contrast test extended to the new pairs), server tests unchanged and passing.
+  - AC2 Playwright full suite passes in both projects (mobile 390×844, desktop 1440×900), including the overflow sweeps (390 / 768 / 1024 / 1440 / 1920 × 3 languages) and the 44 px target audit.
+  - AC3 with `prefers-reduced-motion: reduce` no animation runs (checked in a browser).
+  - AC4 before / after screenshots at 390 and 1440, light and dark, in `docs/screenshots/m17/`; the unslop checklist is run on them.
+  - AC5 added JS ≤ 45 KB gzipped against the 2026-11-05 build; fonts: Tiro removed, Eczar 500 added.
+- **Status:** built 2026-11-06 (not committed).
+- **Out:** new features, new screens, changes to wage / stock / order rules, a marketing landing page, generated images.
+
+### SPEC-M18 — Platform base: organisations, industries, modules, invites
+- **Goal** (owner 2026-11-06, P-001): one platform for more than one industry. Founders create organisations, choose each one's industry and modules, and invite the owner. Carpet units see no change. Design notes: `docs/platform-exploration.md`.
+- **Decisions (owner MCQ 2026-11-06):** database-level isolation now (1A); a paused organisation can log in and read but not add entries (2A); new organisations only by invite, existing units keep working (3A); founders' console in English (4A); bags signature = running-stitch line plus a drawn bag (5A); build this now while the bag partner's list is collected (6A).
+- **1. Organisation fields (server-owned).**
+  - `units` gets `industry` (default `carpet`), `modules` (JSON, default all on), `status` (`invited` | `active` | `paused`, default `active`) and `created_by`.
+  - Only the founders' console writes them; the owner cannot.
+  - Every sync response carries `org: { industry, modules, status }`. The phone keeps the last one for offline use.
+  - Existing units become `carpet`, all modules on, `active`.
+- **2. Modules.**
+  - The six modules and their record types:
+    - attendance: `attendance`, `piece_entry`
+    - wages: `wage_payment`, `period_lock`
+    - advances: `advance`
+    - stock: `item`, `stock_in`, `stock_out`, `stock_adjust`, `finished_in`
+    - orders: `buyer`, `order`, `order_status`, `order_note`, `delivery`
+    - catalogue: `carpet`, `carpet_in`, `carpet_reserve`, `carpet_out`
+  - Always on: `user`, `setting`, `worker`, `reversal`, `usage`.
+  - Wages needs attendance. Turning attendance off turns wages off, and the console says so before saving.
+  - **Server:** a record of a module that is off is refused (`module_off`). So is a reversal of such a record.
+  - **App:** these show only modules that are on:
+    - side menu, bottom bar, "More" page;
+    - quick-entry menu and Home tiles and panels;
+    - month report sections and Excel sheets;
+    - the worker's own page (tabs).
+  - **App:** `can()` takes the modules as a third input.
+  - **Data:** turning a module off keeps its data, and turning it back on shows it again.
+- **3. Paused.**
+  - Logins and pulls work.
+  - Every push is refused (`org_paused`), and pending entries stay on the phone.
+  - A banner says the account is paused and read-only.
+  - The worker's own page still works.
+- **4. Invite-only creation.**
+  - The founders' console creates an organisation with a name, an industry, modules, a language, and the owner's name and phone.
+  - The server stores the unit as `invited` and makes a single-use invite: a link `/join/<token>` plus an 8-character code, valid 7 days. The server stores only a hash of the invite.
+  - The owner opens the link (or enters the code on `/setup`) and sets a PIN twice. The phone creates the unit key, claims the unit with the invite, and writes the owner `user` and the first `setting` record, as `/setup` does today. The unit becomes `active`.
+  - `POST /api/units` with a new unit id and no invite is refused (`invite_required`). Confirming an existing unit with its key works as today, and "join an existing unit" from another phone is unchanged.
+  - Invites can be resent (the old one stops working), cancelled, copied, or shared on WhatsApp after a preview.
+- **5. Database-level isolation (row-level security).**
+  - `records`, `photos` and `worker_links` get row-level security with FORCE.
+  - Every unit request runs in a transaction that sets `app.unit_id`, and the policy only lets rows of that unit through.
+  - Founders' console queries go through one narrow path that reads `units`, `platform_events`, invites and per-unit counts.
+- **6. Changes log.**
+  - An append-only `platform_events` table: when, which founder, which unit, the action (create, invite, resend, cancel invite, modules, status), the value before and after, and the reason.
+  - Changing modules or status requires a reason.
+- **7. Founders' console** (`/admin`, English):
+  - **Organisations table:** name, industry, owner, status, last activity, entries this month. Filters by industry and status, and search.
+  - **"New organisation":** three steps (business, modules prefilled from the industry, invite).
+  - **Organisation page with tabs:**
+    - Overview: usage counts;
+    - Modules: what turning one off affects, shown before saving;
+    - People: the owner and the invite state;
+    - Changes: the log.
+  - **Industry packs page:** read-only.
+  - Admin tokens stay refused by every unit endpoint.
+- **8. Industry packs** (`app/src/industries/<id>/` + `server/industries.mjs`):
+  - A pack holds default modules, job titles, raw-material categories with default units, labels for the product fields, vocabulary overrides in hi / hin / en (merged after the base dictionaries), product art and the signature detail.
+  - The server keeps the list of valid industries and their default modules.
+  - **Carpet pack:** today's behaviour exactly, with the same words, knots, border band and drawn rugs.
+  - **Bags pack v0**, to be confirmed with the partner and refined in M19:
+    - words: बैग instead of कालीन, मॉडल instead of डिज़ाइन;
+    - job titles कटिंग, सिलाई, फ़िनिशिंग, पैकिंग, हेल्पर;
+    - materials कपड़ा, रेक्सीन / लेदर, चेन, बकल, धागा, फ़ोम with default units (metre, pcs, roll, kg);
+    - catalogue sizes in cm;
+    - a drawn bag from the model name and colour;
+    - the running-stitch line as signature, in the same four places as the carpet border band.
+  - Pay types stay monthly, daily and per piece. New pay models are M20.
+- **Acceptance:**
+  - AC1 server: a unit request for unit A with the `unit_id` filter removed from a query returns no rows of unit B. This is checked against the database with row-level security on.
+  - AC2 server: with catalogue off, `carpet_in` → `module_off`, and so is a reversal of an old `carpet_in`. After switching it on, the same push is accepted.
+  - AC3 server: attendance off → the stored modules have wages off too.
+  - AC4 server: paused → every push refused with `org_paused`, pulls and login work. Active again → the pending entries push.
+  - AC5 server: `POST /api/units` with a new id and no invite → `invite_required`. An invite is used once, and an expired, cancelled or replaced invite is refused.
+  - AC6 server: every founder action writes one `platform_events` row with before and after. A change without a reason is refused.
+  - AC7 e2e: a founder creates a bags organisation, the owner joins with the link, and the app shows बैग words, the bag job titles, the drawn bag and the stitch line.
+  - AC8 e2e: the founder turns the catalogue off. It disappears from the menu, Home and month report, and an entry made offline before the change is refused with a readable reason in the entry log.
+  - AC9 e2e: pause → banner, entry buttons gone or refused, data visible. Unpause → normal.
+  - AC10: the existing e2e specs pass with only `fixtures.ts` changed (`setupAndLogin` creates the unit through the founders' API and an invite). The seed script uses the same path. As built: spec 08 changed with the usage-only decision; spec 20's 44 px audit now also checks switches, so the settings switches grew to 44 / 48 px.
+  - AC11: typecheck 0, lint 0 errors, Vitest and server tests pass.
+- **Out:** billing and plans, custom fields, branding or a domain per organisation, self sign-up, founders reading business data, bag-specific pay rules (M20), per-unit running state (M21), renaming the platform.
+- **Approval answers (owner 2026-11-06):** the founders' unit page shows usage only (counts, entries per user per day, last activity); the SPEC-M09 views of workers, worker codes, wages, stock, orders and entries are removed, and e2e 08 changes with them. Bags v0 is part of this spec.
 
 ## Scope — Out (all modules)
 Custom fields and WhatsApp cards (not yet, D15), GST/invoicing, payment gateway, subscription billing, multi-branch, AI/voice, push notifications, barcodes/QR, supplier ledger, per-carpet loom tracking, thekedar chain, tauli, exporter links, Tally export, IVR.
